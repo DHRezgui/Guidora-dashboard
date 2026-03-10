@@ -10,7 +10,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const user = authService.getUser();
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) =>
+    path === '/dashboard' ? pathname === path : pathname.startsWith(path);
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: Icons.dashboard },

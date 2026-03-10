@@ -33,6 +33,7 @@ export interface CreateUserDto {
   lastName?: string;
   role?: 'ADMIN' | 'DEVELOPER' | 'USER';
   isActive?: boolean;
+  organizationName?: string;
 }
 
 export interface UpdateUserDto {
@@ -41,6 +42,7 @@ export interface UpdateUserDto {
   lastName?: string;
   role?: 'ADMIN' | 'DEVELOPER' | 'USER';
   isActive?: boolean;
+  newPassword?: string;
 }
 
 export interface UserResponse {

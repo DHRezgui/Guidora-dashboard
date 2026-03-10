@@ -79,8 +79,23 @@ export const userService = {
     return response.data;
   },
 
+  async getByRole(role: string): Promise<UserResponse> {
+    const response = await apiClient.get(`/user/role/${role}`);
+    return response.data;
+  },
+
   async getById(id: string): Promise<UserResponse> {
     const response = await apiClient.get(`/user/${id}`);
+    return response.data;
+  },
+
+  async create(data: CreateUserDto): Promise<AuthResponse> {
+    const response = await apiClient.post('/auth/register', data);
+    return response.data;
+  },
+
+  async update(id: string, data: UpdateUserDto): Promise<UserResponse> {
+    const response = await apiClient.put(`/user/${id}`, data);
     return response.data;
   },
 
