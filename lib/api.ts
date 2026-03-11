@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse, LoginCredentials, UserResponse, CreateUserDto, UpdateUserDto } from './types';
+import { AuthResponse, LoginCredentials, UserResponse, CreateUserDto, UpdateUserDto, OrganizationResponse, CreateOrganizationDto, UpdateOrganizationDto } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
 
@@ -41,6 +41,20 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Extraire un message d'erreur lisible depuis une erreur Axios ou générique
+export function getErrorMessage(err: unknown, fallback = 'Une erreur est survenue'): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data;
+    if (data?.message) {
+      return Array.isArray(data.message) ? data.message.join(', ') : data.message;
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return fallback;
+}
 
 // Service d'authentification
 export const authService = {
@@ -106,6 +120,49 @@ export const userService = {
 
   async getCurrentUser(): Promise<UserResponse> {
     const response = await apiClient.get('/auth/profile');
+    return response.data;
+  },
+
+  async assignOrganization(userId: string, organizationName: string): Promise<UserResponse> {
+    const response = await apiClient.post(`/user/${userId}/assign-organization`, { organizationName });
+    return response.data;
+  },
+
+  async removeOrganization(userId: string): Promise<UserResponse> {
+    const response = await apiClient.post(`/user/${userId}/remove-organization`);
+    return response.data;
+  },
+};
+
+// Service organisations
+export const organizationService = {
+  async getAll(): Promise<OrganizationResponse> {
+    const response = await apiClient.get('/organization');
+    return response.data;
+  },
+
+  async getById(id: string): Promise<OrganizationResponse> {
+    const response = await apiClient.get(`/organization/${id}`);
+    return response.data;
+  },
+
+  async create(data: CreateOrganizationDto): Promise<OrganizationResponse> {
+    const response = await apiClient.post('/organization', data);
+    return response.data;
+  },
+
+  async update(id: string, data: UpdateOrganizationDto): Promise<OrganizationResponse> {
+    const response = await apiClient.put(`/organization/${id}`, data);
+    return response.data;
+  },
+
+  async delete(id: string): Promise<OrganizationResponse> {
+    const response = await apiClient.delete(`/organization/${id}`);
+    return response.data;
+  },
+
+  async getUserCount(id: string): Promise<{ success: boolean; count: number }> {
+    const response = await apiClient.get(`/organization/${id}/users/count`);
     return response.data;
   },
 };

@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/ui/icons';
-import { userService } from '@/lib/api';
+import { userService, getErrorMessage } from '@/lib/api';
+import axios from 'axios';
 import { User } from '@/lib/types';
 import Link from 'next/link';
 import CreateUserModal from '@/components/dashboard/CreateUserModal';
@@ -33,8 +34,12 @@ export default function UsersPage() {
       setLoading(true);
       const response = await userService.getAll();
       setUsers(response.users || []);
-    } catch {
-      setError('Erreur lors du chargement des utilisateurs');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        setError('Permission non accordée — vous n\'avez pas accès à cette ressource');
+      } else {
+        setError(getErrorMessage(err, 'Erreur lors du chargement des utilisateurs'));
+      }
     } finally {
       setLoading(false);
     }
@@ -127,16 +132,16 @@ export default function UsersPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative flex-1 border rounded-lg p-2">
+              <Icons.search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Rechercher par ID, nom ou email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 border-0 shadow-none focus-visible:ring-0"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 border rounded-lg p-2">
               {['ALL', 'ADMIN', 'DEVELOPER', 'USER'].map((role) => (
                 <Button
                   key={role}
@@ -148,7 +153,7 @@ export default function UsersPage() {
                 </Button>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 border rounded-lg p-2">
               {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
                 <Button
                   key={status}

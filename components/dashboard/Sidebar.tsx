@@ -1,24 +1,37 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Icons } from '@/components/ui/icons';
-import { authService } from '@/lib/api';
+import { authService, organizationService } from '@/lib/api';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const user = authService.getUser();
+  const [orgName, setOrgName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.organizationId) {
+      organizationService.getById(user.organizationId)
+        .then((res) => setOrgName(res.organization?.name || null))
+        .catch(() => setOrgName(null));
+    }
+  }, [user?.organizationId]);
 
   const isActive = (path: string) =>
     path === '/dashboard' ? pathname === path : pathname.startsWith(path);
 
+  const role = user?.role as string | undefined;
+
   const navigation = [
-    { name: 'Tableau de bord', href: '/dashboard', icon: Icons.dashboard },
-    { name: 'Utilisateurs', href: '/dashboard/users', icon: Icons.users },
-    { name: 'Parcours', href: '/dashboard/tours', icon: Icons.tours },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: Icons.analytics },
-  ];
+    { name: 'Tableau de bord', href: '/dashboard', icon: Icons.dashboard, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
+    { name: 'Utilisateurs', href: '/dashboard/users', icon: Icons.users, roles: ['ADMIN'] },
+    { name: 'Organisations', href: '/dashboard/organizations', icon: Icons.building, roles: ['ADMIN', 'DEVELOPER'] },
+    { name: 'Parcours', href: '/dashboard/tours', icon: Icons.tours, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: Icons.analytics, roles: ['ADMIN', 'DEVELOPER'] },
+  ].filter((item) => !role || item.roles.includes(role));
 
   return (
     <div className="w-64 bg-background border-r">
@@ -31,7 +44,7 @@ export default function Sidebar() {
             </div>
             <div>
               <h2 className="font-semibold">TrustDev Admin</h2>
-              <p className="text-xs text-muted-foreground">{user?.organizationId || 'Multi-tenant'}</p>
+              <p className="text-xs text-muted-foreground">{orgName || 'Multi-tenant'}</p>
             </div>
           </div>
         </div>

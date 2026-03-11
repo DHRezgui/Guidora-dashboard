@@ -22,6 +22,10 @@ import {
   ChevronRight,
   MoreHorizontal,
   AlertTriangle,
+  Building2,
+  Copy,
+  Key,
+  Globe,
   type LucideProps,
 } from 'lucide-react';
 
@@ -65,4 +69,8 @@ export const Icons = {
   chevronRight: ChevronRight,
   more: MoreHorizontal,
   warning: AlertTriangle,
+  building: Building2,
+  copy: Copy,
+  key: Key,
+  globe: Globe,
 };

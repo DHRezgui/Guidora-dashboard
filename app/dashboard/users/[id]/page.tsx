@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
-import { userService } from '@/lib/api';
-import { User } from '@/lib/types';
+import { userService, organizationService, getErrorMessage } from '@/lib/api';
+import { User, Organization } from '@/lib/types';
 import Link from 'next/link';
 
 const editUserSchema = z.object({
@@ -32,6 +32,10 @@ export default function EditUserPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
+  const [selectedOrgName, setSelectedOrgName] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   const {
     register,
@@ -56,7 +60,21 @@ export default function EditUserPage() {
             role: u.role,
             isActive: u.isActive,
           });
+          // Fetch organization name if user has one
+          if (u.organizationId) {
+            try {
+              const orgRes = await organizationService.getById(u.organizationId);
+              if (orgRes.organization) setOrgName(orgRes.organization.name);
+            } catch {
+              setOrgName(null);
+            }
+          }
         }
+        // Fetch all orgs for the assign dropdown
+        try {
+          const orgsRes = await organizationService.getAll();
+          setAllOrgs(orgsRes.organizations || []);
+        } catch { /* ignore */ }
       } catch {
         setError('Utilisateur introuvable');
       } finally {
@@ -71,13 +89,51 @@ export default function EditUserPage() {
       setSaving(true);
       setError('');
       setSuccess('');
-      await userService.update(params.id as string, data);
+      const response = await userService.update(params.id as string, data);
+      if (response.user) {
+        setUser(response.user);
+      }
       setSuccess('Utilisateur mis à jour avec succès');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour';
-      setError(message);
+      setError(getErrorMessage(err, 'Erreur lors de la mise à jour'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAssignOrg = async () => {
+    if (!selectedOrgName) return;
+    try {
+      setAssigning(true);
+      setError('');
+      const response = await userService.assignOrganization(params.id as string, selectedOrgName);
+      if (response.user) {
+        setUser(response.user);
+        setOrgName(selectedOrgName);
+        setSelectedOrgName('');
+      }
+      setSuccess('Organisation assignée avec succès');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erreur lors de l'assignation"));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleRemoveOrg = async () => {
+    try {
+      setAssigning(true);
+      setError('');
+      const response = await userService.removeOrganization(params.id as string);
+      if (response.user) {
+        setUser(response.user);
+        setOrgName(null);
+      }
+      setSuccess('Organisation retirée avec succès');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erreur lors du retrait de l'organisation"));
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -215,13 +271,62 @@ export default function EditUserPage() {
                 <span className="font-mono text-xs">{user.id}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-muted-foreground">Dernière connexion</span>
+                <span>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Jamais'}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Créé le</span>
-                <span>{new Date(user.createdAt).toLocaleDateString('fr-FR')}</span>
+                <span>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Mis à jour</span>
-                <span>{new Date(user.updatedAt).toLocaleDateString('fr-FR')}</span>
+                <span>{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
+            </div>
+            <hr />
+            {/* Organization section */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Organisation</h4>
+              {user.organizationId && orgName ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between rounded-md border p-2">
+                    <span className="text-sm font-medium">{orgName}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
+                      onClick={handleRemoveOrg}
+                      disabled={assigning}
+                    >
+                      {assigning ? <Icons.spinner className="h-3 w-3 animate-spin" /> : 'Retirer'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Aucune organisation assignée</p>
+                  <div className="flex gap-1">
+                    <select
+                      value={selectedOrgName}
+                      onChange={(e) => setSelectedOrgName(e.target.value)}
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Sélectionner...</option>
+                      {allOrgs.map((org) => (
+                        <option key={org.id} value={org.name}>{org.name}</option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={handleAssignOrg}
+                      disabled={!selectedOrgName || assigning}
+                    >
+                      {assigning ? <Icons.spinner className="h-3 w-3 animate-spin" /> : 'Assigner'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
             <hr />
             <Button

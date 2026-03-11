@@ -21,6 +21,7 @@ export interface User {
   role: 'ADMIN' | 'DEVELOPER' | 'USER';
   isActive: boolean;
   organizationId?: string;
+  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,4 +60,51 @@ export interface ApiResponse<T = any> {
   message?: string;
   data?: T;
   error?: string;
+}
+
+// Types organisations
+export type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE';
+
+export interface Organization {
+  id: string;
+  name: string;
+  apiKey: string;
+  plan: PlanType;
+  domain?: string;
+  settings?: Record<string, any>;
+  maxTours: number;
+  maxUsers: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOrganizationDto {
+  name: string;
+  apiKey: string;
+  plan?: PlanType;
+  domain?: string;
+  settings?: Record<string, any>;
+  maxTours?: number;
+  maxUsers?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateOrganizationDto {
+  name?: string;
+  apiKey?: string;
+  plan?: PlanType;
+  domain?: string;
+  settings?: Record<string, any>;
+  maxTours?: number;
+  maxUsers?: number;
+  isActive?: boolean;
+}
+
+export interface OrganizationResponse {
+  success: boolean;
+  message?: string;
+  organization?: Organization;
+  organizations?: Organization[];
+  count?: number;
 }
