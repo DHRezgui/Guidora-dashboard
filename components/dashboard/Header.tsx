@@ -9,34 +9,27 @@ export default function Header() {
   const user = authService.getUser();
 
   return (
-    <header className="sticky top-0 z-10 border-b bg-background">
-      <div className="flex h-16 items-center justify-between px-6">
-        <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Gestion de l'onboarding intelligent</p>
-        </div>
+    <header className="sticky top-0 z-10 border-b border-border/40 bg-card/80 backdrop-blur-xl">
+      <div className="flex h-14 items-center justify-between px-6">
+        <div />
 
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground hover:text-foreground" asChild>
             <Link href="/dashboard/settings">
-              <Icons.settings className="mr-2 h-4 w-4" />
-              Paramètres
+              <Icons.settings className="h-[18px] w-[18px]" />
             </Link>
           </Button>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
-                {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <div className="hidden md:block">
-                <p className="text-sm font-medium">{user?.firstName || user?.email}</p>
-                <p className="text-xs text-muted-foreground">{user?.role}</p>
-              </div>
+          <div className="h-6 w-px bg-border/60 mx-1" />
+
+          <div className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-2.5 py-1.5">
+            <div className="h-7 w-7 rounded-lg gradient-primary flex items-center justify-center text-white font-semibold text-xs">
+              {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => authService.logout()}>
-              <Icons.logout className="h-4 w-4" />
-            </Button>
+            <div className="hidden md:block">
+              <p className="text-[13px] font-semibold leading-tight">{user?.firstName || user?.email}</p>
+              <p className="text-[10px] text-muted-foreground capitalize">{user?.role?.toLowerCase()}</p>
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/ui/icons';
@@ -12,11 +11,11 @@ import Link from 'next/link';
 import CreateOrganizationModal from '@/components/dashboard/CreateOrganizationModal';
 import DeleteOrganizationModal from '@/components/dashboard/DeleteOrganizationModal';
 
-const planBadgeColors: Record<string, string> = {
-  FREE: 'bg-gray-100 text-gray-700',
-  STARTER: 'bg-blue-100 text-blue-700',
-  PRO: 'bg-purple-100 text-purple-700',
-  ENTERPRISE: 'bg-amber-100 text-amber-700',
+const planBadgeStyles: Record<string, string> = {
+  FREE: 'bg-gray-50 text-gray-700 ring-gray-600/10',
+  STARTER: 'bg-blue-50 text-blue-700 ring-blue-600/10',
+  PRO: 'bg-purple-50 text-purple-700 ring-purple-600/10',
+  ENTERPRISE: 'bg-amber-50 text-amber-700 ring-amber-600/10',
 };
 
 export default function OrganizationsPage() {
@@ -87,13 +86,14 @@ export default function OrganizationsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Organisations</h1>
-          <p className="text-muted-foreground">Gérez les organisations clientes et leurs abonnements</p>
+          <h1 className="text-2xl font-bold tracking-tight">Organisations</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gérez les organisations clientes et leurs abonnements</p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button className="rounded-xl shadow-soft" onClick={() => setShowCreateModal(true)}>
             <Icons.plus className="mr-2 h-4 w-4" />
             Nouvelle organisation
           </Button>
@@ -102,178 +102,167 @@ export default function OrganizationsPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <Icons.building className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{organizations.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Actives</CardTitle>
-            <Icons.active className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{organizations.filter((o) => o.isActive).length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pro</CardTitle>
-            <Icons.admin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{organizations.filter((o) => o.plan === 'PRO').length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Enterprise</CardTitle>
-            <Icons.admin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{organizations.filter((o) => o.plan === 'ENTERPRISE').length}</div>
-          </CardContent>
-        </Card>
+        {[
+          { title: 'Total', value: organizations.length, icon: Icons.building, gradient: 'gradient-card-blue', iconBg: 'bg-primary/10 text-primary' },
+          { title: 'Actives', value: organizations.filter((o) => o.isActive).length, icon: Icons.active, gradient: 'gradient-card-green', iconBg: 'bg-emerald-500/10 text-emerald-600' },
+          { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.admin, gradient: 'gradient-card-purple', iconBg: 'bg-purple-500/10 text-purple-600' },
+          { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.admin, gradient: 'gradient-card-amber', iconBg: 'bg-amber-500/10 text-amber-600' },
+        ].map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.title} className={`${stat.gradient} rounded-2xl p-5 shadow-card border border-white/60`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] font-medium text-muted-foreground">{stat.title}</p>
+                  <p className="mt-1 text-2xl font-bold tracking-tight">{stat.value}</p>
+                </div>
+                <div className={`rounded-xl p-2.5 ${stat.iconBg}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1 border rounded-lg p-2">
-              <Icons.search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par nom, clé API ou domaine..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 border-0 shadow-none focus-visible:ring-0"
-              />
-            </div>
-            <div className="flex gap-2 border rounded-lg p-2">
-              {['ALL', 'FREE', 'STARTER', 'PRO', 'ENTERPRISE'].map((plan) => (
-                <Button
-                  key={plan}
-                  variant={planFilter === plan ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPlanFilter(plan)}
-                >
-                  {plan === 'ALL' ? 'Tous' : plan}
-                </Button>
-              ))}
-            </div>
-            <div className="flex gap-2 border rounded-lg p-2">
-              {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
-                <Button
-                  key={status}
-                  variant={activeFilter === status ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveFilter(status)}
-                >
-                  {status === 'ALL' ? 'Tous' : status === 'ACTIVE' ? 'Actives' : 'Inactives'}
-                </Button>
-              ))}
-            </div>
+      <div className="rounded-2xl bg-card border border-border/60 p-4 shadow-card">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom, clé API ou domaine..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 rounded-xl bg-muted/50 border-0 focus-visible:ring-1"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-1.5 rounded-xl bg-muted/50 p-1">
+            {['ALL', 'FREE', 'STARTER', 'PRO', 'ENTERPRISE'].map((plan) => (
+              <button
+                key={plan}
+                onClick={() => setPlanFilter(plan)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  planFilter === plan
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {plan === 'ALL' ? 'Tous' : plan}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 rounded-xl bg-muted/50 p-1">
+            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setActiveFilter(status)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  activeFilter === status
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {status === 'ALL' ? 'Tous' : status === 'ACTIVE' ? 'Actives' : 'Inactives'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
+        <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-4 text-destructive text-sm">
           {error}
         </div>
       )}
 
       {/* Organizations table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Icons.spinner className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Chargement...</span>
+      <div className="rounded-2xl bg-card border border-border/60 shadow-card overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-3 text-sm text-muted-foreground">Chargement...</span>
+          </div>
+        ) : filteredOrganizations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <div className="rounded-2xl bg-muted/50 p-4 mb-4">
+              <Icons.building className="h-8 w-8 opacity-40" />
             </div>
-          ) : filteredOrganizations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Icons.building className="h-12 w-12 mb-4 opacity-30" />
-              <p className="text-lg font-medium">Aucune organisation trouvée</p>
-              <p className="text-sm">Modifiez vos filtres ou créez une nouvelle organisation</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Organisation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Statut</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Limites</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Créée le</th>
-                    {isAdmin && <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>}
+            <p className="font-medium">Aucune organisation trouvée</p>
+            <p className="text-sm mt-1">Modifiez vos filtres ou créez une nouvelle organisation</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/30">
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Organisation</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Plan</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Limites</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Créée le</th>
+                  {isAdmin && <th className="px-5 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {filteredOrganizations.map((org) => (
+                  <tr key={org.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-white font-semibold text-xs shadow-soft">
+                          {org.name[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-[13px]">{org.name}</p>
+                          <p className="text-[11px] text-muted-foreground font-mono">{org.apiKey}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${planBadgeStyles[org.plan] || 'bg-gray-50 text-gray-700 ring-gray-600/10'}`}>
+                        {org.plan}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${org.isActive ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${org.isActive ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                        {org.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
+                      <div>{org.maxUsers} utilisateurs</div>
+                      <div>{org.maxTours} parcours</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
+                      {org.createdAt ? new Date(org.createdAt).toLocaleDateString('fr-FR') : '-'}
+                    </td>
+                    {isAdmin && (
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" asChild>
+                          <Link href={`/dashboard/organizations/${org.id}`}>
+                            <Icons.edit className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteOrg(org)}
+                        >
+                          <Icons.trash className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                    )}
                   </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredOrganizations.map((org) => (
-                    <tr key={org.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
-                            {org.name[0].toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{org.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{org.apiKey}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${planBadgeColors[org.plan] || 'bg-gray-100 text-gray-700'}`}>
-                          {org.plan}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${org.isActive ? 'text-green-600' : 'text-red-500'}`}>
-                          <span className={`h-2 w-2 rounded-full ${org.isActive ? 'bg-green-500' : 'bg-red-400'}`} />
-                          {org.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        <div>{org.maxUsers} utilisateurs</div>
-                        <div>{org.maxTours} parcours</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {org.createdAt ? new Date(org.createdAt).toLocaleDateString('fr-FR') : '-'}
-                      </td>
-                      {isAdmin && (
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link href={`/dashboard/organizations/${org.id}`}>
-                              <Icons.edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteOrg(org)}
-                          >
-                            <Icons.trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Modals */}
       {showCreateModal && (

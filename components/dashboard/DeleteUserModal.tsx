@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { userService } from '@/lib/api';
@@ -37,36 +36,36 @@ export default function DeleteUserModal({ user, onClose, onDeleted }: DeleteUser
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <Card className="relative z-10 w-full max-w-sm mx-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <Icons.warning className="h-5 w-5" />
-            Supprimer l&apos;utilisateur
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl bg-card border border-border/60 shadow-elevated animate-scale-in">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="rounded-xl p-2.5 bg-destructive/10">
+              <Icons.warning className="h-5 w-5 text-destructive" />
+            </div>
+            <h2 className="text-lg font-semibold text-destructive">Supprimer l&apos;utilisateur</h2>
+          </div>
           <p className="text-sm text-muted-foreground">
             Êtes-vous sûr de vouloir supprimer <strong>{displayName}</strong> ? Cette action est irréversible.
           </p>
 
           {error && (
-            <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+            <div className="mt-4 rounded-xl bg-destructive/5 border border-destructive/20 p-3 text-destructive text-sm">
               {error}
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex justify-end gap-2 mt-6">
+            <Button variant="outline" onClick={onClose} className="rounded-xl">
               Annuler
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+            <Button variant="destructive" onClick={handleDelete} disabled={loading} className="rounded-xl">
               {loading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
               Supprimer
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

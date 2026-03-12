@@ -32,7 +32,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <Sidebar />
 
@@ -42,8 +42,10 @@ export default function DashboardLayout({
         <Header />
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="animate-fade-in">
+            {children}
+          </div>
         </main>
       </div>
     </div>

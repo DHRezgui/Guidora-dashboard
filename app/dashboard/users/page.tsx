@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/ui/icons';
@@ -12,10 +11,10 @@ import Link from 'next/link';
 import CreateUserModal from '@/components/dashboard/CreateUserModal';
 import DeleteUserModal from '@/components/dashboard/DeleteUserModal';
 
-const roleBadgeColors: Record<string, string> = {
-  ADMIN: 'bg-red-100 text-red-700',
-  DEVELOPER: 'bg-blue-100 text-blue-700',
-  USER: 'bg-gray-100 text-gray-700',
+const roleBadgeStyles: Record<string, string> = {
+  ADMIN: 'bg-red-50 text-red-700 ring-red-600/10',
+  DEVELOPER: 'bg-blue-50 text-blue-700 ring-blue-600/10',
+  USER: 'bg-gray-50 text-gray-700 ring-gray-600/10',
 };
 
 export default function UsersPage() {
@@ -86,12 +85,13 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Utilisateurs</h1>
-          <p className="text-muted-foreground">Gérez les comptes utilisateurs et administrateurs</p>
+          <h1 className="text-2xl font-bold tracking-tight">Utilisateurs</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gérez les comptes utilisateurs et administrateurs</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
+        <Button className="rounded-xl shadow-soft" onClick={() => setShowCreateModal(true)}>
           <Icons.plus className="mr-2 h-4 w-4" />
           Nouvel utilisateur
         </Button>
@@ -99,166 +99,163 @@ export default function UsersPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-            <Icons.users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Administrateurs</CardTitle>
-            <Icons.admin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.filter((u) => u.role === 'ADMIN').length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Actifs</CardTitle>
-            <Icons.active className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.filter((u) => u.isActive).length}</div>
-          </CardContent>
-        </Card>
+        {[
+          { title: 'Total', value: users.length, icon: Icons.users, gradient: 'gradient-card-blue', iconBg: 'bg-primary/10 text-primary' },
+          { title: 'Administrateurs', value: users.filter((u) => u.role === 'ADMIN').length, icon: Icons.admin, gradient: 'gradient-card-purple', iconBg: 'bg-purple-500/10 text-purple-600' },
+          { title: 'Actifs', value: users.filter((u) => u.isActive).length, icon: Icons.active, gradient: 'gradient-card-green', iconBg: 'bg-emerald-500/10 text-emerald-600' },
+        ].map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.title} className={`${stat.gradient} rounded-2xl p-5 shadow-card border border-white/60`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] font-medium text-muted-foreground">{stat.title}</p>
+                  <p className="mt-1 text-2xl font-bold tracking-tight">{stat.value}</p>
+                </div>
+                <div className={`rounded-xl p-2.5 ${stat.iconBg}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1 border rounded-lg p-2">
-              <Icons.search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par ID, nom ou email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 border-0 shadow-none focus-visible:ring-0"
-              />
-            </div>
-            <div className="flex gap-2 border rounded-lg p-2">
-              {['ALL', 'ADMIN', 'DEVELOPER', 'USER'].map((role) => (
-                <Button
-                  key={role}
-                  variant={roleFilter === role ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setRoleFilter(role)}
-                >
-                  {role === 'ALL' ? 'Tous' : role}
-                </Button>
-              ))}
-            </div>
-            <div className="flex gap-2 border rounded-lg p-2">
-              {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
-                <Button
-                  key={status}
-                  variant={activeFilter === status ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveFilter(status)}
-                >
-                  {status === 'ALL' ? 'Tous' : status === 'ACTIVE' ? 'Actifs' : 'Inactifs'}
-                </Button>
-              ))}
-            </div>
+      <div className="rounded-2xl bg-card border border-border/60 p-4 shadow-card">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par ID, nom ou email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 rounded-xl bg-muted/50 border-0 focus-visible:ring-1"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-1.5 rounded-xl bg-muted/50 p-1">
+            {['ALL', 'ADMIN', 'DEVELOPER', 'USER'].map((role) => (
+              <button
+                key={role}
+                onClick={() => setRoleFilter(role)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  roleFilter === role
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {role === 'ALL' ? 'Tous' : role}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 rounded-xl bg-muted/50 p-1">
+            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setActiveFilter(status)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  activeFilter === status
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {status === 'ALL' ? 'Tous' : status === 'ACTIVE' ? 'Actifs' : 'Inactifs'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
+        <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-4 text-destructive text-sm">
           {error}
         </div>
       )}
 
       {/* Users table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Icons.spinner className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Chargement...</span>
+      <div className="rounded-2xl bg-card border border-border/60 shadow-card overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-3 text-sm text-muted-foreground">Chargement...</span>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <div className="rounded-2xl bg-muted/50 p-4 mb-4">
+              <Icons.users className="h-8 w-8 opacity-40" />
             </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Icons.users className="h-12 w-12 mb-4 opacity-30" />
-              <p className="text-lg font-medium">Aucun utilisateur trouvé</p>
-              <p className="text-sm">Modifiez vos filtres ou créez un nouvel utilisateur</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Utilisateur</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Rôle</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Statut</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Créé le</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+            <p className="font-medium">Aucun utilisateur trouvé</p>
+            <p className="text-sm mt-1">Modifiez vos filtres ou créez un nouvel utilisateur</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/30">
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Utilisateur</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Rôle</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Créé le</th>
+                  <th className="px-5 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-white font-semibold text-xs shadow-soft">
+                          {user.firstName?.[0] || user.email[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-[13px]">
+                            {user.firstName && user.lastName
+                              ? `${user.firstName} ${user.lastName}`
+                              : user.email}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${roleBadgeStyles[user.role] || 'bg-gray-50 text-gray-700 ring-gray-600/10'}`}>
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${user.isActive ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                        {user.isActive ? 'Actif' : 'Inactif'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
+                      {new Date(user.createdAt).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" asChild>
+                          <Link href={`/dashboard/users/${user.id}`}>
+                            <Icons.edit className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteUser(user)}
+                        >
+                          <Icons.trash className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
-                            {user.firstName?.[0] || user.email[0].toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">
-                              {user.firstName && user.lastName
-                                ? `${user.firstName} ${user.lastName}`
-                                : user.email}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${roleBadgeColors[user.role] || 'bg-gray-100 text-gray-700'}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-red-500'}`}>
-                          <span className={`h-2 w-2 rounded-full ${user.isActive ? 'bg-green-500' : 'bg-red-400'}`} />
-                          {user.isActive ? 'Actif' : 'Inactif'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {new Date(user.createdAt).toLocaleDateString('fr-FR')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link href={`/dashboard/users/${user.id}`}>
-                              <Icons.edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteUser(user)}
-                          >
-                            <Icons.trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Modals */}
       {showCreateModal && (
