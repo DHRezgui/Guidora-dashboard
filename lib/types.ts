@@ -20,6 +20,7 @@ export interface User {
   lastName?: string;
   role: 'ADMIN' | 'DEVELOPER' | 'USER';
   isActive: boolean;
+  emailVerified?: boolean;
   organizationId?: string;
   lastLoginAt?: string;
   createdAt: string;

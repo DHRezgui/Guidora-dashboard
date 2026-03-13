@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Routes publiques (pas besoin d'auth)
-  const publicRoutes = ['/login', '/api'];
+  const publicRoutes = ['/login', '/forgot-password', '/reset-password', '/verify-email', '/api'];
 
   // Vérifier si la route est publique
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
@@ -16,8 +16,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Si token et route publique → rediriger vers dashboard
-  if (token && isPublicRoute && pathname !== '/api') {
+  // Exceptions pour les routes publiques accessibles même si connecté
+  const routesAccessiblesSiConnecte = ['/verify-email'];
+  const isAccessibleSiConnecte = routesAccessiblesSiConnecte.some(route => pathname.startsWith(route));
+
+  // Si token et route publique (sauf exceptions) → rediriger vers dashboard
+  if (token && isPublicRoute && pathname !== '/api' && !isAccessibleSiConnecte) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

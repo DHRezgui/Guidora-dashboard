@@ -16,7 +16,7 @@ export default function Header() {
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground hover:text-foreground" asChild>
             <Link href="/dashboard/settings">
-              <Icons.settings className="h-[18px] w-[18px]" />
+              <Icons.settings className="h-4.5 w-4.5" />
             </Link>
           </Button>
 

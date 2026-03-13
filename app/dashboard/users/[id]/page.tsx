@@ -280,6 +280,13 @@ export default function EditUserPage() {
                 <span className="text-[13px]">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
               <div className="flex justify-between items-center rounded-xl bg-muted/40 px-3 py-2.5">
+                <span className="text-muted-foreground">Email vérifié</span>
+                <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${user.emailVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${user.emailVerified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  {user.emailVerified ? 'Vérifié' : 'Non vérifié'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center rounded-xl bg-muted/40 px-3 py-2.5">
                 <span className="text-muted-foreground">Mis à jour</span>
                 <span className="text-[13px]">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>

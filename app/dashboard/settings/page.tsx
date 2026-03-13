@@ -255,6 +255,13 @@ export default function SettingsPage() {
                 </span>
               </div>
               <div className="flex justify-between items-center rounded-xl bg-muted/40 px-3 py-2.5">
+                <span className="text-muted-foreground">Email vérifié</span>
+                <span className={`flex items-center gap-1.5 font-medium text-[13px] ${user?.emailVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${user?.emailVerified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  {user?.emailVerified ? 'Vérifié' : 'Non vérifié'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center rounded-xl bg-muted/40 px-3 py-2.5">
                 <span className="text-muted-foreground">Membre depuis</span>
                 <span className="text-[13px]">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
