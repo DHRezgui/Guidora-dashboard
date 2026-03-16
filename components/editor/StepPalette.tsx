@@ -10,6 +10,7 @@ import { Step } from '@/lib/types';
 
 interface StepPaletteProps {
   onAddStep?: (template: Partial<Step>) => void;
+  onAddMultipleSteps?: (templates: Partial<Step>[]) => void;
 }
 
 const STEP_TEMPLATES: {
@@ -112,7 +113,7 @@ const STEP_TEMPLATES: {
   },
 ];
 
-export default function StepPalette({ onAddStep }: StepPaletteProps) {
+export default function StepPalette({ onAddStep, onAddMultipleSteps }: StepPaletteProps) {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'basic' | 'advanced' | 'interactive'>('all');
 
   const filteredSteps = selectedCategory === 'all' 
@@ -247,7 +248,11 @@ export default function StepPalette({ onAddStep }: StepPaletteProps) {
           variant="ghost"
           className="w-full justify-start text-sm text-muted-foreground hover:text-foreground"
           onClick={() => {
-            STEP_TEMPLATES.forEach((template) => onAddStep?.(template.defaultData));
+            if (onAddMultipleSteps) {
+              onAddMultipleSteps(STEP_TEMPLATES.map(t => t.defaultData));
+            } else {
+              STEP_TEMPLATES.forEach((template) => onAddStep?.(template.defaultData));
+            }
           }}
         >
           <Icons.list className="mr-2 h-4 w-4" />

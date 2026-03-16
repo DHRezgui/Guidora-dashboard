@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Toolbar from './Toolbar';
 import StepPalette from './StepPalette';
 import StepCanvas from './StepCanvas';
@@ -15,6 +15,13 @@ interface EditorLayoutProps {
 
 export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps) {
   const [steps, setSteps] = useState<Step[]>(tour?.steps ?? []);
+  
+  // History State for Undo/Redo
+  const [history, setHistory] = useState<{stack: Step[][], index: number}>({
+    stack: [tour?.steps ?? []],
+    index: 0
+  });
+
   const [tourMeta, setTourMeta] = useState<Partial<GuidedTour>>({
     name: tour?.name,
     description: tour?.description,
@@ -27,7 +34,9 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
-    setSteps(tour?.steps ?? []);
+    const initialSteps = tour?.steps ?? [];
+    setSteps(initialSteps);
+    setHistory({ stack: [initialSteps], index: 0 });
     setTourMeta({
       name: tour?.name,
       description: tour?.description,
@@ -38,6 +47,63 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
     });
     setSelectedStep(null);
   }, [tour?.id]);
+
+  const commitToHistory = useCallback((newSteps: Step[]) => {
+    setHistory(prev => {
+      const newStack = prev.stack.slice(0, prev.index + 1);
+      newStack.push(newSteps);
+      return { stack: newStack, index: newStack.length - 1 };
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setHistory(prev => {
+      if (prev.index > 0) {
+        const newIndex = prev.index - 1;
+        setSteps(prev.stack[newIndex]);
+        return { ...prev, index: newIndex };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    setHistory(prev => {
+      if (prev.index < prev.stack.length - 1) {
+        const newIndex = prev.index + 1;
+        setSteps(prev.stack[newIndex]);
+        return { ...prev, index: newIndex };
+      }
+      return prev;
+    });
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ne pas annuler/retablir si on est dans un champ texte (input, textarea, etc.)
+      const isInputFocused =
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement ||
+        (document.activeElement as HTMLElement)?.isContentEditable;
+
+      if (isInputFocused) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   const composedTour = useMemo<GuidedTour>(
     () => ({
@@ -59,21 +125,24 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
   };
 
   const handleUpdateStep = (updatedStep: Step) => {
-    setSteps((prev) =>
-      prev.map((step) =>
+    setSteps((prev) => {
+      const nextSteps = prev.map((step) =>
         step.id === updatedStep.id
           ? {
               ...updatedStep,
               orderIndex: step.orderIndex,
             }
           : step
-      )
-    );
+      );
+      commitToHistory(nextSteps);
+      return nextSteps;
+    });
     setSelectedStep(updatedStep);
   };
 
   const handleStepsChange = (nextSteps: Step[]) => {
     setSteps(nextSteps);
+    commitToHistory(nextSteps);
 
     if (!selectedStep) {
       return;
@@ -86,7 +155,7 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
   const handleAddStepFromPalette = (template: Partial<Step>) => {
     const nextStep: Step = {
       id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      orderIndex: 0, // recalculated below
+      orderIndex: 0,
       title: template.title || 'Nouvelle etape',
       content: template.content || "Contenu de l'etape",
       position: template.position || 'BOTTOM',
@@ -96,11 +165,36 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
       targetSelector: template.targetSelector || '',
     };
 
-    // Use functional update so rapid successive calls (e.g. "add all") chain correctly
-    setSteps((prev) =>
-      [...prev, nextStep].map((step, index) => ({ ...step, orderIndex: index + 1 }))
-    );
+    setSteps((prev) => {
+      const nextSteps = [...prev, nextStep].map((step, index) => ({ ...step, orderIndex: index + 1 }));
+      commitToHistory(nextSteps);
+      return nextSteps;
+    });
     setSelectedStep(nextStep);
+  };
+
+  const handleAddMultipleStepsFromPalette = (templates: Partial<Step>[]) => {
+    const newSteps = templates.map((template, index) => ({
+      id: `step-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 9)}`,
+      orderIndex: 0,
+      title: template.title || 'Nouvelle etape',
+      content: template.content || "Contenu de l'etape",
+      position: template.position || 'BOTTOM',
+      action: template.action || 'NEXT',
+      skipAllowed: template.skipAllowed ?? true,
+      highlightElement: template.highlightElement ?? false,
+      targetSelector: template.targetSelector || '',
+    }));
+
+    setSteps((prev) => {
+      const nextSteps = [...prev, ...newSteps].map((step, idx) => ({ ...step, orderIndex: idx + 1 }));
+      commitToHistory(nextSteps);
+      return nextSteps;
+    });
+    // Optional: select the last inserted step
+    if (newSteps.length > 0) {
+      setSelectedStep(newSteps[newSteps.length - 1]);
+    }
   };
 
   return (
@@ -113,6 +207,10 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
         onBack={onBack}
         isPreviewMode={isPreviewMode}
         onTogglePreview={() => setIsPreviewMode(!isPreviewMode)}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={history.index > 0}
+        canRedo={history.index < history.stack.length - 1}
       />
 
       {/* Main content */}
@@ -120,7 +218,10 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
         {/* Left sidebar - Step Palette */}
         {!isPreviewMode && (
           <div className="w-full border-b bg-background lg:w-72 lg:border-b-0 lg:border-r">
-            <StepPalette onAddStep={handleAddStepFromPalette} />
+            <StepPalette 
+              onAddStep={handleAddStepFromPalette} 
+              onAddMultipleSteps={handleAddMultipleStepsFromPalette}
+            />
           </div>
         )}
 

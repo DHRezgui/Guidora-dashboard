@@ -280,6 +280,7 @@ export default function StepCanvas({
       </div>
 
       <DndContext
+        id="step-canvas-dnd-context"
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
@@ -419,9 +420,27 @@ export default function StepCanvas({
             Vider la zone
           </Button>
           <Button variant="outline" size="sm" onClick={() => {
-            // Exporter les étapes
-            console.log('Exporter:', steps);
-            toast.info('📋 Étapes exportées dans la console');
+            const exportData = {
+              ...tour,
+              steps: steps
+            };
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            const fileName = tour?.name 
+              ? `parcours-${tour.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json` 
+              : 'parcours-export.json';
+            a.download = fileName;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            toast.success('📋 Parcours exporté avec succès !');
           }}>
             <Icons.download className="mr-2 h-4 w-4" />
             Exporter

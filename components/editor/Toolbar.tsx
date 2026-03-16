@@ -14,6 +14,10 @@ interface ToolbarProps {
   onBack?: () => void;
   isPreviewMode: boolean;
   onTogglePreview: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export default function Toolbar({
@@ -23,6 +27,10 @@ export default function Toolbar({
   onBack,
   isPreviewMode,
   onTogglePreview,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
 }: ToolbarProps) {
   return (
     <div className="border-b bg-white px-6 py-4 shadow-sm">
@@ -53,6 +61,30 @@ export default function Toolbar({
           </div>
 
           <div className="flex items-center gap-3">
+            {!isPreviewMode && (
+              <div className="flex items-center mr-2 border-r border-slate-200 pr-4 gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onUndo}
+                  disabled={!canUndo}
+                  className="h-8 w-8 text-slate-500 hover:text-slate-900"
+                  title="Annuler (Ctrl+Z)"
+                >
+                  <Icons.undo className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onRedo}
+                  disabled={!canRedo}
+                  className="h-8 w-8 text-slate-500 hover:text-slate-900"
+                  title="Rétablir (Ctrl+Y)"
+                >
+                  <Icons.redo className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <Button
               variant={isPreviewMode ? 'default' : 'outline'}
               size="sm"
