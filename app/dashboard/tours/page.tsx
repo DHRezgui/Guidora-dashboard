@@ -1,0 +1,1 @@
+﻿export default function ToursPage() { return ( <div className="p-6"><h1 className="text-2xl font-bold mb-4">Mes Parcours</h1><p>Ici s'afficheront vos parcours. <a href="/dashboard/tours/create" className="text-blue-500 underline">Créer un nouveau parcours</a></p></div> ); }

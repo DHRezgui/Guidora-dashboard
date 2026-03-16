@@ -109,3 +109,49 @@ export interface OrganizationResponse {
   organizations?: Organization[];
   count?: number;
 }
+
+// Types tours
+
+export interface Step {
+  id: string;
+  orderIndex: number;
+  title: string;
+  content: string;
+  targetSelector?: string;
+  position?: PositionType;
+  action?: ActionType;
+  skipAllowed?: boolean;
+  highlightElement?: boolean;
+}
+
+export interface GuidedTour {
+  id?: string;
+  name: string;
+  description?: string;
+  targetUrl: string;
+  isActive?: boolean;
+  priority?: number;
+  triggerConditions?: Record<string, any>;
+  steps: Step[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PositionType = 
+  | 'TOP'
+  | 'BOTTOM'
+  | 'LEFT'
+  | 'RIGHT'
+  | 'CENTER'
+  | 'TOP_LEFT'
+  | 'TOP_RIGHT'
+  | 'BOTTOM_LEFT'
+  | 'BOTTOM_RIGHT';
+
+export type ActionType = 
+  | 'CLICK'
+  | 'HOVER'
+  | 'SCROLL'
+  | 'NEXT'
+  | 'SKIP'
+  | 'COMPLETE';
