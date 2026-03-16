@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/ui/icons';
-import { Step } from '@/lib/types/tour.types';
+import { Step } from '@/lib/types';
 
 interface StepCardProps {
   step: Step;
@@ -116,6 +116,7 @@ export function StepCard({
                 }}
                 disabled={index === 1}
                 className="h-8 w-8 p-0"
+                title="Monter"
               >
                 <Icons.arrowUp className="h-4 w-4" />
               </Button>
@@ -128,6 +129,7 @@ export function StepCard({
                 }}
                 disabled={index === totalSteps}
                 className="h-8 w-8 p-0"
+                title="Descendre"
               >
                 <Icons.arrowDown className="h-4 w-4" />
               </Button>

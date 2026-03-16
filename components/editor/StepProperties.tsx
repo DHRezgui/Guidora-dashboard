@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,10 @@ interface StepPropertiesProps {
 
 export default function StepProperties({ step, onUpdate }: StepPropertiesProps) {
   const [formData, setFormData] = useState<Partial<Step>>(step || {});
+
+  useEffect(() => {
+    setFormData(step || {});
+  }, [step]);
 
   const handleInputChange = (field: keyof Step, value: any) => {
     const updatedData = { ...formData, [field]: value };
@@ -120,7 +124,7 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
           <div className="space-y-2">
             <Label htmlFor="position">Position</Label>
             <Select
-              value={formData.position}
+              value={formData.position ?? ''}
               onValueChange={(value) => handleInputChange('position', value as PositionType)}
             >
               <SelectTrigger>
@@ -140,7 +144,7 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
           <div className="space-y-2">
             <Label htmlFor="action">Action déclenchante</Label>
             <Select
-              value={formData.action}
+              value={formData.action ?? ''}
               onValueChange={(value) => handleInputChange('action', value as ActionType)}
             >
               <SelectTrigger>
@@ -167,7 +171,7 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
               </div>
               <Checkbox
                 checked={formData.skipAllowed !== false}
-                onCheckedChange={(checked) => handleInputChange('skipAllowed', checked)}
+                onCheckedChange={(checked) => handleInputChange('skipAllowed', checked === true)}
               />
             </div>
 
@@ -180,7 +184,7 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
               </div>
               <Checkbox
                 checked={formData.highlightElement !== false}
-                onCheckedChange={(checked) => handleInputChange('highlightElement', checked)}
+                onCheckedChange={(checked) => handleInputChange('highlightElement', checked === true)}
               />
             </div>
           </div>
@@ -189,7 +193,7 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
           <div className="flex gap-2 pt-4">
             <Button
               variant="outline"
-              className="flex-1"
+              className="w-full"
               onClick={() => {
                 // Réinitialiser les données
                 setFormData(step);
@@ -198,22 +202,6 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
             >
               <Icons.refresh className="mr-2 h-4 w-4" />
               Réinitialiser
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => {
-                // Dupliquer l'étape
-                const newStep: Step = {
-                  ...step,
-                  id: `step-${Date.now()}`,
-                  orderIndex: step.orderIndex + 1,
-                };
-                onUpdate(newStep);
-              }}
-            >
-              <Icons.copy className="mr-2 h-4 w-4" />
-              Dupliquer
             </Button>
           </div>
         </CardContent>

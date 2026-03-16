@@ -1,5 +1,17 @@
 import axios from 'axios';
-import { AuthResponse, LoginCredentials, UserResponse, CreateUserDto, UpdateUserDto, OrganizationResponse, CreateOrganizationDto, UpdateOrganizationDto } from './types';
+import {
+  AuthResponse,
+  LoginCredentials,
+  UserResponse,
+  CreateUserDto,
+  UpdateUserDto,
+  OrganizationResponse,
+  CreateOrganizationDto,
+  UpdateOrganizationDto,
+  GuidedTour,
+  GuidedTourResponse,
+  GuidedTourSavePayload,
+} from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
 
@@ -183,6 +195,40 @@ export const organizationService = {
 
   async getUserCount(id: string): Promise<{ success: boolean; count: number }> {
     const response = await apiClient.get(`/organization/${id}/users/count`);
+    return response.data;
+  },
+};
+
+// Service parcours guides
+export const tourService = {
+  async getAll(isActive?: boolean): Promise<GuidedTourResponse> {
+    const query = typeof isActive === 'boolean' ? `?isActive=${isActive}` : '';
+    const response = await apiClient.get(`/tours${query}`);
+    return response.data;
+  },
+
+  async getById(id: string): Promise<GuidedTourResponse> {
+    const response = await apiClient.get(`/tours/${id}`);
+    return response.data;
+  },
+
+  async create(data: GuidedTourSavePayload): Promise<GuidedTourResponse> {
+    const response = await apiClient.post('/tours', data);
+    return response.data;
+  },
+
+  async update(id: string, data: Partial<GuidedTourSavePayload>): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}`, data);
+    return response.data;
+  },
+
+  async remove(id: string): Promise<GuidedTourResponse> {
+    const response = await apiClient.delete(`/tours/${id}`);
+    return response.data;
+  },
+
+  async toggleActive(id: string, isActive: boolean): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/activate`, { isActive });
     return response.data;
   },
 };

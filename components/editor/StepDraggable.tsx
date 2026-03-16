@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { StepCard } from './StepCard';
-import { Step } from '@/lib/types/tour.types';
+import { Step } from '@/lib/types';
 
 interface StepDraggableProps {
   step: Step;

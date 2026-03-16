@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/ui/icons';
 import { StepDraggable } from './StepDraggable';
-import { Step } from '@/lib/types/tour.types';
+import { Step } from '@/lib/types';
 import {
   DndContext,
   closestCenter,
@@ -28,22 +28,21 @@ import { toast } from 'sonner';
 
 interface StepCanvasProps {
   tour?: any;
+  steps: Step[];
   selectedStep: Step | null;
-  onSelectStep: (step: Step) => void;
-  onUpdateStep: (step: Step) => void;
-  onStepsChange?: (steps: Step[]) => void;
+  onSelectStep: (step: Step | null) => void;
+  onStepsChange: (steps: Step[]) => void;
   isPreviewMode: boolean;
 }
 
 export default function StepCanvas({
   tour,
+  steps,
   selectedStep,
   onSelectStep,
-  onUpdateStep,
   onStepsChange,
   isPreviewMode,
 }: StepCanvasProps) {
-  const [steps, setSteps] = useState<Step[]>([]);
   const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -55,29 +54,15 @@ export default function StepCanvas({
     })
   );
 
-  useEffect(() => {
-    if (tour?.steps) {
-      setSteps(tour.steps.sort((a, b) => a.orderIndex - b.orderIndex));
-    }
-  }, [tour]);
-
-  // Notifier les changements de steps au parent
-  useEffect(() => {
-    if (onStepsChange) {
-      onStepsChange(steps);
-    }
-  }, [steps, onStepsChange]);
-
   // Gérer le drop d'une nouvelle étape depuis la palette
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (isPreviewMode) return;
     const data = e.dataTransfer.getData('application/react-dnd-item');
     if (data) {
       const templateData = JSON.parse(data);
       
       // Déterminer la position d'insertion
-      const rect = canvasRef.current?.getBoundingClientRect();
-      const y = e.clientY - (rect?.top || 0);
       const insertIndex = draggedOverIndex !== null ? draggedOverIndex : steps.length;
 
       const newStep: Step = {
@@ -99,7 +84,7 @@ export default function StepCanvas({
         ...steps.slice(insertIndex),
       ].map((step, index) => ({ ...step, orderIndex: index + 1 }));
 
-      setSteps(newSteps);
+      onStepsChange(newSteps);
       
       // Feedback utilisateur
       toast.success('✅ Étape ajoutée avec succès', {
@@ -113,9 +98,10 @@ export default function StepCanvas({
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    
+    if (isPreviewMode) return;
+
     if (!canvasRef.current) return;
-    
+
     const rect = canvasRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const stepHeight = 100; // Hauteur approximative d'une étape
@@ -130,6 +116,7 @@ export default function StepCanvas({
 
   // Gérer le réordonnancement via drag & drop
   const handleDragEnd = (event: DragEndEvent) => {
+    if (isPreviewMode) return;
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
@@ -144,7 +131,7 @@ export default function StepCanvas({
         orderIndex: index + 1,
       }));
 
-      setSteps(reorderedSteps);
+      onStepsChange(reorderedSteps);
       
       toast.info('🔄 Étape déplacée', {
         description: `L'étape a été déplacée à la position ${newIndex + 1}`,
@@ -156,6 +143,7 @@ export default function StepCanvas({
 
   // Gérer le drag over pour l'insertion
   const handleDragOverDnd = (event: DragOverEvent) => {
+    if (isPreviewMode) return;
     const { active, over } = event;
     
     if (active.data.current?.type === 'palette-item') {
@@ -170,13 +158,13 @@ export default function StepCanvas({
   };
 
   const handleDeleteStep = (stepId: string, stepTitle: string) => {
-    const newSteps = steps.filter(s => s.id !== stepId);
+    const newSteps = steps.filter((s) => s.id !== stepId);
     // Réordonner les indices
     const reorderedSteps = newSteps.map((step, index) => ({
       ...step,
       orderIndex: index + 1,
     }));
-    setSteps(reorderedSteps);
+    onStepsChange(reorderedSteps);
     
     if (selectedStep?.id === stepId) {
       onSelectStep(null);
@@ -195,14 +183,14 @@ export default function StepCanvas({
       title: `${step.title} (copie)`,
     };
 
-    const insertIndex = steps.findIndex(s => s.id === step.id) + 1;
+    const insertIndex = steps.findIndex((s) => s.id === step.id) + 1;
     const newSteps = [
       ...steps.slice(0, insertIndex),
       newStep,
       ...steps.slice(insertIndex),
     ].map((s, index) => ({ ...s, orderIndex: index + 1 }));
 
-    setSteps(newSteps);
+    onStepsChange(newSteps);
     onSelectStep(newStep);
     
     toast.success('📋 Étape dupliquée', {
@@ -229,7 +217,7 @@ export default function StepCanvas({
       ...steps.slice(position),
     ].map((step, index) => ({ ...step, orderIndex: index + 1 }));
 
-    setSteps(newSteps);
+    onStepsChange(newSteps);
     onSelectStep(newStep);
     
     toast.success('➕ Étape insérée', {
@@ -238,7 +226,7 @@ export default function StepCanvas({
   };
 
   const handleMoveStep = (stepId: string, direction: 'up' | 'down') => {
-    const stepIndex = steps.findIndex(s => s.id === stepId);
+    const stepIndex = steps.findIndex((s) => s.id === stepId);
     if (direction === 'up' && stepIndex > 0) {
       const newSteps = [...steps];
       [newSteps[stepIndex], newSteps[stepIndex - 1]] = [newSteps[stepIndex - 1], newSteps[stepIndex]];
@@ -246,7 +234,7 @@ export default function StepCanvas({
         ...step,
         orderIndex: index + 1,
       }));
-      setSteps(reorderedSteps);
+      onStepsChange(reorderedSteps);
       
       toast.info('⬆️ Étape déplacée vers le haut');
     } else if (direction === 'down' && stepIndex < steps.length - 1) {
@@ -256,10 +244,16 @@ export default function StepCanvas({
         ...step,
         orderIndex: index + 1,
       }));
-      setSteps(reorderedSteps);
+      onStepsChange(reorderedSteps);
       
       toast.info('⬇️ Étape déplacée vers le bas');
     }
+  };
+
+  const handleClearCanvas = () => {
+    onStepsChange([]);
+    onSelectStep(null);
+    toast.success('🧹 Zone de conception vidée');
   };
 
   return (
@@ -297,58 +291,71 @@ export default function StepCanvas({
         >
           <Card
             ref={canvasRef}
+            data-testid="step-canvas-dropzone"
             className={cn(
-              'flex-1 min-h-[600px] border-2 border-dashed transition-colors overflow-hidden',
+              'flex min-h-[600px] flex-1 flex-col border-2 transition-all overflow-y-auto',
               isPreviewMode 
-                ? 'border-green-500 bg-green-50/20' 
-                : 'border-muted hover:border-primary'
+                ? 'border-transparent bg-transparent shadow-none' 
+                : 'border-dashed border-muted hover:border-primary'
             )}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <CardContent className="p-8 h-full">
+            <CardContent className="flex flex-1 flex-col p-4 md:p-8">
               {steps.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 animate-bounce">
-                    <Icons.plus className="h-8 w-8 text-primary" />
+                <div className="mx-auto flex h-full w-full max-w-2xl flex-1 flex-col items-center justify-center text-center">
+                  <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 animate-bounce">
+                    <Icons.plus className="h-10 w-10 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Aucune étape ajoutée</h3>
-                  <p className="text-muted-foreground mb-4 max-w-md">
+                  <h3 className="mb-2 text-2xl font-semibold">Aucune étape ajoutée</h3>
+                  <p className="mb-6 max-w-xl text-base text-muted-foreground">
                     Glissez une étape depuis la palette à gauche pour commencer, ou cliquez sur le bouton ci-dessous pour ajouter une étape rapidement.
                   </p>
-                  <Button 
-                    onClick={() => handleInsertStep(0)}
-                    className="gap-2"
-                  >
-                    <Icons.plus className="h-4 w-4" />
-                    Ajouter une étape
-                  </Button>
-                  <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Icons.drag className="h-5 w-5" />
-                    <span>Glisser-déposer depuis la palette</span>
-                  </div>
+                  {!isPreviewMode && (
+                    <Button 
+                      data-testid="add-step-empty-btn"
+                      onClick={() => handleInsertStep(0)}
+                      size="lg"
+                      className="gap-2 px-8"
+                    >
+                      <Icons.plus className="h-4 w-4" />
+                      Ajouter une étape
+                    </Button>
+                  )}
+                  {!isPreviewMode && (
+                    <div className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Icons.drag className="h-5 w-5" />
+                      <span>Glisser-déposer depuis la palette</span>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-6 relative">
+                  {/* Overlay empêchant les interactions globales du fond en prévisualisation */}
+                  {isPreviewMode && (
+                    <div className="absolute inset-0 z-[-1] bg-transparent" />
+                  )}
+                  
                   {/* Zone d'insertion au début */}
-                  <div 
-                    className={cn(
-                      'h-8 border-2 border-dashed rounded-lg transition-colors cursor-pointer',
-                      draggedOverIndex === 0 ? 'border-primary bg-primary/10' : 'border-muted'
-                    )}
-                    onClick={() => handleInsertStep(0)}
-                  >
-                    <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                      <Icons.plus className="mr-2 h-4 w-4" />
-                      Insérer une étape ici
+                  {!isPreviewMode && (
+                    <div 
+                      className={cn(
+                        'h-8 border-2 border-dashed rounded-lg transition-colors cursor-pointer',
+                        draggedOverIndex === 0 ? 'border-primary bg-primary/10' : 'border-muted hover:border-primary/50'
+                      )}
+                      onClick={() => handleInsertStep(0)}
+                    >
+                      <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                        <Icons.plus className="mr-2 h-4 w-4" />
+                        Insérer une étape ici
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {steps.map((step, index) => (
-                    <>
+                    <div key={step.id} className={isPreviewMode ? "space-y-4" : "space-y-6"}>
                       <StepDraggable
-                        key={step.id}
                         step={step}
                         index={index + 1}
                         totalSteps={steps.length}
@@ -362,11 +369,11 @@ export default function StepCanvas({
                       />
                       
                       {/* Zone d'insertion entre les étapes */}
-                      {index < steps.length - 1 && (
+                      {!isPreviewMode && index < steps.length - 1 && (
                         <div 
                           className={cn(
                             'h-8 border-2 border-dashed rounded-lg transition-colors cursor-pointer',
-                            draggedOverIndex === index + 1 ? 'border-primary bg-primary/10' : 'border-muted'
+                            draggedOverIndex === index + 1 ? 'border-primary bg-primary/10' : 'border-muted hover:border-primary/50'
                           )}
                           onClick={() => handleInsertStep(index + 1)}
                         >
@@ -376,22 +383,24 @@ export default function StepCanvas({
                           </div>
                         </div>
                       )}
-                    </>
+                    </div>
                   ))}
 
                   {/* Zone d'insertion à la fin */}
-                  <div 
-                    className={cn(
-                      'h-8 border-2 border-dashed rounded-lg transition-colors cursor-pointer',
-                      draggedOverIndex === steps.length ? 'border-primary bg-primary/10' : 'border-muted'
-                    )}
-                    onClick={() => handleInsertStep(steps.length)}
-                  >
-                    <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                      <Icons.plus className="mr-2 h-4 w-4" />
-                      Ajouter une étape à la fin
+                  {!isPreviewMode && (
+                    <div 
+                      className={cn(
+                        'h-8 border-2 border-dashed rounded-lg transition-colors cursor-pointer',
+                        draggedOverIndex === steps.length ? 'border-primary bg-primary/10' : 'border-muted hover:border-primary/50'
+                      )}
+                      onClick={() => handleInsertStep(steps.length)}
+                    >
+                      <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                        <Icons.plus className="mr-2 h-4 w-4" />
+                        Ajouter une étape à la fin
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -399,8 +408,16 @@ export default function StepCanvas({
         </SortableContext>
       </DndContext>
 
-      {steps.length > 0 && (
+      {!isPreviewMode && steps.length > 0 && (
         <div className="mt-4 flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearCanvas}
+          >
+            <Icons.trash className="mr-2 h-4 w-4" />
+            Vider la zone
+          </Button>
           <Button variant="outline" size="sm" onClick={() => {
             // Exporter les étapes
             console.log('Exporter:', steps);
@@ -408,10 +425,6 @@ export default function StepCanvas({
           }}>
             <Icons.download className="mr-2 h-4 w-4" />
             Exporter
-          </Button>
-          <Button variant="outline" size="sm">
-            <Icons.eye className="mr-2 h-4 w-4" />
-            {isPreviewMode ? 'Mode édition' : 'Prévisualiser'}
           </Button>
         </div>
       )}

@@ -6,13 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/ui/icons';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Step } from '@/lib/types';
+
+interface StepPaletteProps {
+  onAddStep?: (template: Partial<Step>) => void;
+}
 
 const STEP_TEMPLATES: {
   id: string;
@@ -114,7 +112,7 @@ const STEP_TEMPLATES: {
   },
 ];
 
-export default function StepPalette() {
+export default function StepPalette({ onAddStep }: StepPaletteProps) {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'basic' | 'advanced' | 'interactive'>('all');
 
   const filteredSteps = selectedCategory === 'all' 
@@ -221,14 +219,7 @@ export default function StepPalette() {
                   className="w-full justify-center gap-2"
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Ajout rapide sans drag & drop
-                    const event = new DragEvent('drop', {
-                      bubbles: true,
-                      cancelable: true,
-                      dataTransfer: new DataTransfer(),
-                    });
-                    // Simuler le drop
-                    document.dispatchEvent(event);
+                    onAddStep?.(template.defaultData);
                   }}
                 >
                   <Icons.plus className="h-4 w-4" />
@@ -256,13 +247,7 @@ export default function StepPalette() {
           variant="ghost"
           className="w-full justify-start text-sm text-muted-foreground hover:text-foreground"
           onClick={() => {
-            // Ajouter toutes les étapes d'un coup
-            const allSteps = STEP_TEMPLATES.map(template => ({
-              ...template.defaultData,
-              id: `step-${Date.now()}-${Math.random()}`,
-              orderIndex: 0,
-            }));
-            console.log('Ajouter toutes les étapes:', allSteps);
+            STEP_TEMPLATES.forEach((template) => onAddStep?.(template.defaultData));
           }}
         >
           <Icons.list className="mr-2 h-4 w-4" />

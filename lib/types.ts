@@ -137,6 +137,20 @@ export interface GuidedTour {
   updatedAt?: string;
 }
 
+export type StepSavePayload = Omit<Step, 'id' | 'orderIndex'>;
+
+export type GuidedTourSavePayload = Omit<GuidedTour, 'id' | 'createdAt' | 'updatedAt' | 'steps'> & {
+  steps: StepSavePayload[];
+};
+
+export interface GuidedTourResponse {
+  success: boolean;
+  message?: string;
+  tour?: GuidedTour;
+  tours?: GuidedTour[];
+  count?: number;
+}
+
 export type PositionType = 
   | 'TOP'
   | 'BOTTOM'
