@@ -11,6 +11,8 @@ export default function CreateTourPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tourId = searchParams.get('id');
+  const stepQuery = searchParams.get('step');
+  const initialSelectedStepIndex = stepQuery ? parseInt(stepQuery, 10) : null;
   const isEditMode = useMemo(() => Boolean(tourId), [tourId]);
 
   const [isLoading, setIsLoading] = useState(isEditMode);
@@ -126,6 +128,7 @@ export default function CreateTourPage() {
         tour={tour}
         onSave={handleSave}
         onBack={() => router.push('/dashboard/tours')}
+        initialSelectedStepIndex={initialSelectedStepIndex}
       />
     </div>
   );

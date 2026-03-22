@@ -5,15 +5,17 @@ import Toolbar from './Toolbar';
 import StepPalette from './StepPalette';
 import StepCanvas from './StepCanvas';
 import StepProperties from './StepProperties';
+import TourSimulator from './TourSimulator';
 import { GuidedTour, Step } from '@/lib/types';
 
 interface EditorLayoutProps {
   tour?: GuidedTour;
   onSave?: (tour: GuidedTour) => void;
   onBack?: () => void;
+  initialSelectedStepIndex?: number | null;
 }
 
-export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps) {
+export default function EditorLayout({ tour, onSave, onBack, initialSelectedStepIndex }: EditorLayoutProps) {
   const [steps, setSteps] = useState<Step[]>(tour?.steps ?? []);
   
   // History State for Undo/Redo
@@ -45,8 +47,13 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
       priority: tour?.priority,
       triggerConditions: tour?.triggerConditions,
     });
-    setSelectedStep(null);
-  }, [tour?.id]);
+    
+    if (initialSelectedStepIndex !== undefined && initialSelectedStepIndex !== null && initialSelectedStepIndex >= 0 && initialSelectedStepIndex < initialSteps.length) {
+      setSelectedStep(initialSteps[initialSelectedStepIndex]);
+    } else {
+      setSelectedStep(null);
+    }
+  }, [tour?.id]); // Note: intentional missing initialSelectedStepIndex dependency to only do it once on load
 
   const commitToHistory = useCallback((newSteps: Step[]) => {
     setHistory(prev => {
@@ -226,15 +233,24 @@ export default function EditorLayout({ tour, onSave, onBack }: EditorLayoutProps
         )}
 
         {/* Center - Canvas */}
-        <div className={`min-h-[45vh] flex-1 overflow-auto ${isPreviewMode ? 'bg-slate-50' : ''}`}>
-          <StepCanvas
-            tour={composedTour}
-            steps={steps}
-            selectedStep={selectedStep}
-            onSelectStep={handleSelectStep}
-            onStepsChange={handleStepsChange}
-            isPreviewMode={isPreviewMode}
-          />
+        <div className={`min-h-[45vh] flex-1 overflow-auto p-4 lg:p-0 ${isPreviewMode ? 'bg-slate-50' : ''}`}>
+          {isPreviewMode ? (
+            <div className="h-full p-4">
+              <TourSimulator 
+                steps={steps} 
+                onExitPreview={() => setIsPreviewMode(false)} 
+              />
+            </div>
+          ) : (
+            <StepCanvas
+              tour={composedTour}
+              steps={steps}
+              selectedStep={selectedStep}
+              onSelectStep={handleSelectStep}
+              onStepsChange={handleStepsChange}
+              isPreviewMode={isPreviewMode}
+            />
+          )}
         </div>
 
         {/* Right sidebar - Properties */}

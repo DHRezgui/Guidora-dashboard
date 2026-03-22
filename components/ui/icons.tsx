@@ -58,6 +58,7 @@ import {
   Circle,
   Square,
   Hexagon,
+  Play,
   type LucideProps,
 } from 'lucide-react';
 
@@ -142,4 +143,5 @@ export const Icons = {
   circle: Circle,
   square: Square,
   hexagon: Hexagon,
+  play: Play,
 };

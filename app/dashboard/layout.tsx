@@ -15,8 +15,10 @@ export default function DashboardLayout({
   const router = useRouter();
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [userEmail, setUserEmail] = useState('');
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     // Vérifier l'authentification au chargement
     if (!authService.isAuthenticated()) {
       router.push('/login');
@@ -36,7 +38,7 @@ export default function DashboardLayout({
       });
   }, [router]);
 
-  if (!authService.isAuthenticated()) {
+  if (!isMounted || !authService.isAuthenticated()) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

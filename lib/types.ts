@@ -151,7 +151,7 @@ export interface GuidedTourResponse {
   count?: number;
 }
 
-export type PositionType = 
+export type PositionType =
   | 'TOP'
   | 'BOTTOM'
   | 'LEFT'

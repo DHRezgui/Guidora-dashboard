@@ -20,8 +20,8 @@ export function middleware(request: NextRequest) {
   const routesAccessiblesSiConnecte = ['/verify-email'];
   const isAccessibleSiConnecte = routesAccessiblesSiConnecte.some(route => pathname.startsWith(route));
 
-  // Si token et route publique (sauf exceptions) → rediriger vers dashboard
-  if (token && isPublicRoute && pathname !== '/api' && !isAccessibleSiConnecte) {
+  // Si token et route publique (sauf login et exceptions) → rediriger vers dashboard
+  if (token && isPublicRoute && pathname !== '/api' && pathname !== '/login' && !isAccessibleSiConnecte) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
