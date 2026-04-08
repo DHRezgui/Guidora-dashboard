@@ -30,6 +30,7 @@ export default function Sidebar() {
     { name: 'Utilisateurs', href: '/dashboard/users', icon: Icons.users, roles: ['ADMIN'] },
     { name: 'Organisations', href: '/dashboard/organizations', icon: Icons.building, roles: ['ADMIN', 'DEVELOPER'] },
     { name: 'Parcours', href: '/dashboard/tours', icon: Icons.tours, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
+    { name: 'SDK Tests', href: '/dashboard/sdk-tests', icon: Icons.analytics, roles: ['ADMIN', 'DEVELOPER'] },
     { name: 'Analytics', href: '/dashboard/analytics', icon: Icons.analytics, roles: ['ADMIN', 'DEVELOPER'] },
   ].filter((item) => !role || item.roles.includes(role));
 

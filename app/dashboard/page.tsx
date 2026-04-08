@@ -166,6 +166,26 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        <div className="group rounded-2xl bg-card border border-border/60 p-6 shadow-card hover:shadow-elevated transition-all duration-300">
+          <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-emerald-500/10 p-3">
+              <Icons.analytics className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-[15px]">SDK Test Lab</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ouvre les 3 interfaces de test pour valider le moteur contextuel sur des scénarios simples, moyens et dynamiques.
+              </p>
+              <Button className="mt-4 rounded-xl" size="sm" asChild>
+                <Link href="/dashboard/sdk-tests">
+                  <Icons.plus className="mr-2 h-3.5 w-3.5" />
+                  Ouvrir le lab
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
