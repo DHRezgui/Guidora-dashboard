@@ -14,17 +14,17 @@ import { SdkLabShell } from '../_components';
 const highlights = [
   {
     title: 'Créer un projet',
-    description: 'CTA principal de la page pour vérifier le repérage de l’action la plus importante.',
+    description: 'Action principale de la page, utilisée pour valider la priorité métier du parcours.',
     selector: '#simple-primary-cta',
   },
   {
     title: 'Découvrir le guide',
-    description: 'Lien secondaire pour tester la priorité et la hiérarchisation entre plusieurs boutons.',
+    description: 'Lien de découverte secondaire, utile pour tester la hiérarchisation des intentions.',
     selector: '#simple-secondary-link',
   },
   {
     title: 'Réglages rapides',
-    description: 'Petit bouton utilitaire pour valider les sélecteurs stables et le contexte navigation.',
+    description: 'Contrôle utilitaire pour vérifier la stabilité des sélecteurs et la lecture du contexte.',
     selector: '#simple-settings',
   },
 ];
@@ -39,6 +39,14 @@ export default function SimpleTestPage() {
     () => ({
       enabled: true,
       autoGenerate: false,
+      autoPublish: true,
+      publishScenario: 'simple' as const,
+      autoActivatePublishedDrafts: true,
+      publishConfig: {
+        apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
+        apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
+        getAccessToken: () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null),
+      },
       persona: 'editor',
       useSemanticRanking: true,
       enableSequenceDetection: true,
@@ -55,7 +63,18 @@ export default function SimpleTestPage() {
       conflictResolutionEnabled: true,
       conflictResolutionStrategy: strategy,
       explainabilityEnabled: true,
-      minConfidence: 60,
+      analysisSeverity: 'balanced' as const,
+      publishFallbackPolicy: {
+        enabled: true,
+        maxAttempts: 2,
+        retryOnRejectedReasons: ['confidence_below_threshold'],
+        relaxedMinConfidence: 24,
+        relaxedMinScore: 16,
+        includeSupportDraft: true,
+        includeNavigationDraft: true,
+        includeFormDraft: false,
+      },
+      minConfidence: 40,
       semanticHints: ['Créer un projet', 'CTA principal', 'action principale'],
       businessObjectives: ['primary-action', 'cta principal'],
       customKeywords: {
@@ -78,37 +97,24 @@ export default function SimpleTestPage() {
     [progress, stage, strategy],
   );
 
-  const { drafts, isGenerating, error, refresh, getDebugReport, getFlowRegistry } = useContextualTourSuggestions(sdkOptions);
-  const [lastValidDrafts, setLastValidDrafts] = useState<typeof drafts>([]);
-  const [usedLastValidFallback, setUsedLastValidFallback] = useState(false);
+  const {
+    drafts,
+    isGenerating,
+    isPublishing,
+    error,
+    publishError,
+    lastPublishReport,
+    refresh,
+    getDebugReport,
+    getFlowRegistry,
+  } = useContextualTourSuggestions(sdkOptions);
 
   const debugReport = getDebugReport();
   const flowRegistry = getFlowRegistry();
-  const displayedDrafts = drafts.length > 0 ? drafts : lastValidDrafts;
-  const showingFallbackDrafts = drafts.length === 0 && lastValidDrafts.length > 0;
 
   const runAnalysis = () => {
-    setUsedLastValidFallback(false);
-
-    let nextDrafts = refresh();
-    let report = getDebugReport();
-
-    const shouldRetryBecauseConfidenceFiltered =
-      nextDrafts.length === 0 &&
-      (report?.candidateMetrics.accepted ?? 0) > 0 &&
-      (report?.draftMetrics.afterConfidenceFilter ?? 0) === 0;
-
-    if (shouldRetryBecauseConfidenceFiltered) {
-      nextDrafts = refresh();
-      report = getDebugReport();
-      console.info('[SDK Tests][Simple] Empty draft after confidence filter, single auto-retry triggered.');
-    }
-
-    if (nextDrafts.length > 0) {
-      setLastValidDrafts(nextDrafts);
-    } else if (lastValidDrafts.length > 0) {
-      setUsedLastValidFallback(true);
-    }
+    const nextDrafts = refresh();
+    const report = getDebugReport();
 
     setLastRunAt(new Date().toLocaleTimeString());
 
@@ -120,17 +126,17 @@ export default function SimpleTestPage() {
   return (
     <SdkLabShell
       title="Interface simple"
-      description="Scénario minimal avec quelques CTA et cartes. Idéal pour tester le repérage des actions principales et mesurer le bruit de détection sur une page peu chargée."
+      description="Scénario épuré avec un CTA principal, un lien secondaire et quelques repères visuels pour valider la sélection métier."
       badges={["simple", "CTA", "sélecteurs stables"]}
     >
       <div className="grid gap-5 xl:grid-cols-[1.4fr_0.9fr]">
         <Card className="border-border/60 shadow-card">
           <CardHeader>
-            <Badge variant="outline" className="w-fit">Vue d’ensemble</Badge>
-            <CardTitle className="text-2xl">Lancer un onboarding simple en moins d’une minute</CardTitle>
+            <Badge variant="outline" className="w-fit">Vue métier</Badge>
+            <CardTitle className="text-2xl">Démarrer un parcours simple avec un point d’entrée clair</CardTitle>
             <CardDescription>
-              Cette interface contient un titre clair, une action principale et quelques éléments secondaires pour
-              vérifier que le SDK ne s’éparpille pas.
+              Cette interface met en avant une action principale, un parcours de découverte et quelques éléments secondaires
+              pour valider la hiérarchie de sélection du SDK.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -166,9 +172,9 @@ export default function SimpleTestPage() {
         <div className="space-y-5">
           <Card className="border-border/60 shadow-card">
             <CardHeader>
-              <CardTitle>Analyse SDK (debug + explainability)</CardTitle>
+              <CardTitle>Analyse du parcours</CardTitle>
               <CardDescription>
-                Cette zone active les options de debug du SDK et lance une analyse du DOM de cette page.
+                Cette zone déclenche l’analyse du DOM et affiche les métriques utiles pour contrôler la qualité du parcours.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -216,18 +222,20 @@ export default function SimpleTestPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={runAnalysis} data-tour-id="tour-simple-action-analyze" className="rounded-xl" disabled={isGenerating}>
+                <Button onClick={runAnalysis} data-tour-id="tour-simple-action-analyze" className="rounded-xl" disabled={isGenerating || isPublishing}>
                   {isGenerating ? 'Analyse en cours...' : 'Analyser cette page'}
                 </Button>
+                {isPublishing ? <Badge variant="outline">Publication en cours...</Badge> : null}
                 {lastRunAt ? <Badge variant="outline">Dernier run: {lastRunAt}</Badge> : null}
               </div>
 
               {error ? <p className="text-sm font-medium text-destructive">Erreur SDK: {error}</p> : null}
+              {publishError ? <p className="text-sm font-medium text-destructive">Erreur publication: {publishError}</p> : null}
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Drafts affiches</p>
-                  <p className="mt-1 text-lg font-semibold">{displayedDrafts.length}</p>
+                  <p className="mt-1 text-lg font-semibold">{drafts.length}</p>
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Candidats acceptés</p>
@@ -237,37 +245,41 @@ export default function SimpleTestPage() {
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Conflits</p>
                   <p className="mt-1 text-lg font-semibold">{debugReport?.conflicts.length ?? 0}</p>
                 </div>
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Publies</p>
+                  <p className="mt-1 text-lg font-semibold">{lastPublishReport?.created ?? 0}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           <Card id="guide" className="border-border/60 shadow-card">
             <CardHeader>
-              <CardTitle>Mini guide</CardTitle>
-              <CardDescription>Regarde comment le SDK choisit l’action principale et ignore les éléments secondaires.</CardDescription>
+              <CardTitle>Repères métier</CardTitle>
+              <CardDescription>Ce bloc montre comment le SDK privilégie l’action principale sans perdre le contexte secondaire.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>1. Le titre de page est visible.</p>
-              <p>2. Le bouton principal est unique et bien identifié.</p>
-              <p>3. Les éléments utilitaires restent secondaires.</p>
+              <p>1. Le titre de page établit le contexte du parcours.</p>
+              <p>2. Le CTA principal porte l’intention métier dominante.</p>
+              <p>3. Les actions utilitaires restent au second plan.</p>
             </CardContent>
           </Card>
 
           <Card className="border-border/60 shadow-card">
             <CardHeader>
-              <CardTitle>Actions rapides</CardTitle>
-              <CardDescription>Petit set de boutons pour vérifier les sélecteurs et les intentions.</CardDescription>
+              <CardTitle>Navigation de test</CardTitle>
+              <CardDescription>Raccourcis de navigation pour valider les sélecteurs, les intentions et les transitions.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button className="w-full rounded-xl" asChild>
                 <Link href="/dashboard/sdk-tests/medium">
-                  Aller vers l’interface moyenne
+                  Ouvrir l’interface moyenne
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="outline" className="w-full rounded-xl" asChild>
                 <Link href="/dashboard/sdk-tests/dynamic">
-                  Tester le mode dynamique
+                  Ouvrir le scénario dynamique
                 </Link>
               </Button>
             </CardContent>
@@ -275,17 +287,14 @@ export default function SimpleTestPage() {
 
           <Card className="border-border/60 shadow-card">
             <CardHeader>
-              <CardTitle>Résultats explainability</CardTitle>
-              <CardDescription>Top drafts avec scores et signaux pour comprendre pourquoi ils sont proposés.</CardDescription>
+              <CardTitle>Résultats de génération</CardTitle>
+              <CardDescription>Parcours proposés avec scores et signaux pour comprendre la sélection du moteur.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {showingFallbackDrafts ? (
-                <Badge variant="outline" className="w-fit">Affichage du dernier draft valide (fallback anti-vide)</Badge>
-              ) : null}
-              {displayedDrafts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun draft pour le moment. Clique sur Analyser cette page.</p>
+              {drafts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun parcours pour le moment. Lance une analyse pour générer les résultats.</p>
               ) : (
-                displayedDrafts.slice(0, 3).map((draft) => (
+                drafts.slice(0, 3).map((draft) => (
                   <div key={`${draft.name}-${draft.intent}`} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
                     <p className="text-sm font-semibold">{draft.name}</p>
                     <p className="mt-1 text-xs text-muted-foreground">intent: {draft.intent} | confidence: {draft.confidence} | score: {Math.round(draft.score)}</p>
@@ -300,16 +309,13 @@ export default function SimpleTestPage() {
                   </div>
                 ))
               )}
-              {usedLastValidFallback ? (
-                <p className="text-xs text-muted-foreground">Le dernier run n'a pas passe le filtre de confiance. Fallback utilisateur applique.</p>
-              ) : null}
             </CardContent>
           </Card>
 
           <Card className="border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Rapport debug</CardTitle>
-              <CardDescription>Résumé brut du dernier run pour comparer rapidement les itérations.</CardDescription>
+              <CardDescription>Résumé technique du dernier run pour suivre les métriques de génération.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {debugReport ? (
@@ -331,6 +337,22 @@ export default function SimpleTestPage() {
                 <p className="text-sm text-muted-foreground">Aucun rapport debug disponible. Lance une analyse.</p>
               )}
               <p className="text-xs text-muted-foreground">Flow registry entries: {flowRegistry.length}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60 shadow-card">
+            <CardHeader>
+              <CardTitle>Rapport publication</CardTitle>
+              <CardDescription>Détail de la dernière publication: créés, rejetés, ignorés et raisons associées.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {lastPublishReport ? (
+                <pre className="max-h-72 overflow-auto rounded-2xl bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
+                  {JSON.stringify(lastPublishReport, null, 2)}
+                </pre>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun rapport de publication disponible. Lance une analyse pour afficher le résultat.</p>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -38,6 +38,14 @@ export default function MediumTestPage() {
     () => ({
       enabled: true,
       autoGenerate: false,
+      autoPublish: true,
+      publishScenario: 'medium' as const,
+      autoActivatePublishedDrafts: true,
+      publishConfig: {
+        apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
+        apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
+        getAccessToken: () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null),
+      },
       persona: 'admin',
       useSemanticRanking: true,
       enableSequenceDetection: true,
@@ -57,6 +65,17 @@ export default function MediumTestPage() {
       conflictResolutionEnabled: true,
       conflictResolutionStrategy: strategy,
       explainabilityEnabled: true,
+      analysisSeverity: 'balanced' as const,
+      publishFallbackPolicy: {
+        enabled: true,
+        maxAttempts: 2,
+        retryOnRejectedReasons: ['confidence_below_threshold'],
+        relaxedMinConfidence: 24,
+        relaxedMinScore: 16,
+        includeSupportDraft: true,
+        includeNavigationDraft: true,
+        includeFormDraft: true,
+      },
       minConfidence: 60,
       semanticHints: ['formulaire', 'validation', 'enregistrer', 'navigation'],
       businessObjectives: ['completion du formulaire', 'action principale', 'validation'],
@@ -81,7 +100,17 @@ export default function MediumTestPage() {
     [completeness, progress, stage, strategy],
   );
 
-  const { drafts, isGenerating, error, refresh, getDebugReport, getFlowRegistry } = useContextualTourSuggestions(sdkOptions);
+  const {
+    drafts,
+    isGenerating,
+    isPublishing,
+    error,
+    publishError,
+    lastPublishReport,
+    refresh,
+    getDebugReport,
+    getFlowRegistry,
+  } = useContextualTourSuggestions(sdkOptions);
   const debugReport = getDebugReport();
   const flowRegistry = getFlowRegistry();
 
@@ -175,13 +204,15 @@ export default function MediumTestPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={runAnalysis} data-tour-id="tour-medium-action-analyze" className="rounded-xl" disabled={isGenerating}>
+                <Button onClick={runAnalysis} data-tour-id="tour-medium-action-analyze" className="rounded-xl" disabled={isGenerating || isPublishing}>
                   {isGenerating ? 'Analyse en cours...' : 'Analyser cette page'}
                 </Button>
+                {isPublishing ? <Badge variant="outline">Publication en cours...</Badge> : null}
                 {lastRunAt ? <Badge variant="outline">Dernier run: {lastRunAt}</Badge> : null}
               </div>
 
               {error ? <p className="text-sm font-medium text-destructive">Erreur SDK: {error}</p> : null}
+              {publishError ? <p className="text-sm font-medium text-destructive">Erreur publication: {publishError}</p> : null}
 
               <div className="grid gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
@@ -199,6 +230,10 @@ export default function MediumTestPage() {
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Flow entries</p>
                   <p className="mt-1 text-lg font-semibold">{flowRegistry.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Publies</p>
+                  <p className="mt-1 text-lg font-semibold">{lastPublishReport?.created ?? 0}</p>
                 </div>
               </div>
             </CardContent>

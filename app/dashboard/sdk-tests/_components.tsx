@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowLeft, FlaskConical, Grid3X3, Layers3, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, FlaskConical, Grid3X3, Layers3, Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ const routes = [
   { href: '/dashboard/sdk-tests/simple', label: 'Simple', icon: Sparkles },
   { href: '/dashboard/sdk-tests/medium', label: 'Moyenne', icon: Layers3 },
   { href: '/dashboard/sdk-tests/dynamic', label: 'Dynamique', icon: FlaskConical },
+  { href: '/dashboard/sdk-tests/stress', label: 'Stress', icon: AlertTriangle },
 ] as const;
 
 export function SdkLabShell({

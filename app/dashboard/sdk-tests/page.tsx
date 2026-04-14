@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Layers3, FlaskConical, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Layers3, FlaskConical, Sparkles, AlertTriangle } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,13 @@ const scenarios = [
     icon: FlaskConical,
     href: '/dashboard/sdk-tests/dynamic',
     tags: ['loaders', 'modal', 'toast', 'mutations rapides'],
+  },
+  {
+    title: 'Stress sévère',
+    description: 'Page arbitraire avec signaux contradictoires, mutations fréquentes, faux CTA et flux asynchrones.',
+    icon: AlertTriangle,
+    href: '/dashboard/sdk-tests/stress',
+    tags: ['arbitraire', 'anti-biais', 'chaos DOM', 'validation finale'],
   },
 ];
 

@@ -29,7 +29,7 @@ export default function DynamicTestPage() {
   const [progress, setProgress] = useState(50);
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Array<{ id: number; label: string }>>([
-    { id: 1, label: 'Nouveau draft généré' },
+    { id: 1, label: 'Parcours généré' },
   ]);
 
   useEffect(() => {
@@ -63,6 +63,14 @@ export default function DynamicTestPage() {
     () => ({
       enabled: true,
       autoGenerate: false,
+      autoPublish: true,
+      publishScenario: 'dynamic' as const,
+      autoActivatePublishedDrafts: true,
+      publishConfig: {
+        apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
+        apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
+        getAccessToken: () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null),
+      },
       persona: 'operator',
       useSemanticRanking: true,
       enableSequenceDetection: true,
@@ -86,6 +94,17 @@ export default function DynamicTestPage() {
       conflictResolutionEnabled: true,
       conflictResolutionStrategy: strategy,
       explainabilityEnabled: true,
+      analysisSeverity: 'balanced' as const,
+      publishFallbackPolicy: {
+        enabled: true,
+        maxAttempts: 2,
+        retryOnRejectedReasons: ['confidence_below_threshold'],
+        relaxedMinConfidence: 24,
+        relaxedMinScore: 16,
+        includeSupportDraft: true,
+        includeNavigationDraft: true,
+        includeFormDraft: true,
+      },
       minConfidence: 60,
       semanticHints: ['chargement', 'notification', 'modal', 'validation', 'action principale'],
       businessObjectives: ['stabilite sous mutation DOM', 'filtrage du bruit', 'action utile'],
@@ -109,7 +128,17 @@ export default function DynamicTestPage() {
     [progress, stage, strategy],
   );
 
-  const { drafts, isGenerating, error, refresh, getDebugReport, getFlowRegistry } = useContextualTourSuggestions(sdkOptions);
+  const {
+    drafts,
+    isGenerating,
+    isPublishing,
+    error,
+    publishError,
+    lastPublishReport,
+    refresh,
+    getDebugReport,
+    getFlowRegistry,
+  } = useContextualTourSuggestions(sdkOptions);
   const debugReport = getDebugReport();
   const flowRegistry = getFlowRegistry();
 
@@ -126,22 +155,22 @@ export default function DynamicTestPage() {
   return (
     <SdkLabShell
       title="Interface dynamique"
-      description="Scénario riche avec loaders, modals, toasts et changements rapides du DOM pour vérifier le batching, l’anti-bruit et la robustesse globale du SDK."
+      description="Scénario riche avec chargements, modales, toasts et mutations rapides du DOM pour valider la robustesse du moteur."
       badges={["loaders", "modals", "toasts", "DOM rapide"]}
     >
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
           <Card className="border-border/60 shadow-card">
             <CardHeader>
-              <CardTitle>Analyse SDK (debug + explainability)</CardTitle>
+              <CardTitle>Analyse du parcours</CardTitle>
               <CardDescription>
-                Analyse en mode dynamique pour valider batching, anti-bruit et stabilite des drafts sous mutations rapides.
+                Analyse dynamique pour contrôler le batching, l’anti-bruit et la stabilité des parcours sous mutations rapides.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="grid gap-2">
-                  <label htmlFor="dynamic-strategy" className="text-sm font-medium">Strategie de conflit</label>
+                  <label htmlFor="dynamic-strategy" className="text-sm font-medium">Stratégie de conflit</label>
                   <select
                     id="dynamic-strategy"
                     value={strategy}
@@ -155,7 +184,7 @@ export default function DynamicTestPage() {
                   </select>
                 </div>
                 <div className="grid gap-2">
-                  <label htmlFor="dynamic-stage" className="text-sm font-medium">Stage session</label>
+                  <label htmlFor="dynamic-stage" className="text-sm font-medium">Étape de session</label>
                   <select
                     id="dynamic-stage"
                     value={stage}
@@ -182,13 +211,15 @@ export default function DynamicTestPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={runAnalysis} data-tour-id="tour-dynamic-action-analyze" className="rounded-xl" disabled={isGenerating}>
+                <Button onClick={runAnalysis} data-tour-id="tour-dynamic-action-analyze" className="rounded-xl" disabled={isGenerating || isPublishing}>
                   {isGenerating ? 'Analyse en cours...' : 'Analyser cette page'}
                 </Button>
+                {isPublishing ? <Badge variant="outline">Publication en cours...</Badge> : null}
                 {lastRunAt ? <Badge variant="outline">Dernier run: {lastRunAt}</Badge> : null}
               </div>
 
               {error ? <p className="text-sm font-medium text-destructive">Erreur SDK: {error}</p> : null}
+              {publishError ? <p className="text-sm font-medium text-destructive">Erreur publication: {publishError}</p> : null}
 
               <div className="grid gap-3 sm:grid-cols-5">
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
@@ -196,7 +227,7 @@ export default function DynamicTestPage() {
                   <p className="mt-1 text-lg font-semibold">{drafts.length}</p>
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Acceptes</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Acceptés</p>
                   <p className="mt-1 text-lg font-semibold">{debugReport?.candidateMetrics.accepted ?? 0}</p>
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
@@ -210,6 +241,10 @@ export default function DynamicTestPage() {
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Flow entries</p>
                   <p className="mt-1 text-lg font-semibold">{flowRegistry.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Publiés</p>
+                  <p className="mt-1 text-lg font-semibold">{lastPublishReport?.created ?? 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -297,12 +332,12 @@ export default function DynamicTestPage() {
         <div className="space-y-5">
           <Card className="border-border/60 shadow-card">
             <CardHeader>
-              <CardTitle>Resultats explainability</CardTitle>
-              <CardDescription>Top drafts dynamiques avec signaux pour verifier robustesse sous mutations DOM.</CardDescription>
+              <CardTitle>Résultats de génération</CardTitle>
+              <CardDescription>Parcours dynamiques avec signaux de robustesse sous mutations du DOM.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {drafts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun draft pour le moment. Clique sur Analyser cette page.</p>
+                <p className="text-sm text-muted-foreground">Aucun parcours pour le moment. Lance une analyse pour générer les résultats.</p>
               ) : (
                 drafts.slice(0, 3).map((draft) => (
                   <div key={`${draft.name}-${draft.intent}`} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
@@ -325,7 +360,7 @@ export default function DynamicTestPage() {
           <Card className="border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Timeline de traitement</CardTitle>
-              <CardDescription>Le SDK devrait ignorer les toasts, modals temporaires et loaders, tout en suivant le flux principal.</CardDescription>
+              <CardDescription>Le SDK doit ignorer les éléments transitoires tout en suivant le flux principal.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {stages.map((stage, index) => (
@@ -342,7 +377,7 @@ export default function DynamicTestPage() {
           <Card className="border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Notifications récentes</CardTitle>
-              <CardDescription>Le SDK doit pouvoir filtrer ces éléments comme bruit secondaire.</CardDescription>
+              <CardDescription>Le SDK doit filtrer ces éléments comme bruit secondaire.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {notifications.map((notification) => (
@@ -357,7 +392,7 @@ export default function DynamicTestPage() {
           <Card className="border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Rapport debug</CardTitle>
-              <CardDescription>Resume brut du dernier run dynamique pour comparer les iterations.</CardDescription>
+              <CardDescription>Résumé technique du dernier run dynamique pour comparer les itérations.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {debugReport ? (
