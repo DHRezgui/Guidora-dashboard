@@ -1,0 +1,21 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: .docker/develop/Dockerfile
+    env_file: .docker/develop/.env
+    volumes:
+      - ./:/app
+      - ../sdks/react:/sdks/react
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    ports:
+      - '3003:3000'
+    networks:
+      - onboarding-dashboard-dev
+    restart: unless-stopped
+
+networks:
+  onboarding-dashboard-dev:
+    driver: bridge
