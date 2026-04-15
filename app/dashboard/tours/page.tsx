@@ -311,7 +311,14 @@ export default function ToursPage() {
 							</Button>
 						</div>
 						<div className="min-h-0 flex-1">
-							<TourSimulator steps={previewTour.steps || []} onExitPreview={() => setPreviewTour(null)} />
+							<TourSimulator
+								key={previewTour.id || `${previewTour.name}-${previewTour.updatedAt || ''}`}
+								steps={previewTour.steps || []}
+								simulationContext={previewTour.simulationContext}
+								tourName={previewTour.name}
+								targetUrl={previewTour.targetUrl}
+								onExitPreview={() => setPreviewTour(null)}
+							/>
 						</div>
 					</div>
 				</div>

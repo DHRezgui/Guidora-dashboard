@@ -59,6 +59,8 @@ export default function MediumTestPage() {
         '[data-tour-id="tour-sdk-lab-action-back-dashboard"]',
         'nav a[href^="/dashboard"]',
         'aside a[href^="/dashboard"]',
+        'nav a[href^="#"]',
+        'aside a[href^="#"]',
       ],
       mutationBatchWindowMs: 120,
       maxDirtyNodesPerBatch: 280,

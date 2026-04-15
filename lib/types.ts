@@ -124,6 +124,33 @@ export interface Step {
   highlightElement?: boolean;
 }
 
+export interface SimulationElementSnapshot {
+  selector: string;
+  text?: string;
+  role?: string;
+  tag: string;
+  intent?: 'discovery' | 'primary-action' | 'support-navigation' | 'form-flow';
+  actionable: boolean;
+  bbox: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface SimulationContext {
+  pageUrl: string;
+  pathname: string;
+  pageTitle: string;
+  capturedAt: string;
+  viewport: {
+    width: number;
+    height: number;
+  };
+  elements: SimulationElementSnapshot[];
+}
+
 export interface GuidedTour {
   id?: string;
   name: string;
@@ -132,6 +159,7 @@ export interface GuidedTour {
   isActive?: boolean;
   priority?: number;
   triggerConditions?: Record<string, any>;
+  simulationContext?: SimulationContext;
   steps: Step[];
   createdAt?: string;
   updatedAt?: string;
