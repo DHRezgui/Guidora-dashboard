@@ -238,6 +238,9 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
             <div className="h-full p-4">
               <TourSimulator 
                 steps={steps} 
+                simulationContext={composedTour.simulationContext}
+                tourName={composedTour.name}
+                targetUrl={composedTour.targetUrl}
                 onExitPreview={() => setIsPreviewMode(false)} 
               />
             </div>

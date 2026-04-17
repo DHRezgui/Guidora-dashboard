@@ -10,6 +10,8 @@ interface TourSimulatorProps {
   tourName?: string;
   targetUrl?: string;
   onExitPreview: () => void;
+  initialIsPlaying?: boolean;
+  onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
 type NormalizedRect = {
@@ -413,19 +415,26 @@ export default function TourSimulator({
   tourName,
   targetUrl,
   onExitPreview,
+  initialIsPlaying = false,
+  onPlayStateChange,
 }: TourSimulatorProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
   const [viewMode, setViewMode] = useState<'preview' | 'debug'>('preview');
   const [iframeState, setIframeState] = useState<'idle' | 'loading' | 'ready' | 'blocked'>('idle');
   const [canUseIframe, setCanUseIframe] = useState(false);
   const [liveTargetRect, setLiveTargetRect] = useState<NormalizedRect | null>(null);
+  const [liveCalibrationTimedOut, setLiveCalibrationTimedOut] = useState(false);
   const [connectorPath, setConnectorPath] = useState<string | null>(null);
   const [connectorStart, setConnectorStart] = useState<{ x: number; y: number } | null>(null);
   const [arrowAnchorPixels, setArrowAnchorPixels] = useState<{ x: number; y: number } | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const syncLiveTargetRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    onPlayStateChange?.(isPlaying);
+  }, [isPlaying, onPlayStateChange]);
 
   const hasStructuredContext =
     Boolean(simulationContext?.viewport?.width) &&
@@ -579,17 +588,21 @@ export default function TourSimulator({
   });
   const visibleDebugElements = simulationContext?.elements.slice(0, 12) || [];
   const useLiveIframe = viewMode === 'preview' && canUseIframe && iframeState === 'ready' && Boolean(fallbackPageUrl);
-  const isLiveCalibrating = useLiveIframe && Boolean(currentStep?.targetSelector) && !liveTargetRect;
+  const isLiveCalibrating = useLiveIframe && Boolean(currentStep?.targetSelector) && !liveTargetRect && !liveCalibrationTimedOut;
+  const isLiveTargetMissing = useLiveIframe && Boolean(currentStep?.targetSelector) && !liveTargetRect && liveCalibrationTimedOut;
 
   useEffect(() => {
     if (!useLiveIframe || !currentStep?.targetSelector || !iframeRef.current || !stageRef.current) {
       setLiveTargetRect((prev) => (prev === null ? prev : null));
+      setLiveCalibrationTimedOut((prev) => (prev === false ? prev : false));
       syncLiveTargetRef.current = null;
       return;
     }
 
     const iframe = iframeRef.current;
     const stage = stageRef.current;
+    let targetResolved = false;
+    setLiveCalibrationTimedOut((prev) => (prev === false ? prev : false));
 
     const syncTarget = () => {
       if (!iframe || !stage || !iframe.contentWindow?.document) {
@@ -608,6 +621,9 @@ export default function TourSimulator({
         setLiveTargetRect((prev) => (prev === null ? prev : null));
         return;
       }
+
+      targetResolved = true;
+      setLiveCalibrationTimedOut((prev) => (prev ? false : prev));
 
       const iframeRect = iframe.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
@@ -646,10 +662,33 @@ export default function TourSimulator({
     // Retry briefly so calibration completes even without user scroll.
     let attempts = 0;
     const maxAttempts = 24; // ~6s at 250ms
+    let backgroundRetryInterval: number | null = null;
+
     const bootstrapInterval = window.setInterval(() => {
       attempts += 1;
       syncTarget();
+
+      if (targetResolved && backgroundRetryInterval !== null) {
+        window.clearInterval(backgroundRetryInterval);
+        backgroundRetryInterval = null;
+      }
+
       if (attempts >= maxAttempts) {
+        if (!targetResolved) {
+          setLiveCalibrationTimedOut((prev) => (prev ? prev : true));
+
+          // Keep a low-frequency retry running so the first step can recover
+          // once the live page finishes late hydration, without requiring user interaction.
+          if (backgroundRetryInterval === null) {
+            backgroundRetryInterval = window.setInterval(() => {
+              syncTarget();
+              if (targetResolved && backgroundRetryInterval !== null) {
+                window.clearInterval(backgroundRetryInterval);
+                backgroundRetryInterval = null;
+              }
+            }, 1000);
+          }
+        }
         window.clearInterval(bootstrapInterval);
       }
     }, 250);
@@ -660,6 +699,9 @@ export default function TourSimulator({
 
     return () => {
       window.clearInterval(bootstrapInterval);
+      if (backgroundRetryInterval !== null) {
+        window.clearInterval(backgroundRetryInterval);
+      }
       win?.removeEventListener('scroll', syncTarget, true);
       window.removeEventListener('resize', syncTarget);
       syncLiveTargetRef.current = null;
@@ -909,7 +951,9 @@ export default function TourSimulator({
 
           <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
             <span className="font-medium text-slate-800">Mode live iframe actif</span>
-            <span>{isLiveCalibrating ? 'Calibrage...' : 'Prêt'}</span>
+            <span className={isLiveTargetMissing ? 'text-amber-700 font-medium' : ''}>
+              {isLiveCalibrating ? 'Calibrage...' : isLiveTargetMissing ? 'Cible introuvable' : 'Prêt'}
+            </span>
           </div>
         </div>
       ) : hasStructuredContext ? (
@@ -1026,7 +1070,7 @@ export default function TourSimulator({
             <div
               className={cn(
                 'absolute flex transition-all duration-300 pointer-events-auto z-50',
-                hasStructuredContext ? 'origin-center' :
+                (hasStructuredContext || useLiveIframe) ? 'origin-center' :
                   currentStep.position === 'TOP' ? 'bottom-full left-1/2 -translate-x-1/2 mb-4 flex-col items-center origin-bottom' :
                   currentStep.position === 'BOTTOM' ? 'top-full left-1/2 -translate-x-1/2 mt-4 flex-col-reverse items-center origin-top' :
                   currentStep.position === 'LEFT' ? 'right-full top-1/2 -translate-y-1/2 mr-4 flex-row items-center origin-right' :
@@ -1037,7 +1081,11 @@ export default function TourSimulator({
                   currentStep.position === 'BOTTOM_RIGHT' ? 'top-full left-full mt-4 ml-4 flex-col-reverse items-start origin-top-left' :
                   'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-center'
               )}
-              style={hasStructuredContext ? tooltipStyle : useLiveIframe ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' } : undefined}
+              style={
+                (hasStructuredContext || useLiveIframe)
+                  ? (tooltipStyle || { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
+                  : undefined
+              }
               onWheel={useLiveIframe ? (event) => {
                 event.preventDefault();
                 scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
@@ -1064,8 +1112,14 @@ export default function TourSimulator({
                 {currentStep.content || "Aucun contenu défini pour cette étape."}
               </div>
 
-              {!hasStructuredContext ? (
+              {!hasStructuredContext && (!useLiveIframe || isLiveTargetMissing) ? (
                 <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  {isLiveTargetMissing ? (
+                    <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-800">
+                      <p className="font-medium">Cible introuvable dans la page live.</p>
+                      {currentStep?.targetSelector ? <p className="mt-0.5 truncate">Sélecteur: {currentStep.targetSelector}</p> : null}
+                    </div>
+                  ) : null}
                   <p className="font-medium text-slate-700">Mode fallback</p>
                   <p className="mt-1">Page: {fallbackPageTitle}</p>
                   {fallbackPageUrl ? <p className="truncate">URL: {fallbackPageUrl}</p> : null}
@@ -1118,7 +1172,7 @@ export default function TourSimulator({
           ) : null}
 
           {viewMode === 'preview' && useLiveIframe && isLiveCalibrating ? (
-            <div className="absolute z-50 rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
+            <div className="absolute z-50 max-w-[min(92vw,680px)] rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
               Calibration de la cible en cours...
             </div>
           ) : null}

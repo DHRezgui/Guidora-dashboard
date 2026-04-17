@@ -11,11 +11,15 @@ import { getErrorMessage, tourService } from '@/lib/api';
 import { GuidedTour } from '@/lib/types';
 import { toast } from 'sonner';
 
+const PREVIEW_STORAGE_KEY = 'tours.previewTour.v1';
+const PREVIEW_STORAGE_TTL_MS = 2 * 60 * 1000;
+
 export default function ToursPage() {
 	const [tours, setTours] = useState<GuidedTour[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingIds, setDeletingIds] = useState<string[]>([]);
 	const [previewTour, setPreviewTour] = useState<GuidedTour | null>(null);
+	const [previewShouldAutoPlay, setPreviewShouldAutoPlay] = useState(false);
 	const [stepsTour, setStepsTour] = useState<GuidedTour | null>(null);
 	const hiddenTourIdsRef = useRef<Set<string>>(new Set());
 	const loadSeqRef = useRef(0);
@@ -56,8 +60,32 @@ export default function ToursPage() {
 		steps: [...(tour.steps || [])].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)),
 	});
 
+	const persistPreviewTour = (tour: GuidedTour | null, shouldAutoPlay = false) => {
+		if (typeof window === 'undefined') return;
+		if (!tour) {
+			window.sessionStorage.removeItem(PREVIEW_STORAGE_KEY);
+			return;
+		}
+
+		const payload = {
+			tour,
+			shouldAutoPlay,
+			ts: Date.now(),
+		};
+		window.sessionStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(payload));
+	};
+
+	const closePreview = () => {
+		setPreviewTour(null);
+		setPreviewShouldAutoPlay(false);
+		persistPreviewTour(null);
+	};
+
 	const handlePreview = (tour: GuidedTour) => {
-		setPreviewTour(normalizeTour(tour));
+		const normalized = normalizeTour(tour);
+		setPreviewShouldAutoPlay(false);
+		setPreviewTour(normalized);
+		persistPreviewTour(normalized, false);
 	};
 
 	const handleShowSteps = (tour: GuidedTour) => {
@@ -82,6 +110,35 @@ export default function ToursPage() {
 	useEffect(() => {
 		loadTours();
 	}, []);
+
+	useEffect(() => {
+		if (typeof window === 'undefined' || previewTour) {
+			return;
+		}
+
+		const raw = window.sessionStorage.getItem(PREVIEW_STORAGE_KEY);
+		if (!raw) {
+			return;
+		}
+
+		try {
+			const parsed = JSON.parse(raw) as { tour?: GuidedTour; shouldAutoPlay?: boolean; ts?: number };
+			if (!parsed?.tour || !parsed?.ts) {
+				window.sessionStorage.removeItem(PREVIEW_STORAGE_KEY);
+				return;
+			}
+
+			if (Date.now() - parsed.ts > PREVIEW_STORAGE_TTL_MS) {
+				window.sessionStorage.removeItem(PREVIEW_STORAGE_KEY);
+				return;
+			}
+
+			setPreviewTour(normalizeTour(parsed.tour));
+			setPreviewShouldAutoPlay(Boolean(parsed.shouldAutoPlay));
+		} catch {
+			window.sessionStorage.removeItem(PREVIEW_STORAGE_KEY);
+		}
+	}, [previewTour]);
 
 	const handleToggleActive = async (tour: GuidedTour) => {
 		if (!tour.id) return;
@@ -306,7 +363,7 @@ export default function ToursPage() {
 								<h2 className="text-lg font-semibold text-slate-900">Previsualisation: {previewTour.name}</h2>
 								<p className="text-xs text-slate-500">{previewTour.steps?.length || 0} etape(s)</p>
 							</div>
-							<Button variant="ghost" size="icon" onClick={() => setPreviewTour(null)}>
+							<Button variant="ghost" size="icon" onClick={closePreview}>
 								<Icons.close className="h-4 w-4" />
 							</Button>
 						</div>
@@ -317,7 +374,12 @@ export default function ToursPage() {
 								simulationContext={previewTour.simulationContext}
 								tourName={previewTour.name}
 								targetUrl={previewTour.targetUrl}
-								onExitPreview={() => setPreviewTour(null)}
+								initialIsPlaying={previewShouldAutoPlay}
+								onPlayStateChange={(isPlaying) => {
+									setPreviewShouldAutoPlay(isPlaying);
+									persistPreviewTour(previewTour, isPlaying);
+								}}
+								onExitPreview={closePreview}
 							/>
 						</div>
 					</div>

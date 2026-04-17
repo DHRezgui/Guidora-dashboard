@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import EditorLayout from '@/components/editor/EditorLayout';
 import { GuidedTour, GuidedTourSavePayload } from '@/lib/types';
 import { getErrorMessage, tourService } from '@/lib/api';
+import { captureSimulationContextFromUrl } from '@/lib/simulation-context';
 import { toast } from 'sonner';
 
 export default function CreateTourPage() {
@@ -56,6 +57,31 @@ export default function CreateTourPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
+      let enrichedTourData: GuidedTour = tourData;
+
+      // For manually edited tours, capture a fresh simulation context at save time.
+      const preferredSelectors = (tourData.steps || [])
+        .map((step) => step.targetSelector)
+        .filter((selector): selector is string => Boolean(selector && selector.trim()));
+
+      const capturedContext = await captureSimulationContextFromUrl(tourData.targetUrl, {
+        preferredSelectors,
+      });
+      if (capturedContext) {
+        enrichedTourData = {
+          ...tourData,
+          simulationContext: capturedContext,
+        };
+
+        toast.success('Contexte de simulation capturé', {
+          description: `${capturedContext.elements?.length || 0} élément(s) détecté(s) pour ${capturedContext.pathname}.`,
+        });
+      } else {
+        toast.warning('Contexte de simulation non capturable', {
+          description: 'Le parcours sera enregistré sans snapshot détaillé (fallback debug).',
+        });
+      }
+
       // Nettoyage complet du payload pour eviter le rejet de class-validator
       const {
         id,
@@ -65,11 +91,11 @@ export default function CreateTourPage() {
         createdAt,
         updatedAt,
         ...safeData
-      } = tourData as any;
+      } = enrichedTourData as any;
 
       const payload: GuidedTourSavePayload = {
         ...safeData,
-        steps: (tourData.steps || []).map((step: any) => {
+        steps: (enrichedTourData.steps || []).map((step: any) => {
           const { id, orderIndex, tourId, createdAt, updatedAt, ...safeStep } = step;
           return safeStep;
         }),
