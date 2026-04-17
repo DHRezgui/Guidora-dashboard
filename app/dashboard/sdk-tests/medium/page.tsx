@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowRight, LayoutPanelTop, Save, ShieldCheck, UserPlus } from 'lucide-react';
-import { useContextualTourSuggestions } from '@sdk/hooks/useContextualTourSuggestions';
+import { useContextualTourSuggestions } from '@trustdev/onboarding-sdk-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
