@@ -12,7 +12,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useContextualTourSuggestions } from '@trustdev/onboarding-sdk-react';
+import { useContextualTourSuggestions } from '@sdk/hooks/useContextualTourSuggestions';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

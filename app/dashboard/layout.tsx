@@ -19,8 +19,15 @@ export default function DashboardLayout({
 
   useEffect(() => {
     setIsMounted(true);
+    const token = authService.getToken();
+
+    // Keep cookie auth in sync for middleware/server navigation checks.
+    if (token && typeof document !== 'undefined' && !document.cookie.includes('auth_token=')) {
+      document.cookie = `auth_token=${token}; path=/; max-age=3600; SameSite=Lax`;
+    }
+
     // Vérifier l'authentification au chargement
-    if (!authService.isAuthenticated()) {
+    if (!token) {
       router.push('/login');
       return;
     }

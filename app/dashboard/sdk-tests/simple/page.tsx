@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, Plus, Settings2 } from 'lucide-react';
-import { useContextualTourSuggestions } from '@trustdev/onboarding-sdk-react';
+import { useContextualTourSuggestions } from '@sdk/hooks/useContextualTourSuggestions';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

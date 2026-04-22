@@ -25,6 +25,7 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias as Record<string, string | string[] | false | undefined>),
+      "@sdk": sdkReactSrc,
       "@trustdev/onboarding-sdk-react": sdkReactSrc,
     };
     return config;

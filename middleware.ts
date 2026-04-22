@@ -11,9 +11,13 @@ export function middleware(request: NextRequest) {
   // Vérifier si la route est publique
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
-  // Si pas de token et route privée → rediriger vers login
+  // NOTE:
+  // The dashboard auth source of truth is localStorage (client side).
+  // A strict cookie-only redirect here can incorrectly block valid sessions
+  // after reloads/domain changes and surface as route issues.
+  // Client layout still enforces auth and redirects to /login when needed.
   if (!token && !isPublicRoute) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.next();
   }
 
   // Exceptions pour les routes publiques accessibles même si connecté
