@@ -179,45 +179,6 @@ function resolveTooltipPlacement(rect: NormalizedRect, position?: Step['position
   return pos;
 }
 
-function getTooltipStyle(rect: NormalizedRect, position?: Step['position']) {
-  const pos = resolveTooltipPlacement(rect, position);
-  const left = rect.leftPct;
-  const right = rect.leftPct + rect.widthPct;
-  const top = rect.topPct;
-  const bottom = rect.topPct + rect.heightPct;
-
-  if (pos === 'CENTER') {
-    return {
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-    } as const;
-  }
-
-  const centerX = left + rect.widthPct / 2;
-  const centerY = top + rect.heightPct / 2;
-  const gap = 2;
-
-  switch (pos) {
-    case 'TOP':
-      return { top: `${top - gap}%`, left: `${centerX}%`, transform: 'translate(-50%, -100%)' } as const;
-    case 'LEFT':
-      return { top: `${centerY}%`, left: `${left - gap}%`, transform: 'translate(-100%, -50%)' } as const;
-    case 'RIGHT':
-      return { top: `${centerY}%`, left: `${right + gap}%`, transform: 'translate(0, -50%)' } as const;
-    case 'TOP_LEFT':
-      return { top: `${top - gap}%`, left: `${left}%`, transform: 'translate(0, -100%)' } as const;
-    case 'TOP_RIGHT':
-      return { top: `${top - gap}%`, left: `${right}%`, transform: 'translate(-100%, -100%)' } as const;
-    case 'BOTTOM_LEFT':
-      return { top: `${bottom + gap}%`, left: `${left}%`, transform: 'translate(0, 0)' } as const;
-    case 'BOTTOM_RIGHT':
-      return { top: `${bottom + gap}%`, left: `${right}%`, transform: 'translate(-100%, 0)' } as const;
-    case 'BOTTOM':
-    default:
-      return { top: `${bottom + gap}%`, left: `${centerX}%`, transform: 'translate(-50%, 0)' } as const;
-  }
-}
 
 function getArrowAnchorOnTarget(
   placement: TooltipPlacement,
@@ -431,6 +392,15 @@ export default function TourSimulator({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const syncLiveTargetRef = useRef<(() => void) | null>(null);
+  const hasSteps = steps.length > 0;
+  const safeIndex = hasSteps ? Math.min(currentIndex, steps.length - 1) : 0;
+  const currentStep = hasSteps ? steps[safeIndex] : null;
+  const isLastStep = hasSteps ? safeIndex === steps.length - 1 : false;
+  const currentStepPageUrl = currentStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl;
+  const prevStep = hasSteps && safeIndex > 0 ? steps[safeIndex - 1] : null;
+  const prevStepPageUrl = prevStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl;
+  const nextStep = hasSteps && safeIndex < steps.length - 1 ? steps[safeIndex + 1] : null;
+  const nextStepPageUrl = nextStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl;
 
   useEffect(() => {
     onPlayStateChange?.(isPlaying);
@@ -442,21 +412,21 @@ export default function TourSimulator({
     Boolean(simulationContext?.elements?.length);
 
   useEffect(() => {
-    if (!targetUrl || typeof window === 'undefined') {
+    if (!currentStepPageUrl || typeof window === 'undefined') {
       setCanUseIframe(false);
       return;
     }
 
     try {
-      const resolvedUrl = new URL(targetUrl, window.location.origin);
+      const resolvedUrl = new URL(currentStepPageUrl, window.location.origin);
       setCanUseIframe(resolvedUrl.origin === window.location.origin);
     } catch {
       setCanUseIframe(false);
     }
-  }, [targetUrl]);
+  }, [currentStepPageUrl]);
 
   useEffect(() => {
-    if (viewMode !== 'preview' || !isPlaying || !canUseIframe || !targetUrl) {
+    if (viewMode !== 'preview' || !isPlaying || !canUseIframe || !currentStepPageUrl) {
       setIframeState('idle');
       return;
     }
@@ -467,12 +437,7 @@ export default function TourSimulator({
     }, 12000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [viewMode, isPlaying, canUseIframe, targetUrl]);
-
-  const hasSteps = steps.length > 0;
-  const safeIndex = hasSteps ? Math.min(currentIndex, steps.length - 1) : 0;
-  const currentStep = hasSteps ? steps[safeIndex] : null;
-  const isLastStep = hasSteps ? safeIndex === steps.length - 1 : false;
+  }, [viewMode, isPlaying, canUseIframe, currentStepPageUrl]);
 
   const handleNext = () => {
     if (!hasSteps) {
@@ -576,7 +541,7 @@ export default function TourSimulator({
   const normalizedCurrentRect = currentElement?.rect || null;
 
   const fallbackPageTitle = simulationContext?.pageTitle || tourName || 'Page inconnue';
-  const fallbackPageUrl = simulationContext?.pageUrl || targetUrl;
+  const fallbackPageUrl = currentStepPageUrl;
   const fallbackMainSelector = currentStep?.targetSelector || steps.find((step) => step.targetSelector)?.targetSelector;
   const currentStepIndex = currentStep ? steps.findIndex((step) => step.id === currentStep.id) : 0;
   const matchedElements = normalizedElements.filter((item) => {
@@ -587,12 +552,14 @@ export default function TourSimulator({
     return sourceToken ? extractStableSelectorToken(item.selector) === sourceToken : false;
   });
   const visibleDebugElements = simulationContext?.elements.slice(0, 12) || [];
-  const useLiveIframe = viewMode === 'preview' && canUseIframe && iframeState === 'ready' && Boolean(fallbackPageUrl);
-  const isLiveCalibrating = useLiveIframe && Boolean(currentStep?.targetSelector) && !liveTargetRect && !liveCalibrationTimedOut;
-  const isLiveTargetMissing = useLiveIframe && Boolean(currentStep?.targetSelector) && !liveTargetRect && liveCalibrationTimedOut;
+  const shouldRenderLiveIframe = viewMode === 'preview' && canUseIframe && Boolean(fallbackPageUrl);
+  const useLiveIframe = shouldRenderLiveIframe && iframeState !== 'blocked';
+  const isIframeReady = iframeState === 'ready';
+  const isLiveCalibrating = useLiveIframe && isIframeReady && Boolean(currentStep?.targetSelector) && !liveTargetRect && !liveCalibrationTimedOut;
+  const isLiveTargetMissing = useLiveIframe && isIframeReady && Boolean(currentStep?.targetSelector) && !liveTargetRect && liveCalibrationTimedOut;
 
   useEffect(() => {
-    if (!useLiveIframe || !currentStep?.targetSelector || !iframeRef.current || !stageRef.current) {
+    if (!useLiveIframe || !isIframeReady || !currentStep?.targetSelector || !iframeRef.current || !stageRef.current) {
       setLiveTargetRect((prev) => (prev === null ? prev : null));
       setLiveCalibrationTimedOut((prev) => (prev === false ? prev : false));
       syncLiveTargetRef.current = null;
@@ -706,17 +673,19 @@ export default function TourSimulator({
       window.removeEventListener('resize', syncTarget);
       syncLiveTargetRef.current = null;
     };
-  }, [useLiveIframe, currentStep?.targetSelector, safeIndex]);
+  }, [useLiveIframe, isIframeReady, currentStep?.targetSelector, safeIndex]);
 
   // In live mode, only trust the real iframe DOM measurement.
   // This avoids a stale first pointer from structured snapshot coordinates.
-  const targetRectForTooltip = useLiveIframe ? liveTargetRect : normalizedCurrentRect;
+  const targetRectForTooltip = useLiveIframe && isIframeReady ? liveTargetRect : normalizedCurrentRect;
   const tooltipPlacement = targetRectForTooltip
     ? resolveTooltipPlacement(targetRectForTooltip, currentStep?.position)
     : (currentStep?.position || 'BOTTOM');
 
-  const tooltipStyle = arrowAnchorPixels && stageRef.current
-    ? clampTooltipStyle(getTooltipPositionFromArrowAnchor(arrowAnchorPixels.x, arrowAnchorPixels.y, tooltipPlacement, stageRef.current.getBoundingClientRect()))
+  // eslint-disable-next-line react-hooks/refs
+  const stageRectForTooltip = stageRef.current?.getBoundingClientRect();
+  const tooltipStyle = arrowAnchorPixels && stageRectForTooltip
+    ? clampTooltipStyle(getTooltipPositionFromArrowAnchor(arrowAnchorPixels.x, arrowAnchorPixels.y, tooltipPlacement, stageRectForTooltip))
     : undefined;
 
   useEffect(() => {
@@ -772,8 +741,8 @@ export default function TourSimulator({
       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 w-full rounded-2xl border-2 border-dashed border-slate-200">
         <Icons.info className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-xl font-semibold mb-2">Aucune étape à simuler</h3>
-        <p className="text-muted-foreground mb-6">Ajoutez des étapes à votre parcours pour pouvoir tester l'expérience utilisateur.</p>
-        <Button onClick={onExitPreview}>Retour à l'édition</Button>
+        <p className="text-muted-foreground mb-6">Ajoutez des étapes à votre parcours pour pouvoir tester l&apos;expérience utilisateur.</p>
+        <Button onClick={onExitPreview}>Retour à l&apos;édition</Button>
       </div>
     );
   }
@@ -910,20 +879,6 @@ export default function TourSimulator({
         ) : null}
       </div>
 
-      {!useLiveIframe && canUseIframe && iframeState === 'loading' && fallbackPageUrl ? (
-        <iframe
-          key={`preload-${fallbackPageUrl}`}
-          src={fallbackPageUrl}
-          title={`${tourName || 'Tour preview'} preload`}
-          className="absolute inset-0 h-full w-full border-0 opacity-0 pointer-events-none"
-          aria-hidden="true"
-          tabIndex={-1}
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-          onLoad={() => setIframeState('ready')}
-          onError={() => setIframeState('blocked')}
-        />
-      ) : null}
-
       {useLiveIframe ? (
         <div
           className="absolute inset-0 overflow-hidden rounded-xl bg-slate-950/5"
@@ -934,7 +889,6 @@ export default function TourSimulator({
         >
           <iframe
             ref={iframeRef}
-            key={fallbackPageUrl}
             src={fallbackPageUrl}
             title={tourName || 'Tour preview'}
             className="h-full w-full border-0 bg-white pointer-events-none"
@@ -949,10 +903,46 @@ export default function TourSimulator({
             onError={() => setIframeState('blocked')}
           />
 
+          {useLiveIframe && prevStepPageUrl && prevStepPageUrl !== fallbackPageUrl ? (
+            <iframe
+              src={prevStepPageUrl}
+              title={`${tourName || 'Tour preview'} prev-step-prefetch`}
+              className="absolute inset-0 h-full w-full border-0 opacity-0 pointer-events-none"
+              aria-hidden="true"
+              tabIndex={-1}
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+            />
+          ) : null}
+
+          {useLiveIframe && nextStepPageUrl && nextStepPageUrl !== fallbackPageUrl && nextStepPageUrl !== prevStepPageUrl ? (
+            <iframe
+              src={nextStepPageUrl}
+              title={`${tourName || 'Tour preview'} next-step-prefetch`}
+              className="absolute inset-0 h-full w-full border-0 opacity-0 pointer-events-none"
+              aria-hidden="true"
+              tabIndex={-1}
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+            />
+          ) : null}
+
+          {iframeState === 'loading' ? (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-slate-100/45 backdrop-blur-[1px]">
+              <div className="rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-sm">
+                Chargement de l&apos;étape suivante...
+              </div>
+            </div>
+          ) : null}
+
           <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
             <span className="font-medium text-slate-800">Mode live iframe actif</span>
             <span className={isLiveTargetMissing ? 'text-amber-700 font-medium' : ''}>
-              {isLiveCalibrating ? 'Calibrage...' : isLiveTargetMissing ? 'Cible introuvable' : 'Prêt'}
+              {iframeState === 'loading'
+                ? 'Transition de page...'
+                : isLiveCalibrating
+                  ? 'Calibrage...'
+                  : isLiveTargetMissing
+                    ? 'Cible introuvable'
+                    : 'Prêt'}
             </span>
           </div>
         </div>
@@ -983,7 +973,7 @@ export default function TourSimulator({
 
             {canUseIframe && iframeState === 'loading' ? (
               <div className="pointer-events-none absolute inset-x-4 top-4 z-30 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
-                Chargement live iframe en arrière-plan... bascule auto dès qu'il est prêt.
+                Chargement live iframe en arrière-plan... bascule auto dès qu&apos;il est prêt.
               </div>
             ) : null}
           </div>
@@ -1012,10 +1002,19 @@ export default function TourSimulator({
         </div>
       )}
 
-      {/* Backdrop sombre si activé */}
-      {currentStep.highlightElement && viewMode === 'preview' && !useLiveIframe && (
-        <div className="absolute inset-0 bg-black/50 z-10 transition-opacity duration-300 pointer-events-none" />
-      )}
+      {/* Spotlight "mettre en evidence" autour de la cible */}
+      {currentStep.highlightElement && viewMode === 'preview' && targetRectForTooltip ? (
+        <div
+          className="pointer-events-none absolute z-[15] rounded-md border-2 border-primary/90 transition-all duration-300"
+          style={{
+            top: `${targetRectForTooltip.topPct}%`,
+            left: `${targetRectForTooltip.leftPct}%`,
+            width: `${targetRectForTooltip.widthPct}%`,
+            height: `${targetRectForTooltip.heightPct}%`,
+            boxShadow: '0 0 0 9999px rgba(2, 6, 23, 0.45), 0 0 0 6px rgba(59, 130, 246, 0.2)',
+          }}
+        />
+      ) : null}
 
       {connectorPath ? (
         <svg className="pointer-events-none absolute inset-0 z-30" width="100%" height="100%" aria-hidden="true">
@@ -1054,7 +1053,7 @@ export default function TourSimulator({
             <div
               className={cn(
                 'absolute rounded-md border-2 border-dashed border-primary pointer-events-none',
-                currentStep.highlightElement ? 'ring-4 ring-primary/35 shadow-lg' : '',
+                currentStep.highlightElement ? 'ring-4 ring-primary/60 shadow-[0_0_0_3px_rgba(59,130,246,0.25)]' : '',
               )}
               style={{
                 top: `${targetRectForTooltip.topPct}%`,
@@ -1141,6 +1140,19 @@ export default function TourSimulator({
                 </div>
 
                 <div className="flex gap-2">
+                  {currentStep.skipAllowed !== false && !isLastStep && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-slate-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSkip();
+                      }}
+                    >
+                      Passer
+                    </Button>
+                  )}
                   {currentIndex > 0 && (
                     <Button
                       variant="outline"

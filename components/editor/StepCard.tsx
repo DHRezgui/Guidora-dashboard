@@ -175,9 +175,17 @@ export function StepCard({
         </div>
       </CardHeader>
       
-      {(step.targetSelector || step.position) && (
+      {(step.targetSelector || step.position || step.stepTargetUrl) && (
         <CardContent className="pt-0">
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            {step.stepTargetUrl && (
+              <div className="flex items-center gap-1.5">
+                <Icons.globe className="h-3 w-3" />
+                <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                  {step.stepTargetUrl}
+                </span>
+              </div>
+            )}
             {step.targetSelector && (
               <div className="flex items-center gap-1.5">
                 <Icons.code className="h-3 w-3" />

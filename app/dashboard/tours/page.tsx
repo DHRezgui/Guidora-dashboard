@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +21,17 @@ export default function ToursPage() {
 	const [previewTour, setPreviewTour] = useState<GuidedTour | null>(null);
 	const [previewShouldAutoPlay, setPreviewShouldAutoPlay] = useState(false);
 	const [stepsTour, setStepsTour] = useState<GuidedTour | null>(null);
+	const [filterQuery, setFilterQuery] = useState('');
 	const hiddenTourIdsRef = useRef<Set<string>>(new Set());
 	const loadSeqRef = useRef(0);
+
+	const filteredTours = useMemo(() => {
+		const query = filterQuery.trim().toLowerCase();
+		if (!query) return tours;
+		return tours.filter((tour) =>
+			(tour.targetUrl || '').toLowerCase().includes(query)
+		);
+	}, [tours, filterQuery]);
 
 	const formatCreatedAt = (value?: string) => {
 		if (!value) return 'Date inconnue';
@@ -203,12 +212,33 @@ export default function ToursPage() {
 							Gerez, modifiez et publiez vos parcours d'integration depuis votre espace.
 						</p>
 					</div>
-					<Link href="/dashboard/tours/create">
-						<Button className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto">
-							<Icons.plus className="mr-2 h-4 w-4" />
-							Nouveau parcours
-						</Button>
-					</Link>
+					<div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+						<div className="relative w-full md:w-80">
+							<Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+							<input
+								value={filterQuery}
+								onChange={(e) => setFilterQuery(e.target.value)}
+								placeholder="Filtrer par URL cible..."
+								className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-700 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+							/>
+							{filterQuery ? (
+								<button
+									type="button"
+									onClick={() => setFilterQuery('')}
+									className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+									aria-label="Effacer le filtre"
+								>
+									<Icons.close className="h-3.5 w-3.5" />
+								</button>
+							) : null}
+						</div>
+						<Link href="/dashboard/tours/create">
+							<Button className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto">
+								<Icons.plus className="mr-2 h-4 w-4" />
+								Nouveau parcours
+							</Button>
+						</Link>
+					</div>
 				</div>
 
 				{/* Contenu */}
@@ -239,9 +269,20 @@ export default function ToursPage() {
 							</Link>
 						</CardContent>
 					</Card>
+				) : filteredTours.length === 0 ? (
+					<Card className="border-slate-200 border-dashed bg-white/50 shadow-sm">
+						<CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+							<Icons.search className="h-8 w-8 text-slate-300" />
+							<h3 className="text-base font-semibold text-slate-800">Aucun parcours ne correspond au filtre</h3>
+							<p className="text-sm text-slate-500">Essayez une autre URL cible.</p>
+							<Button variant="outline" onClick={() => setFilterQuery('')}>
+								Effacer le filtre
+							</Button>
+						</CardContent>
+					</Card>
 				) : (
 					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{tours.map((tour) => (
+						{filteredTours.map((tour) => (
 							<Card 
 								key={tour.id || tour.name} 
 								className="group relative flex h-full flex-col overflow-hidden border-slate-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-primary/20"

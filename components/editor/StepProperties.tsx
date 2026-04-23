@@ -120,6 +120,19 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
             </p>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="stepTargetUrl">Route de l&apos;etape (optionnel)</Label>
+            <Input
+              id="stepTargetUrl"
+              value={formData.stepTargetUrl || ''}
+              onChange={(e) => handleInputChange('stepTargetUrl', e.target.value)}
+              placeholder="/dashboard/billing"
+            />
+            <p className="text-xs text-muted-foreground">
+              Renseignez cette valeur pour un parcours multi-page.
+            </p>
+          </div>
+
           {/* Position */}
           <div className="space-y-2">
             <Label htmlFor="position">Position</Label>

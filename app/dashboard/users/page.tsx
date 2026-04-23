@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/ui/icons';
@@ -18,8 +18,10 @@ const roleBadgeStyles: Record<string, string> = {
 };
 
 export default function UsersPage() {
+  const PAGE_SIZE = 10;
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -72,6 +74,17 @@ export default function UsersPage() {
 
     setFilteredUsers(result);
   }, [users, searchQuery, roleFilter, activeFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter, activeFilter, users.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedUsers = useMemo(() => {
+    const start = (safeCurrentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, safeCurrentPage]);
 
   const handleCreated = () => {
     setShowCreateModal(false);
@@ -201,7 +214,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -256,6 +269,37 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {!loading && filteredUsers.length > 0 && (
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-card">
+          <p className="text-sm text-muted-foreground">
+            {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? 's' : ''} au total
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safeCurrentPage <= 1}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              className="rounded-lg"
+            >
+              Précédent
+            </Button>
+            <span className="text-sm font-medium text-foreground">
+              Page {safeCurrentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safeCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              className="rounded-lg"
+            >
+              Suivant
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       {showCreateModal && (

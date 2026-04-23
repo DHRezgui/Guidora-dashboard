@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { GuidedTour } from '@/lib/types';
+import { ChevronDown } from 'lucide-react';
 
 interface ToolbarProps {
   tour?: GuidedTour;
@@ -32,6 +33,12 @@ export default function Toolbar({
   onUndo,
   onRedo,
 }: ToolbarProps) {
+  const normalizePriority = (value: string): number => {
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) return 0;
+    return Math.max(0, Math.min(99, parsed));
+  };
+
   return (
     <div className="border-b bg-white px-6 py-4 shadow-sm">
       <div className="flex flex-col gap-6">
@@ -143,16 +150,36 @@ export default function Toolbar({
                     id="tour-priority"
                     type="number"
                     min={0}
+                    max={99}
                     value={tour?.priority ?? 0}
-                    onChange={(e) => onTourChange?.({ priority: Number(e.target.value) || 0 })}
+                    onChange={(e) => onTourChange?.({ priority: normalizePriority(e.target.value) })}
+                    onBlur={(e) => {
+                      const clamped = normalizePriority(e.target.value);
+                      if (String(clamped) !== e.target.value) {
+                        onTourChange?.({ priority: clamped });
+                      }
+                    }}
                     className="h-9 transition-colors bg-slate-50/50 border-slate-200 hover:border-slate-300 focus:bg-white focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="tour-active" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Statut</Label>
-                  <div className="flex h-9 items-center px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-medium text-slate-600">
-                    <div className={`mr-2 h-2 w-2 rounded-full ${tour?.isActive === false ? 'bg-slate-400' : 'bg-emerald-500'}`} />
-                    {tour?.isActive === false ? 'Inactif' : 'Actif'}
+                  <div className="relative">
+                    <select
+                      id="tour-active"
+                      value={tour?.isActive === false ? 'inactive' : 'active'}
+                      onChange={(e) => onTourChange?.({ isActive: e.target.value === 'active' })}
+                      className="flex h-9 w-full appearance-none items-center rounded-md border border-slate-200 bg-slate-50 pl-8 pr-9 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500"
+                    >
+                      <option value="active">Actif</option>
+                      <option value="inactive">Inactif</option>
+                    </select>
+                    <span
+                      className={`pointer-events-none absolute left-3 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full ${
+                        tour?.isActive === false ? 'bg-red-500' : 'bg-emerald-500'
+                      }`}
+                    />
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   </div>
                 </div>
               </div>

@@ -159,7 +159,7 @@ export default function MediumTestPage() {
             <CardHeader>
               <CardTitle>Analyse SDK (debug + explainability)</CardTitle>
               <CardDescription>
-                Lance l'analyse sur un scenario medium avec navigation, formulaire et validation.
+                Lance l&aposanalyse sur un scenario medium avec navigation, formulaire et validation.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -287,7 +287,7 @@ export default function MediumTestPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor="medium-company">Nom de l'organisation</label>
+                  <label className="text-sm font-medium" htmlFor="medium-company">Nom de l&aposorganisation</label>
                   <Input
                     id="medium-company"
                     data-testid="medium-company"
@@ -298,7 +298,7 @@ export default function MediumTestPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor="medium-notes">Notes d'onboarding</label>
+                  <label className="text-sm font-medium" htmlFor="medium-notes">Notes d&aposonboarding</label>
                   <Textarea
                     id="medium-notes"
                     data-testid="medium-notes"
@@ -333,7 +333,7 @@ export default function MediumTestPage() {
                     Vérification avant publication
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Le flux doit guider l'utilisateur de la navigation vers le formulaire puis vers la validation finale.
+                    Le flux doit guider l&aposutilisateur de la navigation vers le formulaire puis vers la validation finale.
                   </p>
                   <div className="mt-4 flex gap-2">
                     <Button
@@ -364,7 +364,7 @@ export default function MediumTestPage() {
           <Card id="history" className="border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Historique et suivi</CardTitle>
-              <CardDescription>Éléments supplémentaires pour tester les parcours multi-étapes et l'analyse de séquence.</CardDescription>
+              <CardDescription>Éléments supplémentaires pour tester les parcours multi-étapes et l&aposanalyse de séquence.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-3">
               {[

@@ -119,6 +119,7 @@ export interface Step {
   content: string;
   stepType?: StepType;
   targetSelector?: string;
+  stepTargetUrl?: string;
   position?: PositionType;
   action?: ActionType;
   skipAllowed?: boolean;

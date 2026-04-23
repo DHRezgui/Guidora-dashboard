@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,6 +23,11 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false);
+
+  useEffect(() => {
+    setIsClientReady(true);
+  }, []);
 
   const {
     register,
@@ -46,12 +51,30 @@ export default function LoginPage() {
         router.push('/dashboard');
         router.refresh();
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur de connexion');
+    } catch (err: unknown) {
+      const message: string =
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Erreur de connexion'
+          : 'Erreur de connexion';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!isClientReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <Icons.spinner className="h-4 w-4 animate-spin" />
+          Chargement...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">

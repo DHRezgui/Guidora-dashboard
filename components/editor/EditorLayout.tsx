@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Toolbar from './Toolbar';
 import StepPalette from './StepPalette';
 import StepCanvas from './StepCanvas';
@@ -15,38 +15,123 @@ interface EditorLayoutProps {
   initialSelectedStepIndex?: number | null;
 }
 
-export default function EditorLayout({ tour, onSave, onBack, initialSelectedStepIndex }: EditorLayoutProps) {
-  const [steps, setSteps] = useState<Step[]>(tour?.steps ?? []);
-  
-  // History State for Undo/Redo
-  const [history, setHistory] = useState<{stack: Step[][], index: number}>({
-    stack: [tour?.steps ?? []],
-    index: 0
+const TEXT_EDIT_GROUP_WINDOW_MS = 900;
+
+type EditorSnapshot = {
+  steps: Step[];
+  tourMeta: Partial<GuidedTour>;
+};
+
+function isGroupedTextEditChange(previous: EditorSnapshot, next: EditorSnapshot): { isTextEdit: boolean; key: string | null } {
+  const prevMetaJson = JSON.stringify(previous.tourMeta);
+  const nextMetaJson = JSON.stringify(next.tourMeta);
+  const metaChanged = prevMetaJson !== nextMetaJson;
+
+  if (metaChanged && JSON.stringify(previous.steps) === JSON.stringify(next.steps)) {
+    const editableMetaKeys: Array<keyof GuidedTour> = ['name', 'description', 'targetUrl'];
+    const changedKeys = editableMetaKeys.filter(
+      (key) => JSON.stringify(previous.tourMeta[key]) !== JSON.stringify(next.tourMeta[key]),
+    );
+
+    const hasOnlyEditableMetaChanges =
+      changedKeys.length > 0 &&
+      Object.keys({ ...previous.tourMeta, ...next.tourMeta }).every((rawKey) => {
+        const key = rawKey as keyof GuidedTour;
+        if (editableMetaKeys.includes(key)) return true;
+        return JSON.stringify(previous.tourMeta[key]) === JSON.stringify(next.tourMeta[key]);
+      });
+
+    if (hasOnlyEditableMetaChanges) {
+      return { isTextEdit: true, key: `meta:${changedKeys.sort().join(',')}` };
+    }
+  }
+
+  const prevSteps = previous.steps;
+  const nextSteps = next.steps;
+  if (prevSteps.length !== nextSteps.length) {
+    return { isTextEdit: false, key: null };
+  }
+
+  let changedIndex = -1;
+  for (let i = 0; i < prevSteps.length; i += 1) {
+    if (prevSteps[i].id !== nextSteps[i].id) {
+      return { isTextEdit: false, key: null };
+    }
+    if (JSON.stringify(prevSteps[i]) !== JSON.stringify(nextSteps[i])) {
+      if (changedIndex !== -1) {
+        return { isTextEdit: false, key: null };
+      }
+      changedIndex = i;
+    }
+  }
+
+  if (changedIndex === -1) {
+    return { isTextEdit: false, key: null };
+  }
+
+  const before = prevSteps[changedIndex];
+  const after = nextSteps[changedIndex];
+  const textFields: Array<keyof Step> = ['title', 'content', 'targetSelector', 'stepTargetUrl'];
+
+  const nonTextChanged = Object.keys(before).some((rawKey) => {
+    const key = rawKey as keyof Step;
+    if (textFields.includes(key)) return false;
+    return JSON.stringify(before[key]) !== JSON.stringify(after[key]);
   });
 
-  const [tourMeta, setTourMeta] = useState<Partial<GuidedTour>>({
+  if (nonTextChanged) {
+    return { isTextEdit: false, key: null };
+  }
+
+  const anyTextFieldChanged = textFields.some((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
+  if (!anyTextFieldChanged) {
+    return { isTextEdit: false, key: null };
+  }
+
+  return { isTextEdit: true, key: `step:${before.id}` };
+}
+
+export default function EditorLayout({ tour, onSave, onBack, initialSelectedStepIndex }: EditorLayoutProps) {
+  const [steps, setSteps] = useState<Step[]>(tour?.steps ?? []);
+  const initialTourMeta: Partial<GuidedTour> = {
     name: tour?.name,
     description: tour?.description,
     targetUrl: tour?.targetUrl,
     isActive: tour?.isActive,
     priority: tour?.priority,
     triggerConditions: tour?.triggerConditions,
+  };
+  
+  // History State for Undo/Redo
+  const [history, setHistory] = useState<{stack: EditorSnapshot[], index: number}>({
+    stack: [{ steps: tour?.steps ?? [], tourMeta: initialTourMeta }],
+    index: 0
   });
+
+  const [tourMeta, setTourMeta] = useState<Partial<GuidedTour>>(initialTourMeta);
   const [selectedStep, setSelectedStep] = useState<Step | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const baselineSnapshotRef = useRef<string>('');
+  const lastCommitRef = useRef<{ at: number; stepId: string | null; kind: 'text' | 'other' }>({
+    at: 0,
+    stepId: null,
+    kind: 'other',
+  });
 
   useEffect(() => {
     const initialSteps = tour?.steps ?? [];
     setSteps(initialSteps);
-    setHistory({ stack: [initialSteps], index: 0 });
-    setTourMeta({
+    const nextInitialTourMeta: Partial<GuidedTour> = {
       name: tour?.name,
       description: tour?.description,
       targetUrl: tour?.targetUrl,
       isActive: tour?.isActive,
       priority: tour?.priority,
       triggerConditions: tour?.triggerConditions,
-    });
+    };
+    setHistory({ stack: [{ steps: initialSteps, tourMeta: nextInitialTourMeta }], index: 0 });
+    setTourMeta(nextInitialTourMeta);
+    baselineSnapshotRef.current = JSON.stringify({ steps: initialSteps, tourMeta: nextInitialTourMeta });
     
     if (initialSelectedStepIndex !== undefined && initialSelectedStepIndex !== null && initialSelectedStepIndex >= 0 && initialSelectedStepIndex < initialSteps.length) {
       setSelectedStep(initialSteps[initialSelectedStepIndex]);
@@ -55,35 +140,80 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
     }
   }, [tour?.id]); // Note: intentional missing initialSelectedStepIndex dependency to only do it once on load
 
-  const commitToHistory = useCallback((newSteps: Step[]) => {
+  const commitToHistory = useCallback((newSnapshot: EditorSnapshot) => {
     setHistory(prev => {
+      const currentSnapshot = prev.stack[prev.index] ?? { steps: [], tourMeta: {} };
+      const isSameSnapshot = JSON.stringify(currentSnapshot) === JSON.stringify(newSnapshot);
+
+      if (isSameSnapshot) {
+        return prev;
+      }
+
+      const now = Date.now();
+      const groupedEdit = isGroupedTextEditChange(currentSnapshot, newSnapshot);
+      const canGroupWithPreviousTextEdit =
+        groupedEdit.isTextEdit &&
+        lastCommitRef.current.kind === 'text' &&
+        lastCommitRef.current.stepId === groupedEdit.key &&
+        now - lastCommitRef.current.at <= TEXT_EDIT_GROUP_WINDOW_MS &&
+        prev.stack.length > 0;
+
       const newStack = prev.stack.slice(0, prev.index + 1);
-      newStack.push(newSteps);
+      if (canGroupWithPreviousTextEdit) {
+        newStack[newStack.length - 1] = newSnapshot;
+        lastCommitRef.current.at = now;
+        lastCommitRef.current.stepId = groupedEdit.key;
+        lastCommitRef.current.kind = 'text';
+        return { stack: newStack, index: newStack.length - 1 };
+      }
+
+      newStack.push(newSnapshot);
+      lastCommitRef.current.at = now;
+      lastCommitRef.current.stepId = groupedEdit.key;
+      lastCommitRef.current.kind = groupedEdit.isTextEdit ? 'text' : 'other';
       return { stack: newStack, index: newStack.length - 1 };
     });
   }, []);
 
   const handleUndo = useCallback(() => {
+    const selectedStepId = selectedStep?.id;
     setHistory(prev => {
       if (prev.index > 0) {
         const newIndex = prev.index - 1;
-        setSteps(prev.stack[newIndex]);
+        const restoredSnapshot = prev.stack[newIndex];
+        const restoredSteps = restoredSnapshot.steps;
+        setSteps(restoredSteps);
+        setTourMeta(restoredSnapshot.tourMeta);
+        setSelectedStep(
+          selectedStepId
+            ? restoredSteps.find((step) => step.id === selectedStepId) || null
+            : null,
+        );
         return { ...prev, index: newIndex };
       }
       return prev;
     });
-  }, []);
+  }, [selectedStep?.id]);
 
   const handleRedo = useCallback(() => {
+    const selectedStepId = selectedStep?.id;
     setHistory(prev => {
       if (prev.index < prev.stack.length - 1) {
         const newIndex = prev.index + 1;
-        setSteps(prev.stack[newIndex]);
+        const restoredSnapshot = prev.stack[newIndex];
+        const restoredSteps = restoredSnapshot.steps;
+        setSteps(restoredSteps);
+        setTourMeta(restoredSnapshot.tourMeta);
+        setSelectedStep(
+          selectedStepId
+            ? restoredSteps.find((step) => step.id === selectedStepId) || null
+            : null,
+        );
         return { ...prev, index: newIndex };
       }
       return prev;
     });
-  }, []);
+  }, [selectedStep?.id]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -123,8 +253,32 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
     [tour, tourMeta, steps]
   );
 
+  const hasUnsavedChanges = useMemo(() => {
+    const currentSnapshot = JSON.stringify({ steps, tourMeta });
+    return currentSnapshot !== baselineSnapshotRef.current;
+  }, [steps, tourMeta]);
+
+  const handleBackWithGuard = useCallback(() => {
+    if (!onBack) return;
+    if (!hasUnsavedChanges) {
+      onBack();
+      return;
+    }
+
+    const shouldLeave = window.confirm(
+      'Vous avez des modifications non enregistrees. Voulez-vous vraiment quitter sans enregistrer ?',
+    );
+    if (shouldLeave) {
+      onBack();
+    }
+  }, [hasUnsavedChanges, onBack]);
+
   const handleTourChange = (changes: Partial<GuidedTour>) => {
-    setTourMeta((prev) => ({ ...prev, ...changes }));
+    setTourMeta((prev) => {
+      const nextTourMeta = { ...prev, ...changes };
+      commitToHistory({ steps, tourMeta: nextTourMeta });
+      return nextTourMeta;
+    });
   };
 
   const handleSelectStep = (step: Step | null) => {
@@ -141,7 +295,7 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
             }
           : step
       );
-      commitToHistory(nextSteps);
+      commitToHistory({ steps: nextSteps, tourMeta });
       return nextSteps;
     });
     setSelectedStep(updatedStep);
@@ -149,7 +303,7 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
 
   const handleStepsChange = (nextSteps: Step[]) => {
     setSteps(nextSteps);
-    commitToHistory(nextSteps);
+    commitToHistory({ steps: nextSteps, tourMeta });
 
     if (!selectedStep) {
       return;
@@ -174,7 +328,7 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
 
     setSteps((prev) => {
       const nextSteps = [...prev, nextStep].map((step, index) => ({ ...step, orderIndex: index + 1 }));
-      commitToHistory(nextSteps);
+      commitToHistory({ steps: nextSteps, tourMeta });
       return nextSteps;
     });
     setSelectedStep(nextStep);
@@ -195,7 +349,7 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
 
     setSteps((prev) => {
       const nextSteps = [...prev, ...newSteps].map((step, idx) => ({ ...step, orderIndex: idx + 1 }));
-      commitToHistory(nextSteps);
+      commitToHistory({ steps: nextSteps, tourMeta });
       return nextSteps;
     });
     // Optional: select the last inserted step
@@ -211,7 +365,7 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
         tour={composedTour}
         onSave={onSave}
         onTourChange={handleTourChange}
-        onBack={onBack}
+        onBack={onBack ? handleBackWithGuard : undefined}
         isPreviewMode={isPreviewMode}
         onTogglePreview={() => setIsPreviewMode(!isPreviewMode)}
         onUndo={handleUndo}
