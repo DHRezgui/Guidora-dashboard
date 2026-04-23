@@ -37,6 +37,25 @@ export default function ToursPage() {
 		}).format(date);
 	};
 
+	const getIconForStepType = (stepType: string) => {
+		switch (stepType) {
+			case 'tooltip':
+				return Icons.messageSquare;
+			case 'highlight':
+				return Icons.target;
+			case 'modal':
+				return Icons.layout;
+			case 'form':
+				return Icons.clipboardList;
+			case 'tutorial':
+				return Icons.video;
+			case 'checklist':
+				return Icons.checkSquare;
+			default:
+				return Icons.info;
+		}
+	};
+
 	const loadTours = async () => {
 		const currentSeq = ++loadSeqRef.current;
 		try {
@@ -418,7 +437,11 @@ export default function ToursPage() {
 									<div className="absolute bottom-0 left-[27px] top-0 w-px bg-slate-200 hidden sm:block" />
 									
 									<div className="space-y-6">
-										{(stepsTour.steps || []).map((step, idx) => (
+										{(stepsTour.steps || []).map((step, idx) => {
+											const resolvedStepType = step.stepType ?? (step.highlightElement ? 'highlight' : 'tooltip');
+											const StepTypeIcon = getIconForStepType(resolvedStepType);
+
+											return (
 											<div key={step.id || `${step.title}-${idx}`} className="relative flex flex-col sm:flex-row gap-4 sm:gap-6">
 												{/* Indicateur timeline */}
 												<div className="relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 border-white bg-slate-100 font-bold text-slate-600 shadow-sm hidden sm:flex">
@@ -446,6 +469,10 @@ export default function ToursPage() {
 															)}
 														</div>
 														<div className="flex flex-col items-end gap-2 shrink-0">
+															<Badge variant={resolvedStepType === 'highlight' ? 'secondary' : 'outline'} className="text-[10px] font-medium capitalize flex items-center gap-1.5">
+																<StepTypeIcon className="h-3 w-3" />
+																{resolvedStepType}
+															</Badge>
 															<Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider bg-slate-50/80">
 																{step.position?.replace('_', ' ') || 'BOTTOM'}
 															</Badge>
@@ -471,7 +498,8 @@ export default function ToursPage() {
 													</div>
 												</div>
 											</div>
-										))}
+										);
+									})}
 									</div>
 								</div>
 							)}

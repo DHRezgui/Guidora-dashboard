@@ -34,6 +34,20 @@ export function StepCard({
   isPreviewMode,
   dragHandleProps,
 }: StepCardProps) {
+  const resolvedStepType = step.stepType ?? (step.highlightElement ? 'highlight' : 'tooltip');
+
+  const getIconForStepType = (stepType: string) => {
+    switch (stepType) {
+      case 'tooltip': return Icons.messageSquare;
+      case 'highlight': return Icons.target;
+      case 'modal': return Icons.layout;
+      case 'form': return Icons.clipboardList;
+      case 'tutorial': return Icons.video;
+      case 'checklist': return Icons.checkSquare;
+      default: return Icons.info;
+    }
+  };
+
   const getIconForAction = (action: string) => {
     switch (action) {
       case 'CLICK': return Icons.cursorClick;
@@ -47,6 +61,7 @@ export function StepCard({
   };
 
   const ActionIcon = getIconForAction(step.action || 'NEXT');
+  const StepTypeIcon = getIconForStepType(resolvedStepType);
 
   return (
     <Card
@@ -85,12 +100,10 @@ export function StepCard({
                 </span>
               </div>
               
-              {step.highlightElement && (
-                <Badge variant="secondary" className="hidden md:flex">
-                  <Icons.target className="mr-1 h-3 w-3" />
-                  Highlight
-                </Badge>
-              )}
+              <Badge variant={resolvedStepType === 'highlight' ? 'secondary' : 'outline'} className="hidden md:flex items-center gap-1.5 capitalize">
+                <StepTypeIcon className="h-3 w-3" />
+                {resolvedStepType}
+              </Badge>
               
               {!step.skipAllowed && (
                 <Badge variant="destructive" className="hidden md:flex">

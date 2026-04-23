@@ -117,12 +117,15 @@ export interface Step {
   orderIndex: number;
   title: string;
   content: string;
+  stepType?: StepType;
   targetSelector?: string;
   position?: PositionType;
   action?: ActionType;
   skipAllowed?: boolean;
   highlightElement?: boolean;
 }
+
+export type StepType = 'tooltip' | 'highlight' | 'modal' | 'form' | 'tutorial' | 'checklist';
 
 export interface SimulationElementSnapshot {
   selector: string;

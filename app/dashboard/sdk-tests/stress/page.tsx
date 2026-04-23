@@ -118,7 +118,7 @@ export default function StressTestPage() {
       enabled: true,
       autoGenerate: false,
       autoPublish: true,
-      publishScenario: 'simple' as const,
+      publishScenario: 'stress' as const,
       autoActivatePublishedDrafts: true,
       publishConfig: {
         apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
