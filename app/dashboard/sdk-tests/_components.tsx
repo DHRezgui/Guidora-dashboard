@@ -33,26 +33,26 @@ export function SdkLabShell({
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white shadow-elevated md:px-8">
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#071126] via-[#0b1835] to-[#102346] px-6 py-6 text-white shadow-elevated md:px-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="bg-white/10 text-white hover:bg-white/15">
+              <Badge variant="secondary" className="border border-white/15 bg-slate-950/65 text-slate-100 hover:bg-slate-900">
                 SDK test lab
               </Badge>
               {badges.map((badge) => (
-                <Badge key={badge} variant="outline" className="border-white/15 bg-white/5 text-white/90">
+                <Badge key={badge} variant="outline" className="border-white/15 bg-slate-950/55 text-slate-200">
                   {badge}
                 </Badge>
               ))}
             </div>
             <div>
               <h1 data-tour-id={`tour-sdk-lab-heading-${pageKey}`} className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
-              <p className="mt-2 max-w-3xl text-sm text-white/70 md:text-base">{description}</p>
+              <p className="mt-2 max-w-3xl text-sm text-slate-200 md:text-base">{description}</p>
             </div>
           </div>
 
-          <Button variant="secondary" className="rounded-xl bg-white text-slate-900 hover:bg-white/90" asChild>
+          <Button variant="secondary" className="rounded-xl border border-white/15 bg-slate-950/75 text-slate-100 hover:bg-slate-900" asChild>
             <Link href="/dashboard" data-tour-id="tour-sdk-lab-action-back-dashboard">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour dashboard
@@ -70,10 +70,10 @@ export function SdkLabShell({
                 key={route.href}
                 variant={active ? 'default' : 'outline'}
                 className={cn(
-                  'rounded-full border-white/15 px-4',
+                  'rounded-full border px-4',
                   active
-                    ? 'bg-white text-slate-900 hover:bg-white/90'
-                    : 'border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white'
+                    ? 'border-orange-300/45 bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-[0_0_18px_rgba(255,107,0,0.28)] hover:from-orange-400 hover:to-pink-500'
+                    : 'border-white/15 bg-slate-950/55 text-slate-200 hover:border-orange-300/35 hover:bg-slate-900 hover:text-white'
                 )}
                 asChild
               >
@@ -90,10 +90,10 @@ export function SdkLabShell({
         </div>
       </div>
 
-      <Card className="border-border/60 shadow-card">
+      <Card className="border-white/10 bg-slate-900/45 shadow-card">
         <CardHeader>
-          <CardTitle>Conseil de test</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-slate-100">Conseil de test</CardTitle>
+          <CardDescription className="text-slate-300">
             Lance chaque écran avec le hook de génération contextuelle pour vérifier la pertinence des tours, la
             robustesse face au bruit et le comportement sur DOM dynamique.
           </CardDescription>

@@ -57,7 +57,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="phoenix-bg flex h-screen overflow-hidden text-slate-100">
       {/* Sidebar */}
       <Sidebar />
 
@@ -72,7 +72,7 @@ export default function DashboardLayout({
         )}
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-8 py-6">
+        <main className="flex-1 overflow-y-auto px-5 py-5 md:px-6">
           <div className="animate-fade-in">
             {children}
           </div>

@@ -230,8 +230,8 @@ export default function SettingsPage() {
           </div>
           <div className="p-6 space-y-5">
             <div className="flex justify-center">
-              <div className="h-20 w-20 rounded-2xl gradient-primary flex items-center justify-center text-white font-bold text-2xl shadow-soft">
-                {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || '?'}
+              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-white/15 bg-gradient-to-br from-orange-500 to-pink-600 text-2xl font-bold text-white shadow-soft">
+                {(user?.firstName?.[0] || user?.email?.[0] || '?').toUpperCase()}
               </div>
             </div>
             <div className="text-center">

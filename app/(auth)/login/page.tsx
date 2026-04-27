@@ -88,8 +88,8 @@ export default function LoginPage() {
         <div className="rounded-2xl bg-card border border-border/60 shadow-elevated overflow-hidden">
           {/* Header */}
           <div className="p-8 pb-0 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-primary shadow-soft mb-5">
-              <Icons.logo className="h-7 w-7 text-white" />
+            <div className="mb-5 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-black shadow-soft">
+              <Icons.logo className="h-full w-full object-cover" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">TrustDev Onboarding</h1>
             <p className="text-sm text-muted-foreground mt-1.5">

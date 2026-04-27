@@ -123,11 +123,11 @@ export default function OrganizationsPage() {
         ].map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.title} className={`${stat.gradient} rounded-2xl p-5 shadow-card border border-white/60`}>
+            <div key={stat.title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-5 shadow-card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-medium text-muted-foreground">{stat.title}</p>
-                  <p className="mt-1 text-2xl font-bold tracking-tight">{stat.value}</p>
+                  <p className="text-[13px] font-medium text-slate-400">{stat.title}</p>
+                  <p className="mt-1 text-2xl font-bold tracking-tight text-white">{stat.value}</p>
                 </div>
                 <div className={`rounded-xl p-2.5 ${stat.iconBg}`}>
                   <Icon className="h-5 w-5" />
@@ -223,8 +223,8 @@ export default function OrganizationsPage() {
                   <tr key={org.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-white font-semibold text-xs shadow-soft">
-                          {org.name[0].toUpperCase()}
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-gradient-to-br from-orange-500 to-pink-600 text-xs font-semibold text-white shadow-soft">
+                          {(org.name?.[0] || '?').toUpperCase()}
                         </div>
                         <div>
                           <p className="font-medium text-[13px]">{org.name}</p>

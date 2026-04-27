@@ -3,57 +3,31 @@
 @config "../tailwind.config.ts";
 
 :root {
-  --background: 220 20% 97%;
-  --foreground: 224 30% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 224 30% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 30% 12%;
-  --primary: 234 85% 62%;
+  --background: 211 50% 6%;
+  --foreground: 218 40% 90%;
+  --card: 213 27% 13%;
+  --card-foreground: 218 40% 90%;
+  --popover: 213 27% 13%;
+  --popover-foreground: 218 40% 90%;
+  --primary: 26 100% 62%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 20% 94%;
-  --secondary-foreground: 224 30% 12%;
-  --muted: 220 16% 93%;
-  --muted-foreground: 220 10% 46%;
-  --accent: 234 85% 96%;
-  --accent-foreground: 234 85% 42%;
-  --destructive: 0 72% 51%;
+  --secondary: 213 22% 19%;
+  --secondary-foreground: 218 36% 89%;
+  --muted: 213 20% 18%;
+  --muted-foreground: 220 18% 67%;
+  --accent: 318 100% 37%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 62%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 16% 90%;
-  --input: 220 16% 90%;
-  --ring: 234 85% 62%;
+  --border: 214 20% 24%;
+  --input: 214 20% 24%;
+  --ring: 26 100% 62%;
   --radius: 0.75rem;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --success: 152 69% 40%;
+  --success: 152 65% 45%;
   --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 0 0% 100%;
-}
-
-.dark {
-  --background: 224 30% 6%;
-  --foreground: 220 20% 95%;
-  --card: 224 28% 10%;
-  --card-foreground: 220 20% 95%;
-  --popover: 224 28% 10%;
-  --popover-foreground: 220 20% 95%;
-  --primary: 234 85% 65%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 224 28% 16%;
-  --secondary-foreground: 220 20% 95%;
-  --muted: 224 22% 16%;
-  --muted-foreground: 220 14% 55%;
-  --accent: 234 50% 18%;
-  --accent-foreground: 234 85% 75%;
-  --destructive: 0 62% 40%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 224 22% 16%;
-  --input: 224 22% 16%;
-  --ring: 234 85% 65%;
-  --success: 152 69% 40%;
-  --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
+  --warning: 42 95% 56%;
   --warning-foreground: 0 0% 100%;
 }
 
@@ -66,10 +40,35 @@
     font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(255, 107, 0, 0.14), transparent 28%),
+      radial-gradient(circle at 100% 100%, rgba(187, 0, 140, 0.14), transparent 32%),
+      #060f18;
+    background-attachment: fixed;
   }
 }
 
 @layer utilities {
+  .phoenix-bg {
+    background:
+      radial-gradient(circle at 0% 0%, rgba(255, 107, 0, 0.14), transparent 28%),
+      radial-gradient(circle at 100% 100%, rgba(187, 0, 140, 0.14), transparent 32%),
+      #060f18;
+  }
+  .phoenix-glass {
+    background: rgba(24, 32, 42, 0.62);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  }
+  .phoenix-primary {
+    background: linear-gradient(135deg, #ff6b00 0%, #bb008c 100%);
+  }
+  .phoenix-active {
+    background: linear-gradient(90deg, rgba(255, 107, 0, 0.2), transparent);
+    border-left: 2px solid #ff6b00;
+  }
   .glass {
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(12px);

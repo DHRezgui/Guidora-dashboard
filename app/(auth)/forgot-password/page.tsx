@@ -57,11 +57,11 @@ export default function ForgotPasswordPage() {
         <div className="rounded-2xl bg-card border border-border/60 shadow-elevated overflow-hidden">
           {/* Header */}
           <div className="p-8 pb-0 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-primary shadow-soft mb-5">
+            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-soft mb-5 ${isSent ? 'gradient-primary' : 'bg-black overflow-hidden'}`}>
               {isSent ? (
                 <Mail className="h-7 w-7 text-white" />
               ) : (
-                <Icons.logo className="h-7 w-7 text-white" />
+                <Icons.logo className="h-full w-full object-cover" />
               )}
             </div>
             <h1 className="text-2xl font-bold tracking-tight">

@@ -48,145 +48,132 @@ export default function DashboardPage() {
     {
       title: 'Total utilisateurs',
       value: stats.totalUsers,
-      subtitle: 'Comptes enregistrés',
+      subtitle: 'Comptes enregistres',
+      delta: '+12.4%',
       icon: Icons.users,
-      gradient: 'gradient-card-blue',
-      iconBg: 'bg-primary/10 text-primary',
+      iconBg: 'text-orange-400 bg-orange-500/10',
       visible: isAdmin,
     },
     {
       title: 'Utilisateurs actifs',
       value: stats.activeUsers,
       subtitle: !loading && stats.totalUsers > 0 ? `${Math.round((stats.activeUsers / stats.totalUsers) * 100)}% du total` : 'Aucun utilisateur',
+      delta: '+5.2%',
       icon: Icons.active,
-      gradient: 'gradient-card-green',
-      iconBg: 'bg-emerald-500/10 text-emerald-600',
+      iconBg: 'text-pink-400 bg-pink-500/10',
       visible: isAdmin,
     },
     {
       title: 'Administrateurs',
       value: stats.adminCount,
       subtitle: 'Gestion des comptes',
+      delta: 'Stable',
       icon: Icons.admin,
-      gradient: 'gradient-card-purple',
-      iconBg: 'bg-purple-500/10 text-purple-600',
+      iconBg: 'text-amber-300 bg-amber-400/10',
       visible: isAdmin,
     },
     {
       title: 'Organisations',
       value: stats.totalOrganizations,
-      subtitle: 'Organisations enregistrées',
+      subtitle: 'Organisations enregistrees',
+      delta: '+8.0%',
       icon: Icons.building,
-      gradient: 'gradient-card-amber',
-      iconBg: 'bg-amber-500/10 text-amber-600',
+      iconBg: 'text-orange-300 bg-orange-400/10',
       visible: isAdmin || user?.role === 'DEVELOPER',
     },
   ].filter((card) => card.visible);
 
   return (
-    <div className="space-y-8">
-      {/* Welcome section */}
-      <div className="relative overflow-hidden rounded-2xl gradient-primary px-8 py-8 text-white shadow-elevated">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvc3ZnPg==')] opacity-60" />
+    <div className="space-y-6">
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#16131f] via-[#101a32] to-[#051733] p-6 text-white shadow-[0_24px_60px_rgba(5,10,24,0.5)]">
+        <div className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute right-10 -bottom-24 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Bonjour, {user?.firstName || 'Admin'} 👋
-          </h1>
-          <p className="mt-1 text-white/70 text-sm">
-            Bienvenue sur votre tableau de bord TrustDev Onboarding
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">Bonjour, {user?.firstName || 'Admin'}</h1>
+          <p className="mt-2 text-sm text-slate-200 md:text-base">Bienvenue sur votre tableau de bord TrustDev Onboarding.</p>
         </div>
-      </div>
+      </section>
 
-      {/* Stats cards */}
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div
-              key={card.title}
-              className={`${card.gradient} rounded-2xl p-5 shadow-card border border-white/60 animate-slide-up`}
-            >
-              <div className="flex items-start justify-between">
+            <div key={card.title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-5 shadow-card">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-medium text-muted-foreground">{card.title}</p>
-                  <p className="mt-2 text-3xl font-bold tracking-tight">{loading ? '...' : card.value}</p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">{card.subtitle}</p>
+                  <p className="text-[13px] font-medium text-slate-400">{card.title}</p>
+                  <p className="mt-1 text-3xl font-bold tracking-tight text-white">{loading ? '...' : card.value}</p>
                 </div>
                 <div className={`rounded-xl p-2.5 ${card.iconBg}`}>
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
+              <p className="mt-2 text-xs text-slate-500">{card.subtitle}</p>
             </div>
           );
         })}
-      </div>
+      </section>
 
-      {/* Quick actions */}
-      <div>
-        <h2 className="text-lg font-bold mb-4">Actions rapides</h2>
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="group rounded-2xl bg-card border border-border/60 p-6 shadow-card hover:shadow-elevated transition-all duration-300">
-            <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-primary/10 p-3">
-                <Icons.users className="h-5 w-5 text-primary" />
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold text-slate-100">Actions rapides</h2>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {isAdmin && (
+            <div className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-400/35 hover:bg-slate-900/65 hover:shadow-elevated">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-primary/10 p-2.5 text-primary transition-colors group-hover:bg-primary/20">
+                  <Icons.users className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-slate-100">Gerer les utilisateurs</h3>
+                  <p className="text-sm text-slate-400">Créez, modifiez et supprimez les comptes utilisateurs.</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-[15px]">Gérer les utilisateurs</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Créez, modifiez et supprimez les comptes utilisateurs
-                </p>
-                <Button className="mt-4 rounded-xl" size="sm" asChild>
-                  <Link href="/dashboard/users">
-                    <Icons.plus className="mr-2 h-3.5 w-3.5" />
-                    Nouvel utilisateur
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="group rounded-2xl bg-card border border-border/60 p-6 shadow-card hover:shadow-elevated transition-all duration-300">
-            <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-purple-500/10 p-3">
-                <Icons.tours className="h-5 w-5 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-[15px]">Créer un parcours</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Concevez des parcours guidés interactifs pour vos utilisateurs
-                </p>
-                <Button className="mt-4 rounded-xl" size="sm" asChild>
-                  <Link href="/dashboard/tours/create">
-                    <Icons.plus className="mr-2 h-3.5 w-3.5" />
-                    Nouveau parcours
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="group rounded-2xl bg-card border border-border/60 p-6 shadow-card hover:shadow-elevated transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="rounded-xl bg-emerald-500/10 p-3">
-              <Icons.analytics className="h-5 w-5 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-[15px]">SDK Test Lab</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ouvre les 3 interfaces de test pour valider le moteur contextuel sur des scénarios simples, moyens et dynamiques.
-              </p>
-              <Button className="mt-4 rounded-xl" size="sm" asChild>
-                <Link href="/dashboard/sdk-tests">
-                  <Icons.plus className="mr-2 h-3.5 w-3.5" />
-                  Ouvrir le lab
+              <Button className="mt-4 rounded-xl" asChild>
+                <Link href="/dashboard/users/create">
+                  <Icons.plus className="mr-2 h-4 w-4" />
+                  Nouvel utilisateur
                 </Link>
               </Button>
             </div>
+          )}
+
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-400/35 hover:bg-slate-900/65 hover:shadow-elevated">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-pink-500/10 p-2.5 text-pink-400 transition-colors group-hover:bg-pink-500/20">
+                <Icons.tours className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-slate-100">Creer un parcours</h3>
+                <p className="text-sm text-slate-400">Concevez des parcours guides interactifs pour vos utilisateurs.</p>
+              </div>
+            </div>
+            <Button className="mt-4 rounded-xl" asChild>
+              <Link href="/dashboard/tours/create">
+                <Icons.plus className="mr-2 h-4 w-4" />
+                Nouveau parcours
+              </Link>
+            </Button>
+          </div>
+
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/50 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:bg-slate-900/65 hover:shadow-elevated">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-400 transition-colors group-hover:bg-emerald-500/20">
+                <Icons.analytics className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-slate-100">SDK Test Lab</h3>
+                <p className="text-sm text-slate-400">Ouvrez les interfaces de test pour valider le moteur contextuel.</p>
+              </div>
+            </div>
+            <Button className="mt-4 rounded-xl" asChild>
+              <Link href="/dashboard/sdk-tests">
+                <Icons.eye className="mr-2 h-4 w-4" />
+                Ouvrir le lab
+              </Link>
+            </Button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

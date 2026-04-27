@@ -738,7 +738,7 @@ export default function TourSimulator({
 
   if (!hasSteps || !currentStep) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 w-full rounded-2xl border-2 border-dashed border-slate-200">
+      <div className="h-full w-full rounded-2xl border-2 border-dashed border-white/15 bg-slate-900/45 p-8 text-center flex flex-col items-center justify-center">
         <Icons.info className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-xl font-semibold mb-2">Aucune étape à simuler</h3>
         <p className="text-muted-foreground mb-6">Ajoutez des étapes à votre parcours pour pouvoir tester l&apos;expérience utilisateur.</p>
@@ -749,14 +749,14 @@ export default function TourSimulator({
 
   if (!isPlaying) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 bg-slate-50 w-full rounded-2xl border-2 border-dashed border-slate-200">
-        <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg border border-slate-100 text-center space-y-6">
+      <div className="h-full w-full rounded-2xl border-2 border-dashed border-white/15 bg-slate-900/45 p-8 flex flex-col items-center justify-center">
+        <div className="w-full max-w-md space-y-6 rounded-xl border border-white/10 bg-slate-950/80 p-8 text-center shadow-lg backdrop-blur-xl">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
             <Icons.play className="h-8 w-8 text-primary ml-1" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold mb-2">Prêt à simuler ?</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="mb-2 text-2xl font-bold text-white">Pret a simuler ?</h2>
+            <p className="text-sm text-slate-400">
               Découvrez exactement ce que verront vos utilisateurs. {steps.length} étape(s) prêtes à être jouées.
             </p>
           </div>
@@ -854,7 +854,7 @@ export default function TourSimulator({
   );
 
   return (
-    <div ref={stageRef} className="relative w-full h-full bg-slate-50 overflow-hidden flex items-center justify-center rounded-xl border border-slate-200">
+    <div ref={stageRef} className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-slate-900/50">
       <div className="absolute top-4 left-4 z-50 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md backdrop-blur">
         <Button
           variant={viewMode === 'preview' ? 'default' : 'ghost'}

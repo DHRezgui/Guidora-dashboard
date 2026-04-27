@@ -35,28 +35,28 @@ export default function Sidebar() {
   ].filter((item) => !role || item.roles.includes(role));
 
   return (
-    <aside className="w-65 flex flex-col bg-card border-r border-border/60">
+    <aside className="w-64 flex flex-col border-r border-white/10 bg-slate-950/55 backdrop-blur-xl">
       {/* Logo & Branding */}
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
-            <Icons.logo className="h-5 w-5 text-white" />
+          <div className="h-11 w-11 overflow-hidden rounded-xl bg-black shadow-soft">
+            <Icons.logo className="h-full w-full object-cover" />
           </div>
           <div>
-            <h2 className="font-bold text-[15px] tracking-tight">TrustDev</h2>
-            <p className="text-[11px] text-muted-foreground font-medium">{orgName || 'Onboarding Platform'}</p>
+            <h2 className="font-bold text-[15px] tracking-tight text-white">TrustDev</h2>
+            <p className="text-[11px] font-medium text-orange-300/90">{orgName || 'Onboarding Platform'}</p>
           </div>
         </div>
       </div>
 
       {/* Separator */}
       <div className="px-5">
-        <div className="h-px bg-border/60" />
+        <div className="h-px bg-white/10" />
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Menu</p>
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Menu</p>
         <div className="space-y-0.5">
           {navigation.map((item) => {
             const Icon = item.icon;
@@ -68,11 +68,11 @@ export default function Sidebar() {
                 className={cn(
                   'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
                   active
-                    ? 'gradient-primary text-white shadow-soft'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'phoenix-active text-orange-300'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
                 )}
               >
-                <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-white' : 'text-muted-foreground group-hover:text-accent-foreground')} />
+                <Icon className={cn('h-4.5 w-4.5 transition-colors', active ? 'text-orange-300' : 'text-slate-500 group-hover:text-slate-200')} />
                 {item.name}
               </Link>
             );
@@ -82,18 +82,18 @@ export default function Sidebar() {
 
       {/* User profile */}
       <div className="px-3 pb-4">
-        <div className="rounded-xl bg-muted/50 p-3">
+        <div className="phoenix-glass rounded-xl p-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg gradient-primary flex items-center justify-center text-white font-semibold text-sm shadow-soft">
+            <div className="phoenix-primary h-9 w-9 rounded-lg flex items-center justify-center text-white font-semibold text-sm shadow-soft">
               {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{user?.firstName || user?.email}</p>
-              <p className="text-[11px] text-muted-foreground truncate capitalize">{user?.role?.toLowerCase()}</p>
+              <p className="truncate text-sm font-semibold text-white">{user?.firstName || user?.email}</p>
+              <p className="truncate text-[11px] capitalize text-slate-400">{user?.role?.toLowerCase()}</p>
             </div>
             <button
               onClick={() => authService.logout()}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
+              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-orange-300"
               title="Déconnexion"
             >
               <Icons.logout className="h-4 w-4" />
