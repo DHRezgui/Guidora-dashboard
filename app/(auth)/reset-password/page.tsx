@@ -66,7 +66,7 @@ function ResetPasswordForm() {
           Lien de réinitialisation invalide. Veuillez refaire une demande.
         </div>
         <Link href="/forgot-password" className="block">
-          <Button variant="outline" className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 hover:bg-slate-900 hover:text-white">
+          <Button variant="outline" className="h-10 w-full rounded-xl border-slate-300 bg-white/90 text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-white">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Demander un nouveau lien
           </Button>
@@ -80,7 +80,7 @@ function ResetPasswordForm() {
       <div className="space-y-5">
         <div className="flex items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />
-          <p className="text-sm text-emerald-100">
+          <p className="text-sm text-emerald-700 dark:text-emerald-100">
             Votre mot de passe a été réinitialisé avec succès !
           </p>
         </div>
@@ -165,19 +165,19 @@ export default function ResetPasswordPage() {
           priority
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.25),transparent_35%),linear-gradient(135deg,rgba(3,7,18,0.82),rgba(2,6,23,0.72)_45%,rgba(15,23,42,0.82))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(255,255,255,0.72)_45%,rgba(248,250,252,0.82))] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.25),transparent_35%),linear-gradient(135deg,rgba(3,7,18,0.82),rgba(2,6,23,0.72)_45%,rgba(15,23,42,0.82))]" />
       </div>
 
       <div className="relative w-full max-w-md mx-4 animate-fade-in">
         <div className="pointer-events-none absolute -inset-6 rounded-[28px] bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_48%),radial-gradient(circle_at_80%_80%,rgba(236,72,153,0.14),transparent_52%),radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.14),transparent_58%)] blur-2xl" />
-        <div className="relative rounded-2xl bg-card/90 border border-white/15 shadow-elevated shadow-[0_14px_45px_rgba(2,6,23,0.45),0_0_0_1px_rgba(255,255,255,0.03),0_0_28px_rgba(30,64,175,0.12)] backdrop-blur-xl overflow-hidden">
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-card/90 shadow-elevated shadow-[0_14px_45px_rgba(2,6,23,0.16),0_0_0_1px_rgba(148,163,184,0.08),0_0_24px_rgba(245,158,11,0.12)] backdrop-blur-xl dark:border-white/15 dark:shadow-[0_14px_45px_rgba(2,6,23,0.45),0_0_0_1px_rgba(255,255,255,0.03),0_0_28px_rgba(30,64,175,0.12)]">
           {/* Header */}
           <div className="p-8 pb-0 text-center">
             <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-gradient-to-br from-orange-500 to-pink-600 shadow-soft shadow-[0_0_24px_rgba(255,107,0,0.24)]">
               <KeyRound className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-100">Nouveau mot de passe</h1>
-            <p className="mt-1.5 text-sm text-slate-300">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Nouveau mot de passe</h1>
+            <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
               Choisissez un nouveau mot de passe sécurisé
             </p>
           </div>

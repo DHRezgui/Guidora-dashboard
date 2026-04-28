@@ -133,7 +133,7 @@ export default function SettingsPage() {
         <div className="absolute right-[-50px] top-28 h-56 w-56 rounded-full bg-pink-500/10 blur-3xl" />
       </div>
       {/* Page header */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_16px_36px_rgba(2,6,23,0.35)]">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-[0_14px_30px_rgba(2,6,23,0.12)] dark:border-white/10 dark:shadow-[0_16px_36px_rgba(2,6,23,0.35)]">
         <video
           className="absolute inset-0 h-full w-full object-cover"
           autoPlay
@@ -144,16 +144,16 @@ export default function SettingsPage() {
         >
           <source src="/settings.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(249,115,22,0.2),transparent_40%),linear-gradient(160deg,rgba(15,23,42,0.84),rgba(15,23,42,0.78)_55%,rgba(2,6,23,0.9))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(249,115,22,0.14),transparent_40%),linear-gradient(160deg,rgba(255,255,255,0.82),rgba(255,255,255,0.72)_55%,rgba(248,250,252,0.86))] dark:bg-[radial-gradient(circle_at_18%_20%,rgba(249,115,22,0.2),transparent_40%),linear-gradient(160deg,rgba(15,23,42,0.84),rgba(15,23,42,0.78)_55%,rgba(2,6,23,0.9))]" />
         <div className="relative z-10 p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Paramètres</h1>
-            <p className="mt-1 text-sm text-slate-300">Gérez votre profil, vos préférences et la sécurité de votre compte.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Paramètres</h1>
+            <p className="mt-1 text-sm text-slate-900 dark:text-slate-300">Gérez votre profil, vos préférences et la sécurité de votre compte.</p>
           </div>
           <Button
             variant="outline"
-            className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 transition-transform hover:scale-105 hover:bg-slate-900 hover:text-white active:scale-[0.99] sm:w-auto"
+            className="h-10 w-full rounded-xl border-slate-300 bg-white/90 text-slate-700 transition-transform hover:scale-105 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.99] dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-white sm:w-auto"
             asChild
           >
             <Link href="/dashboard">
@@ -167,10 +167,10 @@ export default function SettingsPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile form */}
-        <div className="md:col-span-2 rounded-2xl border border-white/10 bg-slate-900/55 shadow-[0_14px_34px_rgba(2,6,23,0.32)] backdrop-blur-sm">
+        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white/85 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/55 dark:shadow-[0_14px_34px_rgba(2,6,23,0.32)]">
           <div className="p-6 border-b border-border/60">
-            <h2 className="text-lg font-semibold text-white">Mon profil</h2>
-            <p className="mt-0.5 text-sm text-slate-300">Modifiez vos informations personnelles</p>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Mon profil</h2>
+            <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">Modifiez vos informations personnelles</p>
           </div>
           <div className="p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -209,14 +209,14 @@ export default function SettingsPage() {
                   >
                     <SelectTrigger
                       id="role"
-                      className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 px-3 text-sm text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60"
+                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 px-3 text-sm text-slate-700 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100"
                     >
                       <SelectValue placeholder="Choisir un rôle" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
-                      <SelectItem value="ADMIN" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Admin</SelectItem>
-                      <SelectItem value="DEVELOPER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Développeur</SelectItem>
-                      <SelectItem value="USER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Utilisateur</SelectItem>
+                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="ADMIN" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Admin</SelectItem>
+                      <SelectItem value="DEVELOPER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Développeur</SelectItem>
+                      <SelectItem value="USER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Utilisateur</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.role && (
@@ -252,7 +252,7 @@ export default function SettingsPage() {
               )}
 
               {success && (
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-emerald-700 text-sm">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-500/10 dark:text-emerald-300">
                   {success}
                 </div>
               )}
@@ -272,9 +272,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Profile card */}
-        <div className="h-fit rounded-2xl border border-white/10 bg-slate-900/55 shadow-[0_14px_34px_rgba(2,6,23,0.32)] backdrop-blur-sm">
+        <div className="h-fit rounded-2xl border border-slate-200 bg-white/85 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/55 dark:shadow-[0_14px_34px_rgba(2,6,23,0.32)]">
           <div className="p-6 border-b border-border/60">
-            <h2 className="text-lg font-semibold text-white">Mon compte</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Mon compte</h2>
           </div>
           <div className="p-6 space-y-5">
             <div className="flex justify-center">

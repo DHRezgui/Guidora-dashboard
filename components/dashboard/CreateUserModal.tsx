@@ -146,14 +146,14 @@ export default function CreateUserModal({ onClose, onCreated }: CreateUserModalP
                   >
                     <SelectTrigger
                       id="role"
-                      className="h-9 w-full rounded-xl border-white/15 bg-slate-950/55 px-3 text-sm text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60"
+                      className="h-9 w-full rounded-xl border-slate-300 bg-white/90 px-3 text-sm text-slate-700 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100"
                     >
                       <SelectValue placeholder="Choisir un rôle" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
-                      <SelectItem value="USER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Utilisateur</SelectItem>
-                      <SelectItem value="DEVELOPER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Développeur</SelectItem>
-                      <SelectItem value="ADMIN" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Administrateur</SelectItem>
+                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="USER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Utilisateur</SelectItem>
+                      <SelectItem value="DEVELOPER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Développeur</SelectItem>
+                      <SelectItem value="ADMIN" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Administrateur</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.role && (

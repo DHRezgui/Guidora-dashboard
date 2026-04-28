@@ -12,10 +12,10 @@ import CreateOrganizationModal from '@/components/dashboard/CreateOrganizationMo
 import DeleteOrganizationModal from '@/components/dashboard/DeleteOrganizationModal';
 
 const planBadgeStyles: Record<string, string> = {
-  FREE: 'border border-slate-400/30 bg-slate-500/12 text-slate-200',
-  STARTER: 'border border-blue-400/30 bg-blue-500/12 text-blue-200',
-  PRO: 'border border-purple-400/30 bg-purple-500/12 text-purple-200',
-  ENTERPRISE: 'border border-orange-400/30 bg-orange-500/12 text-orange-200',
+  FREE: 'border border-slate-300/60 bg-slate-100 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/12 dark:text-slate-200',
+  STARTER: 'border border-blue-300/50 bg-blue-50 text-blue-700 dark:border-blue-400/30 dark:bg-blue-500/12 dark:text-blue-200',
+  PRO: 'border border-purple-300/50 bg-purple-50 text-purple-700 dark:border-purple-400/30 dark:bg-purple-500/12 dark:text-purple-200',
+  ENTERPRISE: 'border border-orange-300/50 bg-orange-50 text-orange-700 dark:border-orange-400/30 dark:bg-orange-500/12 dark:text-orange-200',
 };
 
 export default function OrganizationsPage() {
@@ -119,23 +119,23 @@ export default function OrganizationsPage() {
       {/* Stats */}
       <div className="grid gap-3 md:grid-cols-4">
         {[
-          { title: 'Total', value: organizations.length, icon: Icons.building, tone: 'from-slate-800/90 to-slate-900/70' },
-          { title: 'Actives', value: organizations.filter((o) => o.isActive).length, icon: Icons.active, tone: 'from-emerald-600/20 to-slate-900/70' },
-          { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.admin, tone: 'from-purple-600/20 to-slate-900/70' },
-          { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.admin, tone: 'from-orange-500/20 to-slate-900/70' },
+          { title: 'Total', value: organizations.length, icon: Icons.building, tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70' },
+          { title: 'Actives', value: organizations.filter((o) => o.isActive).length, icon: Icons.active, tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70' },
+          { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.admin, tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70' },
+          { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.admin, tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70' },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
             <div
               key={stat.title}
-              className={`rounded-2xl border border-white/10 bg-gradient-to-br ${stat.tone} p-4 shadow-[0_10px_30px_rgba(2,6,23,0.35)] backdrop-blur-sm min-h-[96px]`}
+              className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${stat.tone} p-4 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm min-h-[96px] dark:border-white/10 dark:shadow-[0_10px_30px_rgba(2,6,23,0.35)]`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{stat.title}</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{stat.value}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{stat.title}</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stat.value}</p>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-slate-950/65 p-2.5 text-orange-300">
+                <div className="rounded-xl border border-slate-200 bg-white/80 p-2.5 text-orange-500 dark:border-white/10 dark:bg-slate-950/65 dark:text-orange-300">
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
@@ -239,7 +239,7 @@ export default function OrganizationsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ${planBadgeStyles[org.plan] || 'border border-slate-400/30 bg-slate-500/12 text-slate-200'}`}>
+                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ${planBadgeStyles[org.plan] || 'border border-slate-300/60 bg-slate-100 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/12 dark:text-slate-200'}`}>
                         {org.plan}
                       </span>
                     </td>
@@ -283,7 +283,7 @@ export default function OrganizationsPage() {
         )}
 
         {!loading && filteredOrganizations.length > 0 && (
-          <div className="flex items-center justify-between border-t border-border/60 bg-slate-900/35 px-4 py-3">
+          <div className="flex items-center justify-between border-t border-border/60 bg-slate-100/70 px-4 py-3 dark:bg-slate-900/35">
             <p className="text-sm text-muted-foreground">
               {filteredOrganizations.length} organisation{filteredOrganizations.length > 1 ? 's' : ''} au total
             </p>

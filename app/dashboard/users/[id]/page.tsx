@@ -220,14 +220,14 @@ export default function EditUserPage() {
                 >
                   <SelectTrigger
                     id="role"
-                    className="h-9 w-full rounded-xl border-white/15 bg-slate-950/55 px-3 text-sm text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60"
+                    className="h-9 w-full rounded-xl border-slate-300 bg-white/90 px-3 text-sm text-slate-700 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100"
                   >
                     <SelectValue placeholder="Choisir un rôle" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
-                    <SelectItem value="USER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Utilisateur</SelectItem>
-                    <SelectItem value="DEVELOPER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Développeur</SelectItem>
-                    <SelectItem value="ADMIN" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Administrateur</SelectItem>
+                  <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectItem value="USER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Utilisateur</SelectItem>
+                    <SelectItem value="DEVELOPER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Développeur</SelectItem>
+                    <SelectItem value="ADMIN" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Administrateur</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -237,7 +237,7 @@ export default function EditUserPage() {
                   type="checkbox"
                   id="isActive"
                   {...register('isActive')}
-                  className="h-4 w-4 rounded border-white/25 bg-slate-950/55 text-orange-500 accent-orange-500 focus:ring-2 focus:ring-orange-400/35"
+                  className="h-4 w-4 rounded border-slate-300 bg-white/90 text-orange-500 accent-orange-500 focus:ring-2 focus:ring-orange-400/35 dark:border-white/25 dark:bg-slate-950/55"
                 />
                 <Label htmlFor="isActive" className="text-[13px]">Compte actif</Label>
               </div>
@@ -249,7 +249,7 @@ export default function EditUserPage() {
               )}
 
               {success && (
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-emerald-700 text-sm">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-500/10 dark:text-emerald-300">
                   {success}
                 </div>
               )}
@@ -330,12 +330,12 @@ export default function EditUserPage() {
                       value={selectedOrgName}
                       onValueChange={setSelectedOrgName}
                     >
-                      <SelectTrigger className="h-8 w-full rounded-lg border-white/15 bg-slate-950/55 px-2 text-xs text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60">
+                    <SelectTrigger className="h-8 w-full rounded-lg border-slate-300 bg-white/90 px-2 text-xs text-slate-700 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100">
                         <SelectValue placeholder="Sélectionner..." />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
                         {allOrgs.map((org) => (
-                          <SelectItem key={org.id} value={org.name} className="text-slate-100 focus:bg-orange-500/20 focus:text-white">
+                          <SelectItem key={org.id} value={org.name} className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">
                             {org.name}
                           </SelectItem>
                         ))}

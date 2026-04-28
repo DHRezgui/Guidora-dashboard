@@ -83,10 +83,10 @@ export default function SdkTestsHubPage() {
         })}
       </div>
 
-      <Card className="border-white/10 bg-slate-900/45 shadow-card">
+      <Card className="border-slate-200 bg-white/85 shadow-card dark:border-white/10 dark:bg-slate-900/45">
         <CardHeader>
-          <CardTitle className="text-slate-100">Ce que tu peux vérifier</CardTitle>
-          <CardDescription className="text-slate-300">Utilise ces interfaces pour observer les tours proposés, le debug report et les comportements de filtrage/conflict resolution.</CardDescription>
+          <CardTitle className="text-slate-800 dark:text-slate-100">Ce que tu peux vérifier</CardTitle>
+          <CardDescription className="text-slate-600 dark:text-slate-300">Utilise ces interfaces pour observer les tours proposés, le debug report et les comportements de filtrage/conflict resolution.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-3">
           {[
@@ -94,7 +94,7 @@ export default function SdkTestsHubPage() {
             'La stabilité des sélecteurs sur différents layouts',
             'Le comportement sur DOM dynamique et bruit UI',
           ].map((item) => (
-            <div key={item} className="flex items-start gap-2 rounded-2xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">
+            <div key={item} className="flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
               <span>{item}</span>
             </div>

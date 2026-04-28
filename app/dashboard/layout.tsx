@@ -57,7 +57,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="phoenix-bg flex h-screen overflow-hidden text-slate-100">
+    <div className="phoenix-bg flex h-screen overflow-hidden text-slate-900 dark:text-slate-100">
       {/* Sidebar */}
       <Sidebar />
 

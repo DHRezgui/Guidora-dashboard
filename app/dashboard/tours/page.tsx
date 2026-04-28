@@ -221,8 +221,8 @@ export default function ToursPage() {
 				{/* En-tête */}
 				<div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-center">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight text-white">Parcours guides</h1>
-						<p className="mt-1 text-sm text-slate-400">
+						<h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Parcours guides</h1>
+						<p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
 							Gerez, modifiez et publiez vos parcours d'integration depuis votre espace.
 						</p>
 					</div>
@@ -236,23 +236,23 @@ export default function ToursPage() {
 
 				<div className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 					{[
-						{ label: 'Total parcours', value: toursStats.total, icon: Icons.tours, tone: 'from-slate-800/90 to-slate-900/70' },
-						{ label: 'Parcours actifs', value: toursStats.active, icon: Icons.active, tone: 'from-emerald-600/20 to-slate-900/70' },
-						{ label: 'Etapes cumulees', value: toursStats.steps, icon: Icons.layers, tone: 'from-cyan-500/20 to-slate-900/70' },
-						{ label: 'Moy. etapes / parcours', value: toursStats.avgSteps, icon: Icons.analytics, tone: 'from-orange-500/20 to-slate-900/70' },
+						{ label: 'Total parcours', value: toursStats.total, icon: Icons.tours, tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70' },
+						{ label: 'Parcours actifs', value: toursStats.active, icon: Icons.active, tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70' },
+						{ label: 'Etapes cumulees', value: toursStats.steps, icon: Icons.layers, tone: 'from-cyan-100 to-white dark:from-cyan-500/20 dark:to-slate-900/70' },
+						{ label: 'Moy. etapes / parcours', value: toursStats.avgSteps, icon: Icons.analytics, tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70' },
 					].map((item) => {
 						const Icon = item.icon;
 						return (
 							<div
 								key={item.label}
-								className={`rounded-2xl border border-white/10 bg-gradient-to-br ${item.tone} p-4 shadow-[0_10px_30px_rgba(2,6,23,0.35)] backdrop-blur-sm`}
+								className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${item.tone} p-4 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm dark:border-white/10 dark:shadow-[0_10px_30px_rgba(2,6,23,0.35)]`}
 							>
 								<div className="flex items-center justify-between">
 									<div>
-										<p className="text-xs font-medium uppercase tracking-wide text-slate-400">{item.label}</p>
-										<p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+										<p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{item.label}</p>
+										<p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{item.value}</p>
 									</div>
-									<div className="rounded-xl border border-white/10 bg-slate-950/65 p-2.5 text-orange-300">
+									<div className="rounded-xl border border-slate-200 bg-white/80 p-2.5 text-orange-500 dark:border-white/10 dark:bg-slate-950/65 dark:text-orange-300">
 										<Icon className="h-4 w-4" />
 									</div>
 								</div>
@@ -270,12 +270,12 @@ export default function ToursPage() {
 						}}
 					>
 						<div className="relative flex-1">
-							<Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+							<Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
 							<input
 								value={filterInput}
 								onChange={(e) => setFilterInput(e.target.value)}
 								placeholder="Filtrer par URL cible..."
-								className="h-10 w-full rounded-lg border border-white/15 bg-slate-900/45 pl-9 pr-9 text-sm text-slate-200 shadow-sm outline-none transition-colors placeholder:text-slate-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
+								className="h-10 w-full rounded-lg border border-slate-300 bg-white/85 pl-9 pr-9 text-sm text-slate-800 shadow-sm outline-none transition-colors placeholder:text-slate-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-200"
 							/>
 							{filterInput ? (
 								<button
@@ -284,7 +284,7 @@ export default function ToursPage() {
 										setFilterInput('');
 										setFilterQuery('');
 									}}
-									className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+									className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-100 dark:hover:text-slate-600"
 									aria-label="Effacer le filtre"
 								>
 									<Icons.close className="h-3.5 w-3.5" />
@@ -303,21 +303,21 @@ export default function ToursPage() {
 
 				{/* Contenu */}
 				{isLoading ? (
-					<Card className="border-white/10 bg-slate-900/45 backdrop-blur-sm">
-						<CardContent className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-slate-500">
+					<Card className="border-slate-200 bg-white/85 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/45">
+						<CardContent className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-slate-600 dark:text-slate-500">
 							<Icons.spinner className="h-6 w-6 animate-spin text-primary" />
 							<p>Chargement de vos parcours...</p>
 						</CardContent>
 					</Card>
 				) : tours.length === 0 ? (
-					<Card className="border-white/15 border-dashed bg-slate-900/45 shadow-sm">
+					<Card className="border-slate-300 border-dashed bg-white/85 shadow-sm dark:border-white/15 dark:bg-slate-900/45">
 						<CardContent className="flex flex-col items-center justify-center gap-4 py-20 text-center">
 							<div className="rounded-full bg-primary/10 p-4">
 								<Icons.tours className="h-8 w-8 text-primary" />
 							</div>
 							<div className="max-w-[400px]">
-								<h3 className="mb-1 text-lg font-semibold text-slate-900">Aucun parcours pour le moment</h3>
-								<p className="text-sm text-slate-500">
+								<h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Aucun parcours pour le moment</h3>
+								<p className="text-sm text-slate-600 dark:text-slate-400">
 									Vous n'avez pas encore cree de parcours guide. Creer un parcours vous permettra d'accompagner vos utilisateurs de maniere interactive.
 								</p>
 							</div>
@@ -330,11 +330,11 @@ export default function ToursPage() {
 						</CardContent>
 					</Card>
 				) : filteredTours.length === 0 ? (
-					<Card className="border-white/15 border-dashed bg-slate-900/45 shadow-sm">
+					<Card className="border-slate-300 border-dashed bg-white/85 shadow-sm dark:border-white/15 dark:bg-slate-900/45">
 						<CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-							<Icons.search className="h-8 w-8 text-slate-300" />
-							<h3 className="text-base font-semibold text-slate-800">Aucun parcours ne correspond au filtre</h3>
-							<p className="text-sm text-slate-500">Essayez une autre URL cible.</p>
+							<Icons.search className="h-8 w-8 text-slate-400 dark:text-slate-300" />
+							<h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">Aucun parcours ne correspond au filtre</h3>
+							<p className="text-sm text-slate-600 dark:text-slate-400">Essayez une autre URL cible.</p>
 							<Button
 								variant="outline"
 								onClick={() => {
@@ -351,7 +351,7 @@ export default function ToursPage() {
 						{filteredTours.map((tour) => (
 							<Card 
 								key={tour.id || tour.name} 
-								className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(15,23,42,0.9),rgba(15,23,42,0.7)_55%,rgba(2,6,23,0.95))] shadow-[0_12px_28px_rgba(2,6,23,0.36)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/35 hover:shadow-[0_22px_40px_rgba(249,115,22,0.18)]"
+								className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(160deg,rgba(255,255,255,0.95),rgba(248,250,252,0.95)_55%,rgba(241,245,249,0.95))] shadow-[0_12px_28px_rgba(2,6,23,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/35 hover:shadow-[0_22px_40px_rgba(249,115,22,0.18)] dark:border-white/10 dark:bg-[linear-gradient(160deg,rgba(15,23,42,0.9),rgba(15,23,42,0.7)_55%,rgba(2,6,23,0.95))] dark:shadow-[0_12px_28px_rgba(2,6,23,0.36)]"
 							>
 								<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_42%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 								{/* Indice de statut subtil */}
@@ -361,12 +361,12 @@ export default function ToursPage() {
 									<div className="flex items-start justify-between gap-4">
 										<div className="flex-1 space-y-1">
 											<div className="flex items-center gap-2">
-												<CardTitle className="line-clamp-1 text-lg font-bold text-white" title={tour.name}>
+												<CardTitle className="line-clamp-1 text-lg font-bold text-slate-900 dark:text-white" title={tour.name}>
 													{tour.name}
 												</CardTitle>
 											</div>
-											<p className="flex items-center text-xs text-slate-400">
-												<span className="mr-2 rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-300">
+											<p className="flex items-center text-xs text-slate-500 dark:text-slate-400">
+												<span className="mr-2 rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
 													{(tour.id || '').slice(0, 8)}
 												</span>
 												Créé le {formatCreatedAt(tour.createdAt)}
@@ -374,39 +374,39 @@ export default function ToursPage() {
 										</div>
 										<Badge
 											variant="outline"
-											className={`${tour.isActive ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' : 'border-slate-500/35 bg-slate-600/20 text-slate-300'} shrink-0 px-2.5 py-0.5 text-xs font-medium`}
+											className={`${tour.isActive ? 'border-emerald-300/50 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300' : 'border-slate-300/60 bg-slate-100 text-slate-600 dark:border-slate-500/35 dark:bg-slate-600/20 dark:text-slate-300'} shrink-0 px-2.5 py-0.5 text-xs font-medium`}
 										>
 											<span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${tour.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
 											{tour.isActive ? 'Actif' : 'Inactif'}
 										</Badge>
 									</div>
-									<p className="mt-2 min-h-[40px] line-clamp-2 text-sm leading-relaxed text-slate-300">
-										{tour.description || <span className="italic text-slate-400">Aucune description fournie</span>}
+									<p className="mt-2 min-h-[40px] line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+										{tour.description || <span className="italic text-slate-500 dark:text-slate-400">Aucune description fournie</span>}
 									</p>
 								</CardHeader>
 
 								<CardContent className="relative mt-auto flex flex-col gap-4 pb-4 pt-2">
 									{/* Informations complémentaires */}
-									<div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-slate-800/35 p-3.5 backdrop-blur-sm">
+									<div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-100/80 p-3.5 backdrop-blur-sm dark:border-white/10 dark:bg-slate-800/35">
 										<div className="flex items-center justify-between text-sm">
-											<div className="min-w-0 flex items-center gap-2 text-slate-300">
-												<Icons.globe className="h-4 w-4 shrink-0 text-slate-500" />
+											<div className="min-w-0 flex items-center gap-2 text-slate-700 dark:text-slate-300">
+												<Icons.globe className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-500" />
 												<span className="truncate max-w-[150px] md:max-w-[180px]" title={tour.targetUrl}>{tour.targetUrl || 'URL non définie'}</span>
 											</div>
 											{tour.priority !== undefined && (
-												<Badge variant="secondary" className="h-5 border-white/15 bg-slate-900/60 text-[10px] text-slate-300 shadow-sm">
+												<Badge variant="secondary" className="h-5 border-slate-200 bg-slate-100 text-[10px] text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-300">
 													Prio: {tour.priority}
 												</Badge>
 											)}
 										</div>
 										
-										<div className="h-px w-full bg-white/10" />
+										<div className="h-px w-full bg-slate-200 dark:bg-white/10" />
 										
 										<div className="flex items-center justify-between">
 											<button
 												type="button"
 												onClick={() => handleShowSteps(tour)}
-												className="group/btn flex items-center gap-2 text-sm font-medium text-slate-200 transition-colors hover:text-orange-300"
+												className="group/btn flex items-center gap-2 text-sm font-medium text-slate-700 transition-colors hover:text-orange-500 dark:text-slate-200 dark:hover:text-orange-300"
 												title="Voir les étapes du parcours"
 											>
 												<div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 group-hover/btn:bg-primary group-hover/btn:text-white transition-colors shadow-sm">
@@ -428,7 +428,7 @@ export default function ToursPage() {
 									{/* Actions */}
 									<div className="flex items-center gap-2 pt-1">
 										<Link href={`/dashboard/tours/create?id=${tour.id}`} className="flex-1">
-											<Button variant="outline" className="h-9 w-full border-white/15 bg-slate-900/45 text-sm text-slate-100 shadow-sm transition-all hover:bg-white/10 hover:text-white">
+											<Button variant="outline" className="h-9 w-full border-slate-300 bg-white/90 text-sm text-slate-700 shadow-sm transition-all hover:bg-slate-100 hover:text-slate-900 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100 dark:hover:bg-white/10 dark:hover:text-white">
 												<Icons.edit className="mr-2 h-3.5 w-3.5" />
 												Éditer
 											</Button>
@@ -438,7 +438,7 @@ export default function ToursPage() {
 											<Button
 												variant="outline"
 												size="icon"
-												className="h-9 w-9 border-white/15 bg-slate-900/55 text-slate-300 transition-colors hover:bg-white/10 hover:text-orange-300 focus:ring-2 focus:ring-orange-400/20"
+												className="h-9 w-9 border-slate-300 bg-white/90 text-slate-600 transition-colors hover:bg-slate-100 hover:text-orange-500 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-orange-300"
 												onClick={() => handleExport(tour)}
 												disabled={deletingIds.includes(tour.id || '')}
 												title="Exporter le parcours (JSON)"
@@ -448,10 +448,10 @@ export default function ToursPage() {
 											<Button
 												variant="outline"
 												size="icon"
-												className={`h-9 w-9 border-white/15 bg-slate-900/55 transition-colors focus:ring-2 ${
+												className={`h-9 w-9 border-slate-300 bg-white/90 transition-colors focus:ring-2 dark:border-white/15 dark:bg-slate-900/55 ${
 													tour.isActive 
-														? "text-slate-300 hover:bg-amber-500/15 hover:text-amber-300 hover:border-amber-400/30 focus:ring-amber-500/20" 
-														: "text-slate-300 hover:bg-emerald-500/15 hover:text-emerald-300 hover:border-emerald-400/30 focus:ring-emerald-500/20"
+														? "text-slate-600 hover:bg-amber-100 hover:text-amber-700 hover:border-amber-300/70 focus:ring-amber-500/20 dark:text-slate-300 dark:hover:bg-amber-500/15 dark:hover:text-amber-300 dark:hover:border-amber-400/30" 
+														: "text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300/70 focus:ring-emerald-500/20 dark:text-slate-300 dark:hover:bg-emerald-500/15 dark:hover:text-emerald-300 dark:hover:border-emerald-400/30"
 												}`}
 												onClick={() => handleToggleActive(tour)}
 												disabled={deletingIds.includes(tour.id || '')}
@@ -462,7 +462,7 @@ export default function ToursPage() {
 											<Button
 												variant="outline"
 												size="icon"
-												className="h-9 w-9 border-white/15 bg-slate-900/55 text-slate-300 transition-colors hover:bg-rose-500/15 hover:text-rose-300 hover:border-rose-400/30 focus:ring-2 focus:ring-rose-500/20"
+												className="h-9 w-9 border-slate-300 bg-white/90 text-slate-600 transition-colors hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300/70 focus:ring-2 focus:ring-rose-500/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-300 dark:hover:bg-rose-500/15 dark:hover:text-rose-300 dark:hover:border-rose-400/30"
 												onClick={() => {
 													if (confirm("Êtes-vous sûr de vouloir supprimer ce parcours ? Cette action est irréversible.")) {
 														handleDelete(tour);
@@ -484,11 +484,11 @@ export default function ToursPage() {
 
 			{previewTour && (
 				<div className="fixed inset-0 z-[120] bg-black/70 p-3 md:p-8">
-					<div className="mx-auto flex h-full w-full max-w-6xl flex-col rounded-xl border border-white/10 bg-slate-950/85 p-3 backdrop-blur-xl md:p-4">
-						<div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3">
+					<div className="mx-auto flex h-full w-full max-w-6xl flex-col rounded-xl border border-slate-200 bg-white/95 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85 md:p-4">
+						<div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-3 dark:border-white/10">
 							<div>
-								<h2 className="text-lg font-semibold text-white">Previsualisation: {previewTour.name}</h2>
-								<p className="text-xs text-slate-400">{previewTour.steps?.length || 0} etape(s)</p>
+								<h2 className="text-lg font-semibold text-slate-900 dark:text-white">Previsualisation: {previewTour.name}</h2>
+								<p className="text-xs text-slate-500 dark:text-slate-400">{previewTour.steps?.length || 0} etape(s)</p>
 							</div>
 							<Button variant="ghost" size="icon" onClick={closePreview}>
 								<Icons.close className="h-4 w-4" />
@@ -515,25 +515,25 @@ export default function ToursPage() {
 
 			{stepsTour && (
 				<div className="fixed inset-0 z-[121] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm sm:p-6 md:p-12 transition-all">
-					<div className="mx-auto flex h-full max-h-[800px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/90 shadow-2xl">
+					<div className="mx-auto flex h-full max-h-[800px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-2xl dark:border-white/10 dark:bg-slate-950/90">
 						{/* Header */}
-						<div className="flex items-center justify-between border-b border-white/10 bg-slate-900/40 px-6 py-4">
+						<div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-white/10 dark:bg-slate-900/40">
 							<div className="flex items-center gap-4">
 								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
 									<Icons.tours className="h-5 w-5 text-primary" />
 								</div>
 								<div>
-									<h2 className="line-clamp-1 text-xl font-bold text-white">{stepsTour.name || 'Parcours'}</h2>
-									<p className="text-sm text-slate-400">{stepsTour.steps?.length || 0} étape(s) dans ce parcours</p>
+									<h2 className="line-clamp-1 text-xl font-bold text-slate-900 dark:text-white">{stepsTour.name || 'Parcours'}</h2>
+									<p className="text-sm text-slate-600 dark:text-slate-400">{stepsTour.steps?.length || 0} étape(s) dans ce parcours</p>
 								</div>
 							</div>
-							<Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-200 shrink-0" onClick={() => setStepsTour(null)}>
+							<Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 shrink-0" onClick={() => setStepsTour(null)}>
 								<Icons.close className="h-5 w-5" />
 							</Button>
 						</div>
 						
 						{/* Content */}
-						<div className="flex-1 overflow-y-auto bg-slate-950/35 p-4 sm:p-6">
+						<div className="flex-1 overflow-y-auto bg-slate-100/70 p-4 sm:p-6 dark:bg-slate-950/35">
 							{(stepsTour.steps || []).length === 0 ? (
 								<div className="flex h-full flex-col items-center justify-center text-slate-400">
 									<Icons.layers className="mb-3 h-12 w-12 opacity-20" />
@@ -542,7 +542,7 @@ export default function ToursPage() {
 							) : (
 								<div className="relative mx-auto max-w-2xl">
 									{/* Ligne verticale timeline */}
-									<div className="absolute bottom-0 left-[27px] top-0 hidden w-px bg-white/20 sm:block" />
+									<div className="absolute bottom-0 left-[27px] top-0 hidden w-px bg-slate-300 sm:block dark:bg-white/20" />
 									
 									<div className="space-y-6">
 										{(stepsTour.steps || []).map((step, idx) => {
@@ -552,25 +552,25 @@ export default function ToursPage() {
 											return (
 											<div key={step.id || `${step.title}-${idx}`} className="relative flex flex-col sm:flex-row gap-4 sm:gap-6">
 												{/* Indicateur timeline */}
-												<div className="relative z-10 hidden h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-white/20 bg-slate-900 font-bold text-slate-200 shadow-sm sm:flex">
+												<div className="relative z-10 hidden h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-slate-300 bg-white font-bold text-slate-700 shadow-sm sm:flex dark:border-white/20 dark:bg-slate-900 dark:text-slate-200">
 													{idx + 1}
 												</div>
 												<div className="z-10 mb-[-10px] flex items-center gap-2 sm:hidden">
 													<Badge className="bg-slate-800 text-white rounded-full h-6 w-6 flex items-center justify-center p-0">
 														{idx + 1}
 													</Badge>
-													<span className="text-sm font-semibold text-slate-300">Étape {idx + 1}</span>
+													<span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Étape {idx + 1}</span>
 												</div>
 												
 												{/* Carte d'étape */}
-												<div className="flex-1 rounded-xl border border-white/10 bg-slate-900/70 p-5 shadow-[0_1px_3px_0_rgba(0,0,0,0.2)] transition-all hover:border-orange-400/30 hover:shadow-md">
+												<div className="flex-1 rounded-xl border border-slate-200 bg-white p-5 shadow-[0_1px_3px_0_rgba(0,0,0,0.08)] transition-all hover:border-orange-400/30 hover:shadow-md dark:border-white/10 dark:bg-slate-900/70 dark:shadow-[0_1px_3px_0_rgba(0,0,0,0.2)]">
 													<div className="mb-3 flex flex-wrap items-start justify-between gap-4">
 														<div className="flex-1 min-w-[200px]">
-															<h3 className="text-base font-semibold text-white">{step.title || 'Étape sans titre'}</h3>
+															<h3 className="text-base font-semibold text-slate-900 dark:text-white">{step.title || 'Étape sans titre'}</h3>
 															{step.targetSelector && (
-																<div className="mt-1.5 flex items-start gap-1.5 text-[11px] font-mono text-slate-400">
+																<div className="mt-1.5 flex items-start gap-1.5 text-[11px] font-mono text-slate-500 dark:text-slate-400">
 																	<Icons.target className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-																	<span className="break-all rounded border border-white/10 bg-slate-800 px-1.5 py-0.5">
+																	<span className="break-all rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 dark:border-white/10 dark:bg-slate-800">
 																		{step.targetSelector}
 																	</span>
 																</div>
@@ -581,11 +581,11 @@ export default function ToursPage() {
 																<StepTypeIcon className="h-3 w-3" />
 																{resolvedStepType}
 															</Badge>
-															<Badge variant="outline" className="bg-slate-900/65 text-[10px] font-medium uppercase tracking-wider text-slate-300">
+															<Badge variant="outline" className="bg-slate-100 text-[10px] font-medium uppercase tracking-wider text-slate-700 dark:bg-slate-900/65 dark:text-slate-300">
 																{step.position?.replace('_', ' ') || 'BOTTOM'}
 															</Badge>
 															<Link href={`/dashboard/tours/create?id=${stepsTour.id}&step=${idx}`}>
-																<Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-orange-300 hover:bg-orange-500/10 hover:text-orange-200">
+																<Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-orange-600 hover:bg-orange-100 hover:text-orange-700 dark:text-orange-300 dark:hover:bg-orange-500/10 dark:hover:text-orange-200">
 																	<Icons.edit className="mr-1.5 h-3 w-3" />
 																	Modifier
 																</Button>
@@ -593,16 +593,16 @@ export default function ToursPage() {
 														</div>
 													</div>
 													
-													<div className="rounded-lg border border-white/10 bg-slate-800/45 p-3.5">
-														<p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
-															{step.content || <span className="italic text-slate-400">Aucun contenu défini pour cette étape.</span>}
+													<div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-white/10 dark:bg-slate-800/45">
+														<p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+															{step.content || <span className="italic text-slate-500 dark:text-slate-400">Aucun contenu défini pour cette étape.</span>}
 														</p>
 													</div>
 													
 													{/* Action footer */}
-													<div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-3 text-xs text-slate-400">
+													<div className="mt-4 flex items-center gap-2 border-t border-slate-200 pt-3 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
 														<Icons.mousePointer className="h-3.5 w-3.5" />
-														Action de déclenchement : <span className="rounded bg-slate-800 px-1.5 py-0.5 font-medium text-slate-200">{step.action || 'NEXT'}</span>
+														Action de déclenchement : <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{step.action || 'NEXT'}</span>
 													</div>
 												</div>
 											</div>

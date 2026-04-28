@@ -33,12 +33,12 @@ function VerifyEmailContent() {
           <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-3">
             <XCircle className="h-8 w-8 text-red-300" />
           </div>
-          <p className="text-center text-sm font-medium text-red-200">{errorMsg}</p>
+          <p className="text-center text-sm font-medium text-red-700 dark:text-red-200">{errorMsg}</p>
         </div>
         <Link href="/login" className="block">
           <Button
             variant="outline"
-            className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 hover:bg-slate-900 hover:text-white hover:scale-105 transition-transform active:scale-[0.99]"
+            className="h-10 w-full rounded-xl border-slate-300 bg-white/90 text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:scale-105 transition-transform active:scale-[0.99] dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-white"
           >
             Retour à la connexion
           </Button>
@@ -51,7 +51,7 @@ function VerifyEmailContent() {
     return (
       <div className="flex flex-col items-center gap-4 py-4">
         <Icons.spinner className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-300">Vérification en cours...</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Vérification en cours...</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ function VerifyEmailContent() {
           <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3">
             <CheckCircle2 className="h-8 w-8 text-emerald-300" />
           </div>
-          <p className="text-center text-sm font-medium text-emerald-100">
+          <p className="text-center text-sm font-medium text-emerald-700 dark:text-emerald-100">
             Votre adresse email a été vérifiée avec succès !
           </p>
         </div>
@@ -82,12 +82,12 @@ function VerifyEmailContent() {
         <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-3">
           <XCircle className="h-8 w-8 text-red-300" />
         </div>
-        <p className="text-center text-sm font-medium text-red-200">{errorMsg}</p>
+        <p className="text-center text-sm font-medium text-red-700 dark:text-red-200">{errorMsg}</p>
       </div>
       <Link href="/login" className="block">
         <Button
           variant="outline"
-          className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 hover:bg-slate-900 hover:text-white hover:scale-105 transition-transform active:scale-[0.99]"
+          className="h-10 w-full rounded-xl border-slate-300 bg-white/90 text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:scale-105 transition-transform active:scale-[0.99] dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-white"
         >
           Retour à la connexion
         </Button>
@@ -107,18 +107,18 @@ export default function VerifyEmailPage() {
           priority
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.25),transparent_35%),linear-gradient(135deg,rgba(3,7,18,0.82),rgba(2,6,23,0.72)_45%,rgba(15,23,42,0.82))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(255,255,255,0.72)_45%,rgba(248,250,252,0.82))] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.25),transparent_35%),linear-gradient(135deg,rgba(3,7,18,0.82),rgba(2,6,23,0.72)_45%,rgba(15,23,42,0.82))]" />
       </div>
 
       <div className="relative w-full max-w-md mx-4 animate-fade-in">
         <div className="pointer-events-none absolute -inset-6 rounded-[28px] bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_48%),radial-gradient(circle_at_80%_80%,rgba(236,72,153,0.14),transparent_52%),radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.14),transparent_58%)] blur-2xl" />
-        <div className="relative rounded-2xl border border-white/15 bg-card/90 shadow-elevated shadow-[0_14px_45px_rgba(2,6,23,0.45),0_0_0_1px_rgba(255,255,255,0.03),0_0_28px_rgba(30,64,175,0.12)] backdrop-blur-xl overflow-hidden">
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-card/90 shadow-elevated shadow-[0_14px_45px_rgba(2,6,23,0.16),0_0_0_1px_rgba(148,163,184,0.08),0_0_24px_rgba(245,158,11,0.12)] backdrop-blur-xl dark:border-white/15 dark:shadow-[0_14px_45px_rgba(2,6,23,0.45),0_0_0_1px_rgba(255,255,255,0.03),0_0_28px_rgba(30,64,175,0.12)]">
           <div className="p-8 pb-0 text-center">
             <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-gradient-to-br from-orange-500 to-pink-600 shadow-soft shadow-[0_0_24px_rgba(255,107,0,0.24)]">
               <Mail className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-100">Vérification email</h1>
-            <p className="mt-1.5 text-sm text-slate-300">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Vérification email</h1>
+            <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
               Validation de votre adresse email
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function VerifyEmailPage() {
           <div className="p-8">
             <Suspense fallback={
               <div className="flex items-center justify-center py-8">
-                <Icons.spinner className="h-6 w-6 animate-spin text-slate-300" />
+                <Icons.spinner className="h-6 w-6 animate-spin text-slate-600 dark:text-slate-300" />
               </div>
             }>
               <VerifyEmailContent />

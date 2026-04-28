@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 import { SdkLabShell } from '../_components';
@@ -166,31 +167,43 @@ export default function MediumTestPage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="grid gap-2">
                   <label htmlFor="medium-strategy" className="text-sm font-medium">Strategie de conflit</label>
-                  <select
-                    id="medium-strategy"
+                  <Select
                     value={strategy}
-                    onChange={(event) => setStrategy(event.target.value as 'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid')}
-                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                    onValueChange={(value) => setStrategy(value as 'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid')}
                   >
-                    <option value="hybrid">hybrid</option>
-                    <option value="highest-score">highest-score</option>
-                    <option value="highest-confidence">highest-confidence</option>
-                    <option value="intent-priority">intent-priority</option>
-                  </select>
+                    <SelectTrigger
+                      id="medium-strategy"
+                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
+                    >
+                      <SelectValue placeholder="Stratégie de conflit" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="hybrid">hybrid</SelectItem>
+                      <SelectItem value="highest-score">highest-score</SelectItem>
+                      <SelectItem value="highest-confidence">highest-confidence</SelectItem>
+                      <SelectItem value="intent-priority">intent-priority</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <label htmlFor="medium-stage" className="text-sm font-medium">Stage session</label>
-                  <select
-                    id="medium-stage"
+                  <Select
                     value={stage}
-                    onChange={(event) => setStage(event.target.value as 'discovery' | 'activation' | 'adoption' | 'retention')}
-                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                    onValueChange={(value) => setStage(value as 'discovery' | 'activation' | 'adoption' | 'retention')}
                   >
-                    <option value="discovery">discovery</option>
-                    <option value="activation">activation</option>
-                    <option value="adoption">adoption</option>
-                    <option value="retention">retention</option>
-                  </select>
+                    <SelectTrigger
+                      id="medium-stage"
+                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
+                    >
+                      <SelectValue placeholder="Stage session" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="discovery">discovery</SelectItem>
+                      <SelectItem value="activation">activation</SelectItem>
+                      <SelectItem value="adoption">adoption</SelectItem>
+                      <SelectItem value="retention">retention</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <label htmlFor="medium-progress" className="text-sm font-medium">Progression: {progress}%</label>
@@ -201,12 +214,13 @@ export default function MediumTestPage() {
                     max={100}
                     value={progress}
                     onChange={(event) => setProgress(Number(event.target.value))}
+                    className="h-2 w-full cursor-pointer accent-violet-600 dark:accent-violet-400"
                   />
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={runAnalysis} data-tour-id="tour-medium-action-analyze" className="rounded-xl" disabled={isGenerating || isPublishing}>
+                <Button onClick={runAnalysis} data-tour-id="tour-medium-action-analyze" className="rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(255,107,0,0.35)] active:translate-y-0" disabled={isGenerating || isPublishing}>
                   {isGenerating ? 'Analyse en cours...' : 'Analyser cette page'}
                 </Button>
                 {isPublishing ? <Badge variant="outline">Publication en cours...</Badge> : null}
@@ -313,18 +327,21 @@ export default function MediumTestPage() {
               <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/30 p-4">
                 <div className="grid gap-2">
                   <label className="text-sm font-medium" htmlFor="medium-plan">Plan</label>
-                  <select
-                    id="medium-plan"
-                    data-testid="medium-plan"
-                    data-tour-id="tour-medium-form-plan"
-                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
-                    value={plan}
-                    onChange={(event) => setPlan(event.target.value)}
-                  >
-                    <option value="Starter">Starter</option>
-                    <option value="Growth">Growth</option>
-                    <option value="Enterprise">Enterprise</option>
-                  </select>
+                  <Select value={plan} onValueChange={setPlan}>
+                    <SelectTrigger
+                      id="medium-plan"
+                      data-testid="medium-plan"
+                      data-tour-id="tour-medium-form-plan"
+                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
+                    >
+                      <SelectValue placeholder="Plan" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="Starter">Starter</SelectItem>
+                      <SelectItem value="Growth">Growth</SelectItem>
+                      <SelectItem value="Enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div id="validation" className="rounded-2xl bg-background p-4 shadow-sm">

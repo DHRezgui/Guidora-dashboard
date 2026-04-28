@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, FlaskConical, Grid3X3, Layers3, Sparkles } from 'lucide-react';
+import { AlertTriangle, FlaskConical, Grid3X3, Layers3, Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ export function SdkLabShell({
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#08142b] px-6 py-6 text-white shadow-elevated md:px-8">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-6 py-6 text-slate-900 shadow-[0_12px_26px_rgba(2,6,23,0.12)] dark:border-white/10 dark:bg-[#08142b] dark:text-white dark:shadow-elevated md:px-8">
         <video
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           autoPlay
@@ -44,32 +44,25 @@ export function SdkLabShell({
         >
           <source src="/lab.mp4" type="video/mp4" />
         </video>
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(4,9,22,0.84)_0%,rgba(8,18,42,0.72)_55%,rgba(8,20,43,0.86)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0.7)_55%,rgba(248,250,252,0.84)_100%)] dark:bg-[linear-gradient(90deg,rgba(4,9,22,0.84)_0%,rgba(8,18,42,0.72)_55%,rgba(8,20,43,0.86)_100%)]" />
 
         <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="border border-white/15 bg-slate-950/65 text-slate-100 hover:bg-slate-900">
+              <Badge variant="secondary" className="border border-slate-300 bg-white/90 text-slate-800 hover:bg-slate-100 dark:border-white/15 dark:bg-slate-950/65 dark:text-slate-100 dark:hover:bg-slate-900">
                 SDK test lab
               </Badge>
               {badges.map((badge) => (
-                <Badge key={badge} variant="outline" className="border-white/15 bg-slate-950/55 text-slate-200">
+                <Badge key={badge} variant="outline" className="border-slate-300 bg-white/85 text-slate-700 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-200">
                   {badge}
                 </Badge>
               ))}
             </div>
             <div>
               <h1 data-tour-id={`tour-sdk-lab-heading-${pageKey}`} className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
-              <p className="mt-2 max-w-3xl text-sm text-slate-200 md:text-base">{description}</p>
+              <p className="mt-2 max-w-3xl text-sm text-slate-900 dark:text-slate-200 md:text-base">{description}</p>
             </div>
           </div>
-
-          <Button variant="secondary" className="rounded-xl border border-white/15 bg-slate-950/75 text-slate-100 hover:bg-slate-900" asChild>
-            <Link href="/dashboard" data-tour-id="tour-sdk-lab-action-back-dashboard">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour dashboard
-            </Link>
-          </Button>
         </div>
 
         <div className="relative z-10 mt-6 flex flex-wrap gap-2">
@@ -85,7 +78,7 @@ export function SdkLabShell({
                   'rounded-full border px-4',
                   active
                     ? 'border-orange-300/45 bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-[0_0_18px_rgba(255,107,0,0.28)] hover:from-orange-400 hover:to-pink-500'
-                    : 'border-white/15 bg-slate-950/55 text-slate-200 hover:border-orange-300/35 hover:bg-slate-900 hover:text-white'
+                    : 'border-slate-300 bg-white/90 text-slate-700 hover:border-orange-300/35 hover:bg-slate-100 hover:text-slate-900 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white'
                 )}
                 asChild
               >
@@ -102,10 +95,10 @@ export function SdkLabShell({
         </div>
       </div>
 
-      <Card className="border-white/10 bg-slate-900/45 shadow-card">
+      <Card className="border-slate-200 bg-white/85 shadow-card dark:border-white/10 dark:bg-slate-900/45">
         <CardHeader>
-          <CardTitle className="text-slate-100">Conseil de test</CardTitle>
-          <CardDescription className="text-slate-300">
+          <CardTitle className="text-slate-800 dark:text-slate-100">Conseil de test</CardTitle>
+          <CardDescription className="text-slate-600 dark:text-slate-300">
             Lance chaque écran avec le hook de génération contextuelle pour vérifier la pertinence des tours, la
             robustesse face au bruit et le comportement sur DOM dynamique.
           </CardDescription>
