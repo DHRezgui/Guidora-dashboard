@@ -761,8 +761,17 @@ export default function TourSimulator({
             </p>
           </div>
           <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={onExitPreview}>Quitter</Button>
-            <Button onClick={() => setIsPlaying(true)} className="gap-2">
+            <Button
+              variant="outline"
+              onClick={onExitPreview}
+              className="transition-transform hover:scale-105 active:scale-[0.99]"
+            >
+              Quitter
+            </Button>
+            <Button
+              onClick={() => setIsPlaying(true)}
+              className="gap-2 transition-transform hover:scale-105 active:scale-[0.99] shadow-[0_0_24px_rgba(255,107,0,0.25)]"
+            >
               <Icons.play className="h-4 w-4 fill-current" /> Lancer la simulation
             </Button>
           </div>
@@ -772,44 +781,44 @@ export default function TourSimulator({
   }
 
   const renderDebugPanel = () => (
-    <div className="absolute left-4 bottom-4 z-40 w-90 max-w-[calc(100%-2rem)] rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur p-4 space-y-4">
+    <div className="absolute left-4 bottom-4 z-40 w-90 max-w-[calc(100%-2rem)] rounded-xl border border-white/10 bg-slate-950/85 shadow-xl backdrop-blur p-4 space-y-4 text-slate-200">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Debug view</p>
-          <h4 className="mt-1 text-base font-semibold text-slate-900">{fallbackPageTitle}</h4>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Debug view</p>
+          <h4 className="mt-1 text-base font-semibold text-white">{fallbackPageTitle}</h4>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 -mt-1 -mr-1" onClick={() => setViewMode('preview')}>
+        <Button variant="ghost" size="icon" className="h-7 w-7 -mt-1 -mr-1 text-slate-300 hover:bg-white/10 hover:text-white" onClick={() => setViewMode('preview')}>
           <Icons.close className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="space-y-2 text-xs text-slate-600">
+      <div className="space-y-2 text-xs text-slate-300">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">URL</span>
-          <span className="truncate text-right text-slate-700">{fallbackPageUrl || '—'}</span>
+          <span className="text-slate-400">URL</span>
+          <span className="truncate text-right text-slate-200">{fallbackPageUrl || '—'}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Route</span>
-          <span className="truncate text-right text-slate-700">{simulationContext?.pathname || '—'}</span>
+          <span className="text-slate-400">Route</span>
+          <span className="truncate text-right text-slate-200">{simulationContext?.pathname || '—'}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Viewport</span>
-          <span className="text-slate-700">{simulationContext ? `${simulationContext.viewport.width} × ${simulationContext.viewport.height}` : '—'}</span>
+          <span className="text-slate-400">Viewport</span>
+          <span className="text-slate-200">{simulationContext ? `${simulationContext.viewport.width} × ${simulationContext.viewport.height}` : '—'}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Elements</span>
-          <span className="text-slate-700">{simulationContext?.elements.length ?? 0}</span>
+          <span className="text-slate-400">Elements</span>
+          <span className="text-slate-200">{simulationContext?.elements.length ?? 0}</span>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-600 mb-2">
+      <div className="rounded-lg border border-white/10 bg-slate-900/55 p-3">
+        <div className="flex items-center justify-between text-xs font-medium text-slate-300 mb-2">
           <span>Current step</span>
           <span>{currentStepIndex + 1}/{steps.length}</span>
         </div>
-        <p className="text-sm font-semibold text-slate-900">{currentStep.title || 'Sans titre'}</p>
-        <p className="mt-1 text-xs text-slate-600 wrap-break-word">{currentStep.targetSelector || 'Aucun sélecteur de cible'}</p>
-        <p className="mt-1 text-xs text-slate-600 wrap-break-word">{currentStep.position || 'BOTTOM'}</p>
+        <p className="text-sm font-semibold text-white">{currentStep.title || 'Sans titre'}</p>
+        <p className="mt-1 text-xs text-slate-300 wrap-break-word">{currentStep.targetSelector || 'Aucun sélecteur de cible'}</p>
+        <p className="mt-1 text-xs text-slate-300 wrap-break-word">{currentStep.position || 'BOTTOM'}</p>
       </div>
 
       <div>
@@ -818,16 +827,16 @@ export default function TourSimulator({
           <span>{matchedElements.length}</span>
         </div>
         {matchedElements.length > 0 ? (
-          <div className="max-h-24 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600 space-y-2">
+          <div className="max-h-24 overflow-auto rounded-lg border border-white/10 bg-slate-900/60 p-2 text-xs text-slate-300 space-y-2">
             {matchedElements.map((item) => (
               <div key={item.selector} className="wrap-break-word">
-                <p className="font-medium text-slate-800">{item.selector}</p>
-                <p>{item.tag}{item.intent ? ` · ${item.intent}` : ''}{item.actionable ? ' · actionable' : ''}</p>
+                <p className="font-medium text-slate-100">{item.selector}</p>
+                <p className="text-slate-300">{item.tag}{item.intent ? ` · ${item.intent}` : ''}{item.actionable ? ' · actionable' : ''}</p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+          <div className="rounded-lg border border-dashed border-white/15 bg-slate-900/55 p-3 text-xs text-slate-400">
             Aucun élément snapshot ne correspond au sélecteur de cette étape.
           </div>
         )}
@@ -838,15 +847,15 @@ export default function TourSimulator({
           <span>Aperçu éléments</span>
           <span>{visibleDebugElements.length}</span>
         </div>
-        <div className="max-h-28 overflow-auto rounded-lg border border-slate-200 bg-white p-2 text-[11px] text-slate-600 space-y-2">
+        <div className="max-h-28 overflow-auto rounded-lg border border-white/10 bg-slate-900/60 p-2 text-[11px] text-slate-300 space-y-2">
           {visibleDebugElements.length > 0 ? visibleDebugElements.map((item) => (
             <div key={item.selector} className="wrap-break-word">
-              <span className="font-medium text-slate-800">{item.tag}</span>
-              <span className="text-slate-500"> · {item.selector}</span>
-              {item.text ? <p className="text-slate-500 line-clamp-2">{item.text}</p> : null}
+              <span className="font-medium text-slate-100">{item.tag}</span>
+              <span className="text-slate-400"> · {item.selector}</span>
+              {item.text ? <p className="text-slate-400 line-clamp-2">{item.text}</p> : null}
             </div>
           )) : (
-            <p className="text-slate-500">Aucun snapshot disponible.</p>
+            <p className="text-slate-400">Aucun snapshot disponible.</p>
           )}
         </div>
       </div>
@@ -855,11 +864,11 @@ export default function TourSimulator({
 
   return (
     <div ref={stageRef} className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-slate-900/50">
-      <div className="absolute top-4 left-4 z-50 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md backdrop-blur">
+      <div className="absolute top-4 left-4 z-50 flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/85 p-1 shadow-md backdrop-blur">
         <Button
           variant={viewMode === 'preview' ? 'default' : 'ghost'}
           size="sm"
-          className="h-8 text-xs"
+          className="h-8 text-xs text-slate-200"
           onClick={() => setViewMode('preview')}
         >
           <Icons.eye className="h-3.5 w-3.5 mr-1" /> Preview
@@ -867,13 +876,13 @@ export default function TourSimulator({
         <Button
           variant={viewMode === 'debug' ? 'default' : 'ghost'}
           size="sm"
-          className="h-8 text-xs"
+          className="h-8 text-xs text-slate-200"
           onClick={() => setViewMode('debug')}
         >
           Debug
         </Button>
         {canUseIframe ? (
-          <div className="ml-1 flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+          <div className="ml-1 flex items-center gap-1 rounded-md border border-emerald-400/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
             <Icons.globe className="h-3 w-3" /> Live iframe
           </div>
         ) : null}
@@ -933,8 +942,8 @@ export default function TourSimulator({
             </div>
           ) : null}
 
-          <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
-            <span className="font-medium text-slate-800">Mode live iframe actif</span>
+          <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/80 px-3 py-2 text-xs text-slate-300 shadow-sm backdrop-blur">
+            <span className="font-medium text-slate-100">Mode live iframe actif</span>
             <span className={isLiveTargetMissing ? 'text-amber-700 font-medium' : ''}>
               {iframeState === 'loading'
                 ? 'Transition de page...'
@@ -1144,7 +1153,7 @@ export default function TourSimulator({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 text-slate-600"
+                      className="h-8 text-slate-700 transition-transform hover:scale-105 hover:bg-slate-200 hover:text-slate-900 active:scale-[0.99]"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSkip();
@@ -1157,7 +1166,7 @@ export default function TourSimulator({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 px-2"
+                      className="h-8 px-2 border-slate-300 text-slate-700 transition-transform hover:scale-105 hover:bg-slate-200 hover:text-slate-900 active:scale-[0.99]"
                       onClick={(e) => {
                         e.stopPropagation();
                         handlePrev();
@@ -1169,7 +1178,7 @@ export default function TourSimulator({
                   <Button
                     variant="default"
                     size="sm"
-                    className="h-8 shadow-sm"
+                    className="h-8 shadow-sm transition-transform hover:scale-105 hover:shadow-[0_10px_24px_rgba(249,115,22,0.28)] active:scale-[0.99]"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNext();
@@ -1194,21 +1203,21 @@ export default function TourSimulator({
       {viewMode === 'debug' ? renderDebugPanel() : null}
 
       {/* Floating control panel */}
-      <div className="absolute top-4 right-4 z-50 bg-white p-2 rounded-lg shadow-md border border-slate-200 flex gap-3 items-center animate-in slide-in-from-top-4">
-        <div className="px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-bold flex items-center gap-1">
+      <div className="absolute top-4 right-4 z-50 rounded-lg border border-white/10 bg-slate-950/85 p-2 shadow-md backdrop-blur flex gap-3 items-center animate-in slide-in-from-top-4">
+        <div className="px-2 py-1 rounded text-xs font-bold flex items-center gap-1 border border-amber-400/25 bg-amber-500/10 text-amber-300">
           <Icons.eye className="h-3 w-3" /> PREVIEW
         </div>
         {fallbackPageUrl ? (
           <Button
             variant="outline"
             size="sm"
-            className="h-8 text-xs"
+            className="h-8 text-xs border-white/15 bg-slate-900/55 text-slate-100 hover:bg-white/10 hover:text-white transition-transform hover:scale-105 active:scale-[0.99]"
             onClick={() => window.open(fallbackPageUrl, '_blank', 'noopener,noreferrer')}
           >
             <Icons.globe className="h-3.5 w-3.5 mr-1" /> Ouvrir la page
           </Button>
         ) : null}
-        <Button variant="ghost" size="sm" onClick={onExitPreview} className="hover:bg-slate-100 h-8 text-xs">
+        <Button variant="ghost" size="sm" onClick={onExitPreview} className="h-8 text-xs text-slate-200 hover:bg-white/10 hover:text-white transition-transform hover:scale-105 active:scale-[0.99]">
           Quitter la simulation
         </Button>
       </div>

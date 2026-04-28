@@ -33,8 +33,20 @@ export function SdkLabShell({
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#071126] via-[#0b1835] to-[#102346] px-6 py-6 text-white shadow-elevated md:px-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#08142b] px-6 py-6 text-white shadow-elevated md:px-8">
+        <video
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+        >
+          <source src="/lab.mp4" type="video/mp4" />
+        </video>
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(4,9,22,0.84)_0%,rgba(8,18,42,0.72)_55%,rgba(8,20,43,0.86)_100%)]" />
+
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="border border-white/15 bg-slate-950/65 text-slate-100 hover:bg-slate-900">
@@ -60,7 +72,7 @@ export function SdkLabShell({
           </Button>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="relative z-10 mt-6 flex flex-wrap gap-2">
           {routes.map((route) => {
             const Icon = route.icon;
             const active = pathname === route.href;

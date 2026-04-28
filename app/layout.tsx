@@ -14,8 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TrustDev Onboarding - Dashboard",
+  title: "Guidora Onboarding",
   description: "Interface d'administration pour le module d'onboarding intelligent",
+  icons: {
+    icon: "/guidora-logo-2-2.png",
+    shortcut: "/guidora-logo-2-2.png",
+    apple: "/guidora-logo-2-2.png",
+  },
 };
 
 export default function RootLayout({

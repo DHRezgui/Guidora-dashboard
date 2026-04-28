@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { organizationService, getErrorMessage } from '@/lib/api';
 import { Organization } from '@/lib/types';
 import Link from 'next/link';
@@ -39,10 +40,25 @@ export default function EditOrganizationPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<EditOrgForm>({
     resolver: zodResolver(editOrgSchema),
   });
+  const planValue = watch('plan');
+
+  const normalizeMaxUsers = (value: string): number => {
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) return 1;
+    return Math.max(1, Math.min(10000, parsed));
+  };
+
+  const normalizeMaxTours = (value: string): number => {
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) return 1;
+    return Math.max(1, Math.min(1000, parsed));
+  };
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -81,6 +97,8 @@ export default function EditOrganizationPage() {
       setError('');
       setSuccess('');
       const payload = { ...data };
+      payload.maxUsers = normalizeMaxUsers(String(payload.maxUsers));
+      payload.maxTours = normalizeMaxTours(String(payload.maxTours));
       if (!payload.domain) delete payload.domain;
       const response = await organizationService.update(params.id as string, payload);
       if (response.organization) {
@@ -159,16 +177,24 @@ export default function EditOrganizationPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="plan" className="text-[13px]">Plan</Label>
-                  <select
-                    id="plan"
-                    {...register('plan')}
-                    className="flex h-9 w-full rounded-xl border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  <input type="hidden" {...register('plan')} />
+                  <Select
+                    value={planValue}
+                    onValueChange={(value) => setValue('plan', value as EditOrgForm['plan'], { shouldValidate: true, shouldDirty: true })}
                   >
-                    <option value="FREE">Free</option>
-                    <option value="STARTER">Starter</option>
-                    <option value="PRO">Pro</option>
-                    <option value="ENTERPRISE">Enterprise</option>
-                  </select>
+                    <SelectTrigger
+                      id="plan"
+                      className="h-9 w-full rounded-xl border-white/15 bg-slate-950/55 px-3 text-sm text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60"
+                    >
+                      <SelectValue placeholder="Choisir un plan" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="FREE" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Free</SelectItem>
+                      <SelectItem value="STARTER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Starter</SelectItem>
+                      <SelectItem value="PRO" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Pro</SelectItem>
+                      <SelectItem value="ENTERPRISE" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="domain" className="text-[13px]">Domaine</Label>
@@ -178,15 +204,57 @@ export default function EditOrganizationPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="maxUsers" className="text-[13px]">Max utilisateurs</Label>
-                  <Input id="maxUsers" type="number" {...register('maxUsers', { valueAsNumber: true })} className="rounded-xl" />
+                  <Label htmlFor="maxUsers" className="text-[13px]">
+                    Max utilisateurs <span className="text-[11px] font-normal text-muted-foreground">(1 a 10000)</span>
+                  </Label>
+                  <Input
+                    id="maxUsers"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    {...register('maxUsers', {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        const normalized = normalizeMaxUsers(e.target.value);
+                        setValue('maxUsers', normalized, { shouldValidate: true, shouldDirty: true });
+                      },
+                      onBlur: (e) => {
+                        const normalized = normalizeMaxUsers(e.target.value);
+                        if (String(normalized) !== e.target.value) {
+                          setValue('maxUsers', normalized, { shouldValidate: true, shouldDirty: true });
+                        }
+                      },
+                    })}
+                    className="rounded-xl"
+                  />
                   {errors.maxUsers && (
                     <p className="text-[11px] text-destructive">{errors.maxUsers.message}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxTours" className="text-[13px]">Max parcours</Label>
-                  <Input id="maxTours" type="number" {...register('maxTours', { valueAsNumber: true })} className="rounded-xl" />
+                  <Label htmlFor="maxTours" className="text-[13px]">
+                    Max parcours <span className="text-[11px] font-normal text-muted-foreground">(1 a 1000)</span>
+                  </Label>
+                  <Input
+                    id="maxTours"
+                    type="number"
+                    min={1}
+                    max={1000}
+                    {...register('maxTours', {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        const normalized = normalizeMaxTours(e.target.value);
+                        setValue('maxTours', normalized, { shouldValidate: true, shouldDirty: true });
+                      },
+                      onBlur: (e) => {
+                        const normalized = normalizeMaxTours(e.target.value);
+                        if (String(normalized) !== e.target.value) {
+                          setValue('maxTours', normalized, { shouldValidate: true, shouldDirty: true });
+                        }
+                      },
+                    })}
+                    className="rounded-xl"
+                  />
                   {errors.maxTours && (
                     <p className="text-[11px] text-destructive">{errors.maxTours.message}</p>
                   )}
@@ -198,7 +266,7 @@ export default function EditOrganizationPage() {
                   type="checkbox"
                   id="isActive"
                   {...register('isActive')}
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-white/25 bg-slate-950/55 text-orange-500 accent-orange-500 focus:ring-2 focus:ring-orange-400/35"
                 />
                 <Label htmlFor="isActive" className="text-[13px]">Organisation active</Label>
               </div>
@@ -219,7 +287,11 @@ export default function EditOrganizationPage() {
                 <Button type="button" variant="outline" className="rounded-xl" asChild>
                   <Link href="/dashboard/organizations">Annuler</Link>
                 </Button>
-                <Button type="submit" disabled={saving} className="rounded-xl shadow-soft">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl shadow-soft transition-transform hover:scale-105 active:scale-[0.99]"
+                >
                   {saving && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
                   Enregistrer
                 </Button>
@@ -271,7 +343,7 @@ export default function EditOrganizationPage() {
             <div className="border-t border-border/60 pt-5">
               <Button
                 variant="destructive"
-                className="w-full rounded-xl"
+                className="w-full rounded-xl transition-transform hover:scale-[1.01] active:scale-[0.99]"
                 size="sm"
                 onClick={() => {
                   if (confirm('Supprimer cette organisation ?')) {

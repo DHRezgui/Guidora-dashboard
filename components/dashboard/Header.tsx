@@ -4,25 +4,73 @@ import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { authService } from '@/lib/api';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export default function Header() {
   const user = authService.getUser();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const segmentLabels: Record<string, string> = {
+    dashboard: 'Tableau de bord',
+    users: 'Utilisateurs',
+    organizations: 'Organisations',
+    tours: 'Parcours',
+    create: 'Nouveau',
+    settings: 'Parametres',
+    'sdk-tests': 'SDK Tests',
+    simple: 'Simple',
+    medium: 'Medium',
+    dynamic: 'Dynamic',
+    stress: 'Stress',
+  };
+
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const dashboardIndex = pathSegments.indexOf('dashboard');
+  const breadcrumbSegments = dashboardIndex >= 0 ? pathSegments.slice(dashboardIndex + 1) : [];
+
+  const crumbs = breadcrumbSegments.map((segment, index) => {
+    const href = `/${pathSegments.slice(0, dashboardIndex + 2 + index).join('/')}`;
+    const isLast = index === breadcrumbSegments.length - 1;
+    const parentSegment = index > 0 ? breadcrumbSegments[index - 1] : null;
+    const isEditModeCreateRoute =
+      segment === 'create' &&
+      Boolean(searchParams.get('id')) &&
+      (parentSegment === 'tours' || parentSegment === 'users' || parentSegment === 'organizations');
+    const prettyLabel =
+      isEditModeCreateRoute ? 'Modifier' :
+      segmentLabels[segment] ||
+      (/^[0-9a-fA-F-]{8,}$/.test(segment) ? 'Detail' : segment.replace(/-/g, ' '));
+
+    return { href, label: prettyLabel, isLast };
+  });
 
   return (
     <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/45 backdrop-blur-xl">
       <div className="flex h-14 items-center justify-between px-6">
-        <div />
+        <div className="flex min-w-0 items-center gap-1.5 text-xs md:text-sm">
+          <Link href="/dashboard" className="font-medium text-slate-300 transition-colors hover:text-white">
+            Tableau de bord
+          </Link>
+          {crumbs.map((crumb) => (
+            <div key={crumb.href} className="flex min-w-0 items-center gap-1.5">
+              <Icons.chevronRight className="h-3.5 w-3.5 text-slate-500" />
+              {crumb.isLast ? (
+                <span className="truncate font-medium text-orange-300">{crumb.label}</span>
+              ) : (
+                <Link href={crumb.href} className="truncate text-slate-300 transition-colors hover:text-white">
+                  {crumb.label}
+                </Link>
+              )}
+            </div>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="rounded-xl text-slate-400 hover:bg-white/5 hover:text-orange-300" asChild>
-            <Link href="/dashboard/settings">
-              <Icons.settings className="h-4.5 w-4.5" />
-            </Link>
-          </Button>
-
-          <div className="mx-1 h-6 w-px bg-white/15" />
-
-          <div className="phoenix-glass flex items-center gap-2.5 rounded-xl px-2.5 py-1.5">
+          <Link
+            href="/dashboard/settings"
+            className="phoenix-glass flex min-w-[124px] items-center gap-3 rounded-xl px-3 py-1.5 transition-all hover:scale-[1.02] hover:border-orange-400/35"
+          >
             <div className="h-7 w-7 rounded-lg phoenix-primary flex items-center justify-center text-white font-semibold text-xs">
               {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
@@ -30,7 +78,7 @@ export default function Header() {
               <p className="text-[13px] font-semibold leading-tight text-white">{user?.firstName || user?.email}</p>
               <p className="text-[10px] capitalize text-slate-400">{user?.role?.toLowerCase()}</p>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </header>

@@ -22,6 +22,7 @@ export default function ToursPage() {
 	const [previewShouldAutoPlay, setPreviewShouldAutoPlay] = useState(false);
 	const [stepsTour, setStepsTour] = useState<GuidedTour | null>(null);
 	const [filterQuery, setFilterQuery] = useState('');
+	const [filterInput, setFilterInput] = useState('');
 	const hiddenTourIdsRef = useRef<Set<string>>(new Set());
 	const loadSeqRef = useRef(0);
 
@@ -32,6 +33,14 @@ export default function ToursPage() {
 			(tour.targetUrl || '').toLowerCase().includes(query)
 		);
 	}, [tours, filterQuery]);
+
+	const toursStats = useMemo(() => {
+		const total = tours.length;
+		const active = tours.filter((tour) => tour.isActive).length;
+		const steps = tours.reduce((sum, tour) => sum + (tour.steps?.length || 0), 0);
+		const avgSteps = total > 0 ? (steps / total).toFixed(1) : '0.0';
+		return { total, active, steps, avgSteps };
+	}, [tours]);
 
 	const formatCreatedAt = (value?: string) => {
 		if (!value) return 'Date inconnue';
@@ -202,29 +211,79 @@ export default function ToursPage() {
 	};
 
 	return (
-		<div className="min-h-full p-4 md:p-8">
-			<div className="mx-auto w-full max-w-7xl">
+		<div className="relative min-h-full overflow-hidden p-4 md:p-8">
+			<div className="pointer-events-none absolute inset-0">
+				<div className="absolute -left-16 top-6 h-52 w-52 rounded-full bg-orange-500/10 blur-3xl" />
+				<div className="absolute right-[-70px] top-28 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
+				<div className="absolute bottom-0 left-1/2 h-52 w-52 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+			</div>
+			<div className="relative mx-auto w-full max-w-7xl">
 				{/* En-tête */}
-				<div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+				<div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-center">
 					<div>
 						<h1 className="text-3xl font-bold tracking-tight text-white">Parcours guides</h1>
 						<p className="mt-1 text-sm text-slate-400">
 							Gerez, modifiez et publiez vos parcours d'integration depuis votre espace.
 						</p>
 					</div>
-					<div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-						<div className="relative w-full md:w-80">
+					<Link href="/dashboard/tours/create">
+						<Button className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto">
+							<Icons.plus className="mr-2 h-4 w-4" />
+							Nouveau parcours
+						</Button>
+					</Link>
+				</div>
+
+				<div className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+					{[
+						{ label: 'Total parcours', value: toursStats.total, icon: Icons.tours, tone: 'from-slate-800/90 to-slate-900/70' },
+						{ label: 'Parcours actifs', value: toursStats.active, icon: Icons.active, tone: 'from-emerald-600/20 to-slate-900/70' },
+						{ label: 'Etapes cumulees', value: toursStats.steps, icon: Icons.layers, tone: 'from-cyan-500/20 to-slate-900/70' },
+						{ label: 'Moy. etapes / parcours', value: toursStats.avgSteps, icon: Icons.analytics, tone: 'from-orange-500/20 to-slate-900/70' },
+					].map((item) => {
+						const Icon = item.icon;
+						return (
+							<div
+								key={item.label}
+								className={`rounded-2xl border border-white/10 bg-gradient-to-br ${item.tone} p-4 shadow-[0_10px_30px_rgba(2,6,23,0.35)] backdrop-blur-sm`}
+							>
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-xs font-medium uppercase tracking-wide text-slate-400">{item.label}</p>
+										<p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+									</div>
+									<div className="rounded-xl border border-white/10 bg-slate-950/65 p-2.5 text-orange-300">
+										<Icon className="h-4 w-4" />
+									</div>
+								</div>
+							</div>
+						);
+					})}
+				</div>
+
+				<div className="mb-4">
+					<form
+						className="flex w-full gap-2 lg:w-1/2"
+						onSubmit={(e) => {
+							e.preventDefault();
+							setFilterQuery(filterInput.trim());
+						}}
+					>
+						<div className="relative flex-1">
 							<Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 							<input
-								value={filterQuery}
-								onChange={(e) => setFilterQuery(e.target.value)}
+								value={filterInput}
+								onChange={(e) => setFilterInput(e.target.value)}
 								placeholder="Filtrer par URL cible..."
 								className="h-10 w-full rounded-lg border border-white/15 bg-slate-900/45 pl-9 pr-9 text-sm text-slate-200 shadow-sm outline-none transition-colors placeholder:text-slate-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20"
 							/>
-							{filterQuery ? (
+							{filterInput ? (
 								<button
 									type="button"
-									onClick={() => setFilterQuery('')}
+									onClick={() => {
+										setFilterInput('');
+										setFilterQuery('');
+									}}
 									className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
 									aria-label="Effacer le filtre"
 								>
@@ -232,13 +291,14 @@ export default function ToursPage() {
 								</button>
 							) : null}
 						</div>
-						<Link href="/dashboard/tours/create">
-							<Button className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto">
-								<Icons.plus className="mr-2 h-4 w-4" />
-								Nouveau parcours
-							</Button>
-						</Link>
-					</div>
+						<Button
+							type="submit"
+							onClick={() => setFilterQuery(filterInput.trim())}
+							className="h-10 rounded-lg px-4 shadow-sm hover:scale-105 transition-transform"
+						>
+							Rechercher
+						</Button>
+					</form>
 				</div>
 
 				{/* Contenu */}
@@ -275,7 +335,13 @@ export default function ToursPage() {
 							<Icons.search className="h-8 w-8 text-slate-300" />
 							<h3 className="text-base font-semibold text-slate-800">Aucun parcours ne correspond au filtre</h3>
 							<p className="text-sm text-slate-500">Essayez une autre URL cible.</p>
-							<Button variant="outline" onClick={() => setFilterQuery('')}>
+							<Button
+								variant="outline"
+								onClick={() => {
+									setFilterInput('');
+									setFilterQuery('');
+								}}
+							>
 								Effacer le filtre
 							</Button>
 						</CardContent>
@@ -285,12 +351,13 @@ export default function ToursPage() {
 						{filteredTours.map((tour) => (
 							<Card 
 								key={tour.id || tour.name} 
-								className="group relative flex h-full flex-col overflow-hidden border-white/10 bg-slate-900/55 shadow-sm transition-all hover:shadow-md hover:border-orange-400/30"
+								className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(160deg,rgba(15,23,42,0.9),rgba(15,23,42,0.7)_55%,rgba(2,6,23,0.95))] shadow-[0_12px_28px_rgba(2,6,23,0.36)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/35 hover:shadow-[0_22px_40px_rgba(249,115,22,0.18)]"
 							>
+								<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_42%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 								{/* Indice de statut subtil */}
-								<div className={`absolute top-0 left-0 w-full h-1 transition-colors ${tour.isActive ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+								<div className={`absolute top-0 left-0 h-1 w-full transition-colors ${tour.isActive ? 'bg-emerald-500' : 'bg-slate-400/60'}`} />
 								
-								<CardHeader className="pb-3 pt-5">
+								<CardHeader className="relative pb-3 pt-5">
 									<div className="flex items-start justify-between gap-4">
 										<div className="flex-1 space-y-1">
 											<div className="flex items-center gap-2">
@@ -305,22 +372,22 @@ export default function ToursPage() {
 												Créé le {formatCreatedAt(tour.createdAt)}
 											</p>
 										</div>
-										<Badge 
+										<Badge
 											variant="outline"
-											className={`${tour.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'} shrink-0 px-2.5 py-0.5 text-xs font-medium`}
+											className={`${tour.isActive ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' : 'border-slate-500/35 bg-slate-600/20 text-slate-300'} shrink-0 px-2.5 py-0.5 text-xs font-medium`}
 										>
 											<span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${tour.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
 											{tour.isActive ? 'Actif' : 'Inactif'}
 										</Badge>
 									</div>
-									<p className="mt-2 min-h-[40px] line-clamp-2 text-sm text-slate-300">
+									<p className="mt-2 min-h-[40px] line-clamp-2 text-sm leading-relaxed text-slate-300">
 										{tour.description || <span className="italic text-slate-400">Aucune description fournie</span>}
 									</p>
 								</CardHeader>
 
-								<CardContent className="mt-auto flex flex-col gap-4 pb-4 pt-2">
+								<CardContent className="relative mt-auto flex flex-col gap-4 pb-4 pt-2">
 									{/* Informations complémentaires */}
-									<div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-slate-800/45 p-3">
+									<div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-slate-800/35 p-3.5 backdrop-blur-sm">
 										<div className="flex items-center justify-between text-sm">
 											<div className="min-w-0 flex items-center gap-2 text-slate-300">
 												<Icons.globe className="h-4 w-4 shrink-0 text-slate-500" />
@@ -350,7 +417,7 @@ export default function ToursPage() {
 
 											<button
 												onClick={() => handlePreview(tour)}
-												className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-md px-2 py-1"
+												className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
 											>
 												<Icons.play className="h-3.5 w-3.5" />
 													Previsualiser
@@ -361,7 +428,7 @@ export default function ToursPage() {
 									{/* Actions */}
 									<div className="flex items-center gap-2 pt-1">
 										<Link href={`/dashboard/tours/create?id=${tour.id}`} className="flex-1">
-											<Button variant="outline" className="h-9 w-full border-white/15 bg-slate-900/45 text-slate-100 hover:bg-white/10 hover:text-white shadow-sm transition-all text-sm">
+											<Button variant="outline" className="h-9 w-full border-white/15 bg-slate-900/45 text-sm text-slate-100 shadow-sm transition-all hover:bg-white/10 hover:text-white">
 												<Icons.edit className="mr-2 h-3.5 w-3.5" />
 												Éditer
 											</Button>

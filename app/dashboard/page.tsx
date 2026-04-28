@@ -51,7 +51,7 @@ export default function DashboardPage() {
       subtitle: 'Comptes enregistres',
       delta: '+12.4%',
       icon: Icons.users,
-      iconBg: 'text-orange-400 bg-orange-500/10',
+      tone: 'from-slate-800/90 to-slate-900/70',
       visible: isAdmin,
     },
     {
@@ -60,7 +60,7 @@ export default function DashboardPage() {
       subtitle: !loading && stats.totalUsers > 0 ? `${Math.round((stats.activeUsers / stats.totalUsers) * 100)}% du total` : 'Aucun utilisateur',
       delta: '+5.2%',
       icon: Icons.active,
-      iconBg: 'text-pink-400 bg-pink-500/10',
+      tone: 'from-emerald-600/20 to-slate-900/70',
       visible: isAdmin,
     },
     {
@@ -69,7 +69,7 @@ export default function DashboardPage() {
       subtitle: 'Gestion des comptes',
       delta: 'Stable',
       icon: Icons.admin,
-      iconBg: 'text-amber-300 bg-amber-400/10',
+      tone: 'from-purple-600/20 to-slate-900/70',
       visible: isAdmin,
     },
     {
@@ -78,34 +78,48 @@ export default function DashboardPage() {
       subtitle: 'Organisations enregistrees',
       delta: '+8.0%',
       icon: Icons.building,
-      iconBg: 'text-orange-300 bg-orange-400/10',
+      tone: 'from-orange-500/20 to-slate-900/70',
       visible: isAdmin || user?.role === 'DEVELOPER',
     },
   ].filter((card) => card.visible);
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-[#16131f] via-[#101a32] to-[#051733] p-6 text-white shadow-[0_24px_60px_rgba(5,10,24,0.5)]">
+      <section className="relative min-h-[125px] overflow-hidden rounded-3xl border border-white/10 bg-[#0a1324] px-7 py-4 text-white shadow-[0_24px_60px_rgba(5,10,24,0.5)] md:min-h-[138px] md:px-8 md:py-5">
+        <video
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+        >
+          <source src="/dashboard-hero-bg.mp4" type="video/mp4" />
+        </video>
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,24,0.78)_0%,rgba(7,16,34,0.66)_55%,rgba(8,14,30,0.82)_100%)]" />
         <div className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
         <div className="pointer-events-none absolute right-10 -bottom-24 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
         <div className="relative z-10">
           <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">Bonjour, {user?.firstName || 'Admin'}</h1>
-          <p className="mt-2 text-sm text-slate-200 md:text-base">Bienvenue sur votre tableau de bord TrustDev Onboarding.</p>
+          <p className="mt-2.5 text-base text-slate-200 md:text-lg">Bienvenue sur votre tableau de bord Guidora Onboarding.</p>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-5 shadow-card">
+            <div
+              key={card.title}
+              className={`rounded-2xl border border-white/10 bg-gradient-to-br ${card.tone} p-4 shadow-[0_10px_30px_rgba(2,6,23,0.35)] backdrop-blur-sm min-h-[96px]`}
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-medium text-slate-400">{card.title}</p>
-                  <p className="mt-1 text-3xl font-bold tracking-tight text-white">{loading ? '...' : card.value}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{card.title}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{loading ? '...' : card.value}</p>
                 </div>
-                <div className={`rounded-xl p-2.5 ${card.iconBg}`}>
-                  <Icon className="h-5 w-5" />
+                <div className="rounded-xl border border-white/10 bg-slate-950/65 p-2.5 text-orange-300">
+                  <Icon className="h-4 w-4" />
                 </div>
               </div>
               <p className="mt-2 text-xs text-slate-500">{card.subtitle}</p>
@@ -129,7 +143,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <Button className="mt-4 rounded-xl" asChild>
-                <Link href="/dashboard/users/create">
+                <Link href="/dashboard/users?create=1">
                   <Icons.plus className="mr-2 h-4 w-4" />
                   Nouvel utilisateur
                 </Link>

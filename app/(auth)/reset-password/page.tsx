@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { authService, getErrorMessage } from '@/lib/api';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Icons } from '@/components/ui/icons';
 import { ArrowLeft, CheckCircle2, KeyRound } from 'lucide-react';
 
@@ -61,11 +62,11 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="space-y-5">
-        <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/35 bg-destructive/10 p-4 text-sm text-red-200">
           Lien de réinitialisation invalide. Veuillez refaire une demande.
         </div>
         <Link href="/forgot-password" className="block">
-          <Button variant="outline" className="w-full h-10 rounded-xl">
+          <Button variant="outline" className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 hover:bg-slate-900 hover:text-white">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Demander un nouveau lien
           </Button>
@@ -77,9 +78,9 @@ function ResetPasswordForm() {
   if (isSuccess) {
     return (
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-200 p-4">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-          <p className="text-sm text-emerald-700">
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />
+          <p className="text-sm text-emerald-100">
             Votre mot de passe a été réinitialisé avec succès !
           </p>
         </div>
@@ -156,21 +157,27 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
-      {/* Background gradient decoration */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-[40%] -left-[20%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-[40%] -right-[20%] w-[60%] h-[60%] rounded-full bg-purple-500/5 blur-3xl" />
+        <Image
+          src="/background_login.jpg"
+          alt="Reset password background"
+          fill
+          priority
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.25),transparent_35%),linear-gradient(135deg,rgba(3,7,18,0.82),rgba(2,6,23,0.72)_45%,rgba(15,23,42,0.82))]" />
       </div>
 
       <div className="relative w-full max-w-md mx-4 animate-fade-in">
-        <div className="rounded-2xl bg-card border border-border/60 shadow-elevated overflow-hidden">
+        <div className="pointer-events-none absolute -inset-6 rounded-[28px] bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_48%),radial-gradient(circle_at_80%_80%,rgba(236,72,153,0.14),transparent_52%),radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.14),transparent_58%)] blur-2xl" />
+        <div className="relative rounded-2xl bg-card/90 border border-white/15 shadow-elevated shadow-[0_14px_45px_rgba(2,6,23,0.45),0_0_0_1px_rgba(255,255,255,0.03),0_0_28px_rgba(30,64,175,0.12)] backdrop-blur-xl overflow-hidden">
           {/* Header */}
           <div className="p-8 pb-0 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-primary shadow-soft mb-5">
+            <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-gradient-to-br from-orange-500 to-pink-600 shadow-soft shadow-[0_0_24px_rgba(255,107,0,0.24)]">
               <KeyRound className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Nouveau mot de passe</h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-100">Nouveau mot de passe</h1>
+            <p className="mt-1.5 text-sm text-slate-300">
               Choisissez un nouveau mot de passe sécurisé
             </p>
           </div>

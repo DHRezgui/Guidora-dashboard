@@ -64,12 +64,11 @@ import {
 } from 'lucide-react';
 
 export const Icons = {
-  logo: (props: LucideProps) => (
+  logo: ({ className }: LucideProps) => (
     <img
-      {...props}
-      src="/guidora-logo-2.png"
+      src="/guidora-logo-2-2.png"
       alt="Guidora logo"
-      className={props.className}
+      className={className}
     />
   ),
   spinner: Loader2,

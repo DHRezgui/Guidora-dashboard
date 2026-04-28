@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { authService, userService, getErrorMessage } from '@/lib/api';
 import { User } from '@/lib/types';
+import Link from 'next/link';
 
 const profileSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -40,10 +42,13 @@ export default function SettingsPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
   });
+  const roleValue = watch('role');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -122,19 +127,50 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-14 top-3 h-44 w-44 rounded-full bg-orange-500/10 blur-3xl" />
+        <div className="absolute right-[-50px] top-28 h-56 w-56 rounded-full bg-pink-500/10 blur-3xl" />
+      </div>
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Paramètres</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Gérez votre profil et vos préférences</p>
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_16px_36px_rgba(2,6,23,0.35)]">
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+        >
+          <source src="/settings.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(249,115,22,0.2),transparent_40%),linear-gradient(160deg,rgba(15,23,42,0.84),rgba(15,23,42,0.78)_55%,rgba(2,6,23,0.9))]" />
+        <div className="relative z-10 p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Paramètres</h1>
+            <p className="mt-1 text-sm text-slate-300">Gérez votre profil, vos préférences et la sécurité de votre compte.</p>
+          </div>
+          <Button
+            variant="outline"
+            className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 transition-transform hover:scale-105 hover:bg-slate-900 hover:text-white active:scale-[0.99] sm:w-auto"
+            asChild
+          >
+            <Link href="/dashboard">
+              <Icons.chevronLeft className="mr-2 h-4 w-4" />
+              Retour
+            </Link>
+          </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile form */}
-        <div className="md:col-span-2 rounded-2xl bg-card border border-border/60 shadow-card">
+        <div className="md:col-span-2 rounded-2xl border border-white/10 bg-slate-900/55 shadow-[0_14px_34px_rgba(2,6,23,0.32)] backdrop-blur-sm">
           <div className="p-6 border-b border-border/60">
-            <h2 className="text-lg font-semibold">Mon profil</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">Modifiez vos informations personnelles</p>
+            <h2 className="text-lg font-semibold text-white">Mon profil</h2>
+            <p className="mt-0.5 text-sm text-slate-300">Modifiez vos informations personnelles</p>
           </div>
           <div className="p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -166,15 +202,23 @@ export default function SettingsPage() {
               {isAdmin && (
                 <div className="space-y-2">
                   <Label htmlFor="role" className="text-[13px]">Rôle</Label>
-                  <select
-                    id="role"
-                    {...register('role')}
-                    className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  <input type="hidden" {...register('role')} />
+                  <Select
+                    value={roleValue}
+                    onValueChange={(value) => setValue('role', value as ProfileForm['role'], { shouldValidate: true, shouldDirty: true })}
                   >
-                    <option value="ADMIN">Admin</option>
-                    <option value="DEVELOPER">Développeur</option>
-                    <option value="USER">Utilisateur</option>
-                  </select>
+                    <SelectTrigger
+                      id="role"
+                      className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 px-3 text-sm text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60"
+                    >
+                      <SelectValue placeholder="Choisir un rôle" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="ADMIN" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Admin</SelectItem>
+                      <SelectItem value="DEVELOPER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Développeur</SelectItem>
+                      <SelectItem value="USER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Utilisateur</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.role && (
                     <p className="text-[11px] text-destructive">{errors.role.message}</p>
                   )}
@@ -214,7 +258,11 @@ export default function SettingsPage() {
               )}
 
               <div className="flex justify-end pt-2">
-                <Button type="submit" disabled={saving} className="rounded-xl shadow-soft">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl shadow-soft transition-transform hover:scale-105 active:scale-[0.99]"
+                >
                   {saving && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
                   Enregistrer
                 </Button>
@@ -224,9 +272,9 @@ export default function SettingsPage() {
         </div>
 
         {/* Profile card */}
-        <div className="rounded-2xl bg-card border border-border/60 shadow-card h-fit">
+        <div className="h-fit rounded-2xl border border-white/10 bg-slate-900/55 shadow-[0_14px_34px_rgba(2,6,23,0.32)] backdrop-blur-sm">
           <div className="p-6 border-b border-border/60">
-            <h2 className="text-lg font-semibold">Mon compte</h2>
+            <h2 className="text-lg font-semibold text-white">Mon compte</h2>
           </div>
           <div className="p-6 space-y-5">
             <div className="flex justify-center">

@@ -5,8 +5,8 @@ import { Icons } from '@/components/ui/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GuidedTour } from '@/lib/types';
-import { ChevronDown } from 'lucide-react';
 
 interface ToolbarProps {
   tour?: GuidedTour;
@@ -164,23 +164,28 @@ export default function Toolbar({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="tour-active" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Statut</Label>
-                  <div className="relative">
-                    <select
+                  <Select
+                    value={tour?.isActive === false ? 'inactive' : 'active'}
+                    onValueChange={(value) => onTourChange?.({ isActive: value === 'active' })}
+                  >
+                    <SelectTrigger
                       id="tour-active"
-                      value={tour?.isActive === false ? 'inactive' : 'active'}
-                      onChange={(e) => onTourChange?.({ isActive: e.target.value === 'active' })}
-                      className="flex h-9 w-full appearance-none items-center rounded-md border border-white/15 bg-slate-900/55 pl-8 pr-9 text-sm font-medium text-slate-100 transition-colors hover:border-orange-400/40 focus:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/20 focus-visible:border-orange-400/60"
+                      className="h-9 w-full rounded-md border-white/15 bg-slate-900/55 pl-3 pr-3 text-sm font-medium text-slate-100 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60"
                     >
-                      <option value="active">Actif</option>
-                      <option value="inactive">Inactif</option>
-                    </select>
-                    <span
-                      className={`pointer-events-none absolute left-3 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full ${
-                        tour?.isActive === false ? 'bg-red-500' : 'bg-emerald-500'
-                      }`}
-                    />
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            tour?.isActive === false ? 'bg-red-500' : 'bg-emerald-500'
+                          }`}
+                        />
+                        <SelectValue placeholder="Statut" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                      <SelectItem value="active" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Actif</SelectItem>
+                      <SelectItem value="inactive" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Inactif</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

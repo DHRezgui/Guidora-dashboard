@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { userService, organizationService, getErrorMessage } from '@/lib/api';
 import { User, Organization } from '@/lib/types';
 import Link from 'next/link';
@@ -40,10 +41,13 @@ export default function EditUserPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<EditUserForm>({
     resolver: zodResolver(editUserSchema),
   });
+  const roleValue = watch('role');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -209,15 +213,23 @@ export default function EditUserPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-[13px]">Rôle</Label>
-                <select
-                  id="role"
-                  {...register('role')}
-                  className="flex h-9 w-full rounded-xl border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <input type="hidden" {...register('role')} />
+                <Select
+                  value={roleValue}
+                  onValueChange={(value) => setValue('role', value as EditUserForm['role'], { shouldValidate: true, shouldDirty: true })}
                 >
-                  <option value="USER">Utilisateur</option>
-                  <option value="DEVELOPER">Développeur</option>
-                  <option value="ADMIN">Administrateur</option>
-                </select>
+                  <SelectTrigger
+                    id="role"
+                    className="h-9 w-full rounded-xl border-white/15 bg-slate-950/55 px-3 text-sm text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60"
+                  >
+                    <SelectValue placeholder="Choisir un rôle" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectItem value="USER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Utilisateur</SelectItem>
+                    <SelectItem value="DEVELOPER" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Développeur</SelectItem>
+                    <SelectItem value="ADMIN" className="text-slate-100 focus:bg-orange-500/20 focus:text-white">Administrateur</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center gap-2">
@@ -225,7 +237,7 @@ export default function EditUserPage() {
                   type="checkbox"
                   id="isActive"
                   {...register('isActive')}
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-white/25 bg-slate-950/55 text-orange-500 accent-orange-500 focus:ring-2 focus:ring-orange-400/35"
                 />
                 <Label htmlFor="isActive" className="text-[13px]">Compte actif</Label>
               </div>
@@ -246,7 +258,11 @@ export default function EditUserPage() {
                 <Button type="button" variant="outline" className="rounded-xl" asChild>
                   <Link href="/dashboard/users">Annuler</Link>
                 </Button>
-                <Button type="submit" disabled={saving} className="rounded-xl shadow-soft">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl shadow-soft transition-transform hover:scale-105 active:scale-[0.99]"
+                >
                   {saving && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
                   Enregistrer
                 </Button>
@@ -310,19 +326,24 @@ export default function EditUserPage() {
                 <div className="space-y-2">
                   <p className="text-[11px] text-muted-foreground">Aucune organisation assignée</p>
                   <div className="flex gap-1.5">
-                    <select
+                    <Select
                       value={selectedOrgName}
-                      onChange={(e) => setSelectedOrgName(e.target.value)}
-                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      onValueChange={setSelectedOrgName}
                     >
-                      <option value="">Sélectionner...</option>
-                      {allOrgs.map((org) => (
-                        <option key={org.id} value={org.name}>{org.name}</option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-8 w-full rounded-lg border-white/15 bg-slate-950/55 px-2 text-xs text-slate-100 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60">
+                        <SelectValue placeholder="Sélectionner..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border border-white/15 bg-slate-900 text-slate-100 shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                        {allOrgs.map((org) => (
+                          <SelectItem key={org.id} value={org.name} className="text-slate-100 focus:bg-orange-500/20 focus:text-white">
+                            {org.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button
                       size="sm"
-                      className="h-8 text-xs rounded-lg"
+                      className="h-8 text-xs rounded-lg transition-transform hover:scale-105 active:scale-[0.99]"
                       onClick={handleAssignOrg}
                       disabled={!selectedOrgName || assigning}
                     >
@@ -335,7 +356,7 @@ export default function EditUserPage() {
             <div className="border-t border-border/60 pt-5">
               <Button
                 variant="destructive"
-                className="w-full rounded-xl"
+                className="w-full rounded-xl transition-transform hover:scale-[1.01] active:scale-[0.99]"
                 size="sm"
                 onClick={() => {
                   if (confirm('Supprimer cet utilisateur ?')) {

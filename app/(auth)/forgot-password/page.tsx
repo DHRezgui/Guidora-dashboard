@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { authService, getErrorMessage } from '@/lib/api';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Icons } from '@/components/ui/icons';
 import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
 
@@ -47,27 +48,33 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
-      {/* Background gradient decoration */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-[40%] -left-[20%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-[40%] -right-[20%] w-[60%] h-[60%] rounded-full bg-purple-500/5 blur-3xl" />
+        <Image
+          src="/background_login.jpg"
+          alt="Forgot password background"
+          fill
+          priority
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.25),transparent_35%),linear-gradient(135deg,rgba(3,7,18,0.82),rgba(2,6,23,0.72)_45%,rgba(15,23,42,0.82))]" />
       </div>
 
       <div className="relative w-full max-w-md mx-4 animate-fade-in">
-        <div className="rounded-2xl bg-card border border-border/60 shadow-elevated overflow-hidden">
+        <div className="pointer-events-none absolute -inset-6 rounded-[28px] bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.18),transparent_48%),radial-gradient(circle_at_80%_80%,rgba(236,72,153,0.14),transparent_52%),radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.14),transparent_58%)] blur-2xl" />
+        <div className="relative rounded-2xl bg-card/90 border border-white/15 shadow-elevated shadow-[0_14px_45px_rgba(2,6,23,0.45),0_0_0_1px_rgba(255,255,255,0.03),0_0_28px_rgba(30,64,175,0.12)] backdrop-blur-xl overflow-hidden">
           {/* Header */}
           <div className="p-8 pb-0 text-center">
-            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-soft mb-5 ${isSent ? 'gradient-primary' : 'bg-black overflow-hidden'}`}>
+            <div className={`mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl shadow-soft ${isSent ? 'border border-white/15 bg-gradient-to-br from-orange-500 to-pink-600 shadow-[0_0_28px_rgba(255,107,0,0.28)]' : 'overflow-hidden'}`}>
               {isSent ? (
                 <Mail className="h-7 w-7 text-white" />
               ) : (
-                <Icons.logo className="h-full w-full object-cover" />
+                <Icons.logo className="h-full w-full object-contain" />
               )}
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-100">
               {isSent ? 'Email envoyé !' : 'Mot de passe oublié'}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
+            <p className="mt-1.5 text-sm text-slate-300">
               {isSent
                 ? 'Vérifiez votre boîte de réception'
                 : 'Entrez votre email pour recevoir un lien de réinitialisation'}
@@ -78,19 +85,22 @@ export default function ForgotPasswordPage() {
           <div className="p-8">
             {isSent ? (
               <div className="space-y-5">
-                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-200 p-4">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                  <p className="text-sm text-emerald-700">
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />
+                  <p className="text-sm text-emerald-100">
                     Si un compte existe avec cet email, vous recevrez un lien de réinitialisation dans quelques minutes.
                   </p>
                 </div>
 
-                <p className="text-[13px] text-muted-foreground text-center">
+                <p className="text-center text-[13px] text-slate-300">
                   Pensez à vérifier vos spams si vous ne trouvez pas l&apos;email.
                 </p>
 
                 <Link href="/login" className="block">
-                  <Button variant="outline" className="w-full h-10 rounded-xl">
+                  <Button
+                    variant="outline"
+                    className="h-10 w-full rounded-xl border-white/15 bg-slate-950/55 text-slate-100 hover:bg-slate-900 hover:text-white hover:scale-105 transition-transform active:scale-[0.99]"
+                  >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Retour à la connexion
                   </Button>
@@ -118,7 +128,11 @@ export default function ForgotPasswordPage() {
                   )}
                 </div>
 
-                <Button type="submit" className="w-full h-10 rounded-xl shadow-soft" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full h-10 rounded-xl shadow-soft hover:scale-105 transition-transform active:scale-[0.99]"
+                  disabled={isLoading}
+                >
                   {isLoading ? (
                     <>
                       <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />

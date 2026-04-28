@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Icons } from '@/components/ui/icons';
 import { authService, organizationService } from '@/lib/api';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const user = authService.getUser();
   const [orgName, setOrgName] = useState<string | null>(null);
 
@@ -39,8 +40,8 @@ export default function Sidebar() {
       {/* Logo & Branding */}
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 overflow-hidden rounded-xl bg-black shadow-soft">
-            <Icons.logo className="h-full w-full object-cover" />
+          <div className="h-11 w-11 overflow-hidden rounded-xl shadow-soft">
+            <Icons.logo className="h-full w-full object-contain" />
           </div>
           <div>
             <h2 className="font-bold text-[15px] tracking-tight text-white">TrustDev</h2>
@@ -82,7 +83,18 @@ export default function Sidebar() {
 
       {/* User profile */}
       <div className="px-3 pb-4">
-        <div className="phoenix-glass rounded-xl p-3">
+        <div
+          className="phoenix-glass rounded-xl p-3 transition-all hover:border-orange-400/30 hover:bg-white/5 cursor-pointer"
+          onClick={() => router.push('/dashboard/settings')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              router.push('/dashboard/settings');
+            }
+          }}
+        >
           <div className="flex items-center gap-3">
             <div className="phoenix-primary h-9 w-9 rounded-lg flex items-center justify-center text-white font-semibold text-sm shadow-soft">
               {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
@@ -92,7 +104,10 @@ export default function Sidebar() {
               <p className="truncate text-[11px] capitalize text-slate-400">{user?.role?.toLowerCase()}</p>
             </div>
             <button
-              onClick={() => authService.logout()}
+              onClick={(e) => {
+                e.stopPropagation();
+                authService.logout();
+              }}
               className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-orange-300"
               title="Déconnexion"
             >
