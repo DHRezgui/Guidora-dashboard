@@ -26,6 +26,11 @@ type SimulationElementWithRect = NonNullable<SimulationContext['elements']>[numb
 };
 
 type TooltipPlacement = Exclude<Step['position'], undefined>;
+type PreviewBridgeRectMessage = {
+  type: 'TRUSTDEV_PREVIEW_TARGET_RECT';
+  selector?: string;
+  rect?: { top: number; left: number; width: number; height: number } | null;
+};
 
 function normalizeSearchText(value?: string): string {
   return (value || '')
@@ -384,6 +389,7 @@ export default function TourSimulator({
   const [viewMode, setViewMode] = useState<'preview' | 'debug'>('preview');
   const [iframeState, setIframeState] = useState<'idle' | 'loading' | 'ready' | 'blocked'>('idle');
   const [canUseIframe, setCanUseIframe] = useState(false);
+  const [canInspectIframeDom, setCanInspectIframeDom] = useState(false);
   const [liveTargetRect, setLiveTargetRect] = useState<NormalizedRect | null>(null);
   const [liveCalibrationTimedOut, setLiveCalibrationTimedOut] = useState(false);
   const [connectorPath, setConnectorPath] = useState<string | null>(null);
@@ -414,14 +420,17 @@ export default function TourSimulator({
   useEffect(() => {
     if (!currentStepPageUrl || typeof window === 'undefined') {
       setCanUseIframe(false);
+      setCanInspectIframeDom(false);
       return;
     }
 
     try {
       const resolvedUrl = new URL(currentStepPageUrl, window.location.origin);
-      setCanUseIframe(resolvedUrl.origin === window.location.origin);
+      setCanUseIframe(Boolean(resolvedUrl.href));
+      setCanInspectIframeDom(resolvedUrl.origin === window.location.origin);
     } catch {
       setCanUseIframe(false);
+      setCanInspectIframeDom(false);
     }
   }, [currentStepPageUrl]);
 
@@ -462,12 +471,18 @@ export default function TourSimulator({
 
   const scrollLiveIframe = (deltaY: number, deltaMode = 0, clientX?: number, clientY?: number) => {
     const iframe = iframeRef.current;
-    if (!iframe?.contentWindow?.document) {
+    if (!iframe?.contentWindow) {
       return;
     }
 
     const win = iframe.contentWindow;
-    const doc = win.document;
+    let doc: Document;
+    try {
+      doc = win.document;
+    } catch {
+      // Cross-origin iframe: keep native page scrolling behavior.
+      return;
+    }
 
     const lineHeight = 16;
     const pageHeight = Math.max(1, iframe.clientHeight || 800);
@@ -554,12 +569,25 @@ export default function TourSimulator({
   const visibleDebugElements = simulationContext?.elements.slice(0, 12) || [];
   const shouldRenderLiveIframe = viewMode === 'preview' && canUseIframe && Boolean(fallbackPageUrl);
   const useLiveIframe = shouldRenderLiveIframe && iframeState !== 'blocked';
+  const isCrossOriginLive = useLiveIframe && !canInspectIframeDom;
   const isIframeReady = iframeState === 'ready';
-  const isLiveCalibrating = useLiveIframe && isIframeReady && Boolean(currentStep?.targetSelector) && !liveTargetRect && !liveCalibrationTimedOut;
-  const isLiveTargetMissing = useLiveIframe && isIframeReady && Boolean(currentStep?.targetSelector) && !liveTargetRect && liveCalibrationTimedOut;
+  const isLiveCalibrating =
+    useLiveIframe &&
+    canInspectIframeDom &&
+    isIframeReady &&
+    Boolean(currentStep?.targetSelector) &&
+    !liveTargetRect &&
+    !liveCalibrationTimedOut;
+  const isLiveTargetMissing =
+    useLiveIframe &&
+    canInspectIframeDom &&
+    isIframeReady &&
+    Boolean(currentStep?.targetSelector) &&
+    !liveTargetRect &&
+    liveCalibrationTimedOut;
 
   useEffect(() => {
-    if (!useLiveIframe || !isIframeReady || !currentStep?.targetSelector || !iframeRef.current || !stageRef.current) {
+    if (!useLiveIframe || !canInspectIframeDom || !isIframeReady || !currentStep?.targetSelector || !iframeRef.current || !stageRef.current) {
       setLiveTargetRect((prev) => (prev === null ? prev : null));
       setLiveCalibrationTimedOut((prev) => (prev === false ? prev : false));
       syncLiveTargetRef.current = null;
@@ -572,11 +600,16 @@ export default function TourSimulator({
     setLiveCalibrationTimedOut((prev) => (prev === false ? prev : false));
 
     const syncTarget = () => {
-      if (!iframe || !stage || !iframe.contentWindow?.document) {
+      if (!iframe || !stage || !iframe.contentWindow) return;
+      let doc: Document | null = null;
+      try {
+        doc = iframe.contentWindow.document;
+      } catch {
+        // Cross-origin live preview: iframe can render, but DOM probing is restricted.
+        setLiveTargetRect((prev) => (prev === null ? prev : null));
         return;
       }
-
-      const doc = iframe.contentWindow.document;
+      if (!doc) return;
       const selector = currentStep.targetSelector;
       if (!selector) {
         setLiveTargetRect((prev) => (prev === null ? prev : null));
@@ -673,7 +706,89 @@ export default function TourSimulator({
       window.removeEventListener('resize', syncTarget);
       syncLiveTargetRef.current = null;
     };
-  }, [useLiveIframe, isIframeReady, currentStep?.targetSelector, safeIndex]);
+  }, [useLiveIframe, canInspectIframeDom, isIframeReady, currentStep?.targetSelector, safeIndex]);
+
+  useEffect(() => {
+    if (!useLiveIframe || canInspectIframeDom || !isIframeReady || !currentStep?.targetSelector || !iframeRef.current || !stageRef.current) {
+      return;
+    }
+
+    const selector = currentStep.targetSelector;
+    const iframe = iframeRef.current;
+    const stage = stageRef.current;
+    const targetWindow = iframe.contentWindow;
+    if (!targetWindow) return;
+
+    let resolved = false;
+    setLiveCalibrationTimedOut((prev) => (prev ? false : prev));
+    setLiveTargetRect((prev) => (prev === null ? prev : null));
+
+    const updateFromRect = (rect: { top: number; left: number; width: number; height: number }) => {
+      const iframeRect = iframe.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      const stageWidth = Math.max(1, stageRect.width);
+      const stageHeight = Math.max(1, stageRect.height);
+
+      const absoluteTop = iframeRect.top - stageRect.top + rect.top;
+      const absoluteLeft = iframeRect.left - stageRect.left + rect.left;
+
+      const nextRect: NormalizedRect = {
+        topPct: clampPercent((absoluteTop / stageHeight) * 100),
+        leftPct: clampPercent((absoluteLeft / stageWidth) * 100),
+        widthPct: Math.max(2, clampPercent((rect.width / stageWidth) * 100)),
+        heightPct: Math.max(2, clampPercent((rect.height / stageHeight) * 100)),
+      };
+
+      setLiveTargetRect((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.topPct - nextRect.topPct) < 0.05 &&
+          Math.abs(prev.leftPct - nextRect.leftPct) < 0.05 &&
+          Math.abs(prev.widthPct - nextRect.widthPct) < 0.05 &&
+          Math.abs(prev.heightPct - nextRect.heightPct) < 0.05
+        ) {
+          return prev;
+        }
+        return nextRect;
+      });
+      resolved = true;
+      setLiveCalibrationTimedOut((prev) => (prev ? false : prev));
+    };
+
+    const requestRect = () => {
+      targetWindow.postMessage(
+        {
+          type: 'TRUSTDEV_PREVIEW_REQUEST_TARGET',
+          selector,
+        },
+        '*',
+      );
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== targetWindow) return;
+      const data = event.data as PreviewBridgeRectMessage | null;
+      if (!data || data.type !== 'TRUSTDEV_PREVIEW_TARGET_RECT' || data.selector !== selector || !data.rect) {
+        return;
+      }
+      updateFromRect(data.rect);
+    };
+
+    window.addEventListener('message', onMessage);
+    requestRect();
+    const pollId = window.setInterval(requestRect, 700);
+    const timeoutId = window.setTimeout(() => {
+      if (!resolved) {
+        setLiveCalibrationTimedOut((prev) => (prev ? prev : true));
+      }
+    }, 7000);
+
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.clearInterval(pollId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [useLiveIframe, canInspectIframeDom, isIframeReady, currentStep?.targetSelector, safeIndex]);
 
   // In live mode, only trust the real iframe DOM measurement.
   // This avoids a stale first pointer from structured snapshot coordinates.
@@ -891,16 +1006,23 @@ export default function TourSimulator({
       {useLiveIframe ? (
         <div
           className="absolute inset-0 overflow-hidden rounded-xl bg-slate-100/45 dark:bg-slate-950/5"
-          onWheel={(event) => {
-            event.preventDefault();
-            scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
-          }}
+          onWheel={
+            useLiveIframe && canInspectIframeDom
+              ? (event) => {
+                  event.preventDefault();
+                  scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
+                }
+              : undefined
+          }
         >
           <iframe
             ref={iframeRef}
             src={fallbackPageUrl}
             title={tourName || 'Tour preview'}
-            className="h-full w-full border-0 bg-white pointer-events-none"
+            className={cn(
+              'h-full w-full border-0 bg-white',
+              isCrossOriginLive ? 'pointer-events-auto' : 'pointer-events-none',
+            )}
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
             onLoad={() => {
               setIframeState('ready');
@@ -947,6 +1069,8 @@ export default function TourSimulator({
             <span className={isLiveTargetMissing ? 'text-amber-700 font-medium' : ''}>
               {iframeState === 'loading'
                 ? 'Transition de page...'
+                : !canInspectIframeDom
+                  ? 'Live cross-origin (DOM restreint)'
                 : isLiveCalibrating
                   ? 'Calibrage...'
                   : isLiveTargetMissing
@@ -1039,11 +1163,15 @@ export default function TourSimulator({
 
       {/* Cible et Tooltip */}
       <div
-        className="relative z-20 flex items-center justify-center w-full h-full"
-        onWheel={useLiveIframe ? (event) => {
-          event.preventDefault();
-          scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
-        } : undefined}
+        className={cn('relative z-20 flex h-full w-full items-center justify-center', isCrossOriginLive ? 'pointer-events-none' : '')}
+        onWheel={
+          useLiveIframe && canInspectIframeDom
+            ? (event) => {
+                event.preventDefault();
+                scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
+              }
+            : undefined
+        }
       >
         <div className="relative flex h-full w-full items-center justify-center">
           {currentStep.position !== 'CENTER' && !hasStructuredContext && viewMode === 'preview' && !useLiveIframe && (
@@ -1090,14 +1218,20 @@ export default function TourSimulator({
                   'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 origin-center'
               )}
               style={
-                (hasStructuredContext || useLiveIframe)
-                  ? (tooltipStyle || { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
+                isCrossOriginLive && !targetRectForTooltip
+                  ? { right: '16px', bottom: '16px', top: 'auto', left: 'auto', transform: 'none' }
+                  : (hasStructuredContext || useLiveIframe)
+                    ? (tooltipStyle || { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
                   : undefined
               }
-              onWheel={useLiveIframe ? (event) => {
-                event.preventDefault();
-                scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
-              } : undefined}
+              onWheel={
+                useLiveIframe && canInspectIframeDom
+                  ? (event) => {
+                      event.preventDefault();
+                      scrollLiveIframe(event.deltaY, event.deltaMode, event.clientX, event.clientY);
+                    }
+                  : undefined
+              }
             >
 
             {/* Infobulle */}
@@ -1119,21 +1253,6 @@ export default function TourSimulator({
               <div className="text-slate-600 text-sm mb-6 whitespace-pre-wrap leading-relaxed">
                 {currentStep.content || "Aucun contenu défini pour cette étape."}
               </div>
-
-              {!hasStructuredContext && (!useLiveIframe || isLiveTargetMissing) ? (
-                <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-                  {isLiveTargetMissing ? (
-                    <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-800">
-                      <p className="font-medium">Cible introuvable dans la page live.</p>
-                      {currentStep?.targetSelector ? <p className="mt-0.5 truncate">Sélecteur: {currentStep.targetSelector}</p> : null}
-                    </div>
-                  ) : null}
-                  <p className="font-medium text-slate-700">Mode fallback</p>
-                  <p className="mt-1">Page: {fallbackPageTitle}</p>
-                  {fallbackPageUrl ? <p className="truncate">URL: {fallbackPageUrl}</p> : null}
-                  {fallbackMainSelector ? <p className="truncate">Selector principal: {fallbackMainSelector}</p> : null}
-                </div>
-              ) : null}
 
               <div className="flex items-center justify-between mt-4">
                 <div className="flex gap-1">
