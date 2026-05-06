@@ -162,11 +162,27 @@ export interface GuidedTour {
   targetUrl: string;
   isActive?: boolean;
   priority?: number;
+  replayPolicy?: 'never' | 'after_period' | 'always_on_new_version';
+  replayAfterDays?: number;
+  currentResetVersion?: number;
   triggerConditions?: Record<string, any>;
   simulationContext?: SimulationContext;
   steps: Step[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface TourAudienceResetResponse {
+  success: boolean;
+  message?: string;
+  clearedStates?: number;
+}
+
+export interface TourSegmentResetResponse {
+  success: boolean;
+  message?: string;
+  matchedUsers?: number;
+  clearedStates?: number;
 }
 
 export type StepSavePayload = Omit<Step, 'id' | 'orderIndex'>;

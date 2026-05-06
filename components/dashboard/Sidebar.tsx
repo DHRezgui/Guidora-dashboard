@@ -44,8 +44,8 @@ export default function Sidebar() {
             <Icons.logo className="h-full w-full object-contain" />
           </div>
           <div>
-            <h2 className="font-bold text-[15px] tracking-tight text-slate-800 dark:text-white">TrustDev</h2>
-            <p className="text-[11px] font-medium text-orange-300/90">{orgName || 'Onboarding Platform'}</p>
+            <h2 className="font-bold text-[15px] tracking-tight text-slate-800 dark:text-white">Guidora</h2>
+            <p className="text-[11px] font-medium text-orange-300/90">Onboarding</p>
           </div>
         </div>
       </div>

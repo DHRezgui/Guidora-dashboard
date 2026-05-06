@@ -99,6 +99,8 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
     targetUrl: tour?.targetUrl,
     isActive: tour?.isActive,
     priority: tour?.priority,
+    replayPolicy: tour?.replayPolicy,
+    replayAfterDays: tour?.replayAfterDays,
     triggerConditions: tour?.triggerConditions,
   };
   
@@ -127,6 +129,8 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
       targetUrl: tour?.targetUrl,
       isActive: tour?.isActive,
       priority: tour?.priority,
+      replayPolicy: tour?.replayPolicy,
+      replayAfterDays: tour?.replayAfterDays,
       triggerConditions: tour?.triggerConditions,
     };
     setHistory({ stack: [{ steps: initialSteps, tourMeta: nextInitialTourMeta }], index: 0 });

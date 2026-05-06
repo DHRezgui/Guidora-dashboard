@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/ui/icons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TourSimulator from '@/components/editor/TourSimulator';
-import { getErrorMessage, tourService } from '@/lib/api';
-import { GuidedTour } from '@/lib/types';
+import { getErrorMessage, tourService, userService } from '@/lib/api';
+import { GuidedTour, User } from '@/lib/types';
 import { toast } from 'sonner';
 
 const PREVIEW_STORAGE_KEY = 'tours.previewTour.v1';
@@ -21,10 +22,23 @@ export default function ToursPage() {
 	const [previewTour, setPreviewTour] = useState<GuidedTour | null>(null);
 	const [previewShouldAutoPlay, setPreviewShouldAutoPlay] = useState(false);
 	const [stepsTour, setStepsTour] = useState<GuidedTour | null>(null);
+	const [audienceTour, setAudienceTour] = useState<GuidedTour | null>(null);
+	const [audienceMode, setAudienceMode] = useState<'all' | 'user' | 'segment'>('all');
+	const [audienceUsers, setAudienceUsers] = useState<User[]>([]);
+	const [audienceUserQuery, setAudienceUserQuery] = useState('');
+	const [selectedAudienceUserId, setSelectedAudienceUserId] = useState('');
+	const [isAudienceUsersLoading, setIsAudienceUsersLoading] = useState(false);
+	const [segmentType, setSegmentType] = useState<'all' | 'new_users' | 'inactive_users' | 'custom_user_ids'>('inactive_users');
+	const [segmentCreatedWithinDays, setSegmentCreatedWithinDays] = useState(14);
+	const [segmentInactiveDays, setSegmentInactiveDays] = useState(60);
+	const [segmentUserIdsRaw, setSegmentUserIdsRaw] = useState('');
+	const [isApplyingAudienceAction, setIsApplyingAudienceAction] = useState(false);
 	const [filterQuery, setFilterQuery] = useState('');
 	const [filterInput, setFilterInput] = useState('');
+	const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 	const hiddenTourIdsRef = useRef<Set<string>>(new Set());
 	const loadSeqRef = useRef(0);
+	const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
 	const filteredTours = useMemo(() => {
 		const query = filterQuery.trim().toLowerCase();
@@ -33,6 +47,20 @@ export default function ToursPage() {
 			(tour.targetUrl || '').toLowerCase().includes(query)
 		);
 	}, [tours, filterQuery]);
+
+	const filteredAudienceUsers = useMemo(() => {
+		const query = audienceUserQuery.trim().toLowerCase();
+		if (!query) return audienceUsers.slice(0, 12);
+		return audienceUsers
+			.filter((user) => {
+				const email = (user.email || '').toLowerCase();
+				const firstName = (user.firstName || '').toLowerCase();
+				const lastName = (user.lastName || '').toLowerCase();
+				const fullName = `${firstName} ${lastName}`.trim();
+				return email.includes(query) || fullName.includes(query);
+			})
+			.slice(0, 12);
+	}, [audienceUsers, audienceUserQuery]);
 
 	const toursStats = useMemo(() => {
 		const total = tours.length;
@@ -149,6 +177,18 @@ export default function ToursPage() {
 	}, []);
 
 	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (!actionsMenuRef.current) return;
+			const target = event.target as Node;
+			if (!actionsMenuRef.current.contains(target)) {
+				setActionsMenuOpen(false);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, []);
+
+	useEffect(() => {
 		if (typeof window === 'undefined' || previewTour) {
 			return;
 		}
@@ -210,6 +250,137 @@ export default function ToursPage() {
 		}
 	};
 
+	const handleResetAudience = async (tour: GuidedTour) => {
+		if (!tour.id) return;
+		try {
+			const response = await tourService.resetAudience(tour.id);
+			toast.success('Audience réinitialisée', {
+				description: `${response.clearedStates ?? 0} état(s) utilisateur supprimé(s).`,
+			});
+		} catch (error) {
+			toast.error('Réinitialisation impossible', {
+				description: getErrorMessage(error, 'Impossible de réinitialiser les états utilisateurs.'),
+			});
+		}
+	};
+
+	const handleResetUser = async (tour: GuidedTour, userId: string) => {
+		if (!tour.id) return;
+		if (!userId.trim()) return;
+		try {
+			const response = await tourService.resetUser(tour.id, userId.trim());
+			toast.success('Utilisateur réinitialisé', {
+				description: `${response.clearedStates ?? 0} état(s) supprimé(s) pour cet utilisateur.`,
+			});
+		} catch (error) {
+			toast.error('Réinitialisation utilisateur impossible', {
+				description: getErrorMessage(error, 'Impossible de réinitialiser cet utilisateur.'),
+			});
+		}
+	};
+
+	const handleResetSegment = async (
+		tour: GuidedTour,
+		payload: {
+			segment: 'all' | 'new_users' | 'inactive_users' | 'custom_user_ids';
+			createdWithinDays?: number;
+			inactiveDays?: number;
+			userIds?: string[];
+		},
+	) => {
+		if (!tour.id) return;
+		try {
+			const response = await tourService.resetSegment(tour.id, payload);
+			toast.success('Segment réinitialisé', {
+				description: `${response.clearedStates ?? 0} état(s) supprimé(s) sur ${response.matchedUsers ?? 0} utilisateur(s).`,
+			});
+		} catch (error) {
+			toast.error('Réinitialisation segment impossible', {
+				description: getErrorMessage(error, 'Impossible de réinitialiser ce segment.'),
+			});
+		}
+	};
+
+	const handleRunReplayJob = async () => {
+		try {
+			const response = await tourService.runReplayJob();
+			toast.success('Job replay exécuté', {
+				description: `${response.updatedStates ?? 0} état(s) passés en ELIGIBLE.`,
+			});
+		} catch (error) {
+			toast.error('Exécution du job impossible', {
+				description: getErrorMessage(error, 'Impossible de lancer le job replay.'),
+			});
+		}
+	};
+
+	const openAudienceModal = (tour: GuidedTour) => {
+		setAudienceTour(tour);
+		setAudienceMode('all');
+		setAudienceUsers([]);
+		setAudienceUserQuery('');
+		setSelectedAudienceUserId('');
+		setSegmentType('inactive_users');
+		setSegmentCreatedWithinDays(14);
+		setSegmentInactiveDays(60);
+		setSegmentUserIdsRaw('');
+	};
+
+	const closeAudienceModal = () => {
+		if (isApplyingAudienceAction) return;
+		setAudienceTour(null);
+	};
+
+	const applyAudienceAction = async () => {
+		if (!audienceTour) return;
+		setIsApplyingAudienceAction(true);
+		try {
+			if (audienceMode === 'all') {
+				await handleResetAudience(audienceTour);
+			} else if (audienceMode === 'user') {
+				await handleResetUser(audienceTour, selectedAudienceUserId);
+			} else {
+				const payload =
+					segmentType === 'new_users'
+						? { segment: 'new_users' as const, createdWithinDays: Math.max(1, segmentCreatedWithinDays) }
+						: segmentType === 'inactive_users'
+							? { segment: 'inactive_users' as const, inactiveDays: Math.max(1, segmentInactiveDays) }
+							: segmentType === 'custom_user_ids'
+								? {
+										segment: 'custom_user_ids' as const,
+										userIds: segmentUserIdsRaw
+											.split(',')
+											.map((item) => item.trim())
+											.filter(Boolean),
+									}
+								: { segment: 'all' as const };
+				await handleResetSegment(audienceTour, payload);
+			}
+			setAudienceTour(null);
+		} finally {
+			setIsApplyingAudienceAction(false);
+		}
+	};
+
+	useEffect(() => {
+		if (!audienceTour || audienceMode !== 'user') return;
+		if (audienceUsers.length > 0 || isAudienceUsersLoading) return;
+		const loadUsers = async () => {
+			setIsAudienceUsersLoading(true);
+			try {
+				const response = await userService.getAll(1, 200);
+				setAudienceUsers(response.users || []);
+			} catch (error) {
+				toast.error('Chargement utilisateurs impossible', {
+					description: getErrorMessage(error, 'Impossible de charger la liste utilisateurs.'),
+				});
+			} finally {
+				setIsAudienceUsersLoading(false);
+			}
+		};
+		loadUsers();
+	}, [audienceTour, audienceMode, audienceUsers.length, isAudienceUsersLoading]);
+
 	return (
 		<div className="relative min-h-full overflow-hidden p-4 md:p-8">
 			<div className="pointer-events-none absolute inset-0">
@@ -226,12 +397,41 @@ export default function ToursPage() {
 							Gerez, modifiez et publiez vos parcours d'integration depuis votre espace.
 						</p>
 					</div>
-					<Link href="/dashboard/tours/create">
-						<Button className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto">
-							<Icons.plus className="mr-2 h-4 w-4" />
-							Nouveau parcours
-						</Button>
-					</Link>
+					<div ref={actionsMenuRef} className="relative w-full md:w-auto">
+						<div className="flex w-full md:w-auto">
+							<Link href="/dashboard/tours/create" className="flex-1 md:flex-none">
+								<Button className="w-full rounded-r-none shadow-sm hover:scale-105 transition-transform">
+									<Icons.plus className="mr-2 h-4 w-4" />
+									Nouveau parcours
+								</Button>
+							</Link>
+							<Button
+								type="button"
+								variant="outline"
+								className="rounded-l-none border-l-0 px-3 shadow-sm hover:scale-105 transition-transform"
+								onClick={() => setActionsMenuOpen((prev) => !prev)}
+								aria-label="Afficher plus d'actions"
+								aria-expanded={actionsMenuOpen}
+							>
+								<Icons.chevronDown className={`h-4 w-4 transition-transform ${actionsMenuOpen ? 'rotate-180' : ''}`} />
+							</Button>
+						</div>
+						{actionsMenuOpen && (
+							<div className="absolute right-0 z-50 mt-2 min-w-[220px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+								<button
+									type="button"
+									className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
+									onClick={() => {
+										setActionsMenuOpen(false);
+										handleRunReplayJob();
+									}}
+								>
+									<Icons.refresh className="h-4 w-4" />
+									Lancer job replay
+								</button>
+							</div>
+						)}
+					</div>
 				</div>
 
 				<div className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -394,9 +594,21 @@ export default function ToursPage() {
 												<span className="truncate max-w-[150px] md:max-w-[180px]" title={tour.targetUrl}>{tour.targetUrl || 'URL non définie'}</span>
 											</div>
 											{tour.priority !== undefined && (
-												<Badge variant="secondary" className="h-5 border-slate-200 bg-slate-100 text-[10px] text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-300">
-													Prio: {tour.priority}
-												</Badge>
+												<div className="flex items-center gap-1">
+													<Badge variant="secondary" className="h-5 border-slate-200 bg-slate-100 text-[10px] text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-300">
+														Prio: {tour.priority}
+													</Badge>
+													{Number(tour.replayAfterDays || 0) > 0 && (
+														<Badge variant="secondary" className="h-5 border-slate-200 bg-slate-100 text-[10px] text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-300">
+															Replay: {Number(tour.replayAfterDays)}j
+														</Badge>
+													)}
+													{tour.replayPolicy && (
+														<Badge variant="secondary" className="h-5 border-slate-200 bg-slate-100 text-[10px] text-slate-700 shadow-sm dark:border-white/15 dark:bg-slate-900/60 dark:text-slate-300">
+															Policy: {tour.replayPolicy}
+														</Badge>
+													)}
+												</div>
 											)}
 										</div>
 										
@@ -444,6 +656,16 @@ export default function ToursPage() {
 												title="Exporter le parcours (JSON)"
 											>
 												<Icons.download className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="outline"
+												size="icon"
+												className="h-9 w-9 border-slate-300 bg-white/90 text-slate-600 transition-colors hover:bg-indigo-100 hover:text-indigo-700 hover:border-indigo-300/70 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-300 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-300 dark:hover:border-indigo-400/30"
+												onClick={() => openAudienceModal(tour)}
+												disabled={deletingIds.includes(tour.id || '')}
+												title="Réactivation audience"
+											>
+												<Icons.users className="h-4 w-4" />
 											</Button>
 											<Button
 												variant="outline"
@@ -611,6 +833,145 @@ export default function ToursPage() {
 									</div>
 								</div>
 							)}
+						</div>
+					</div>
+				</div>
+			)}
+			{audienceTour && (
+				<div className="fixed inset-0 z-[122] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm sm:p-6 md:p-12 transition-all">
+					<div className="mx-auto flex h-full max-h-[720px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(248,250,252,0.95)_55%,rgba(241,245,249,0.95))] shadow-[0_22px_50px_rgba(2,6,23,0.2)] backdrop-blur-xl dark:border-white/12 dark:bg-[linear-gradient(165deg,rgba(15,23,42,0.94),rgba(15,23,42,0.82)_55%,rgba(2,6,23,0.94))] dark:shadow-[0_22px_50px_rgba(2,6,23,0.55)]">
+						<div className="flex items-center justify-between border-b border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.75),rgba(241,245,249,0.4))] px-6 py-4 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(30,41,59,0.32),rgba(15,23,42,0.12))]">
+							<div className="flex items-center gap-4">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full border border-orange-400/35 bg-orange-500/12 shadow-[0_0_24px_rgba(249,115,22,0.2)]">
+									<Icons.users className="h-5 w-5 text-orange-600 dark:text-orange-300" />
+								</div>
+								<div>
+									<h2 className="line-clamp-1 text-xl font-bold text-slate-900 dark:text-white">Réactivation audience</h2>
+									<p className="text-sm text-slate-600 dark:text-slate-300">{audienceTour.name}</p>
+								</div>
+							</div>
+							<Button variant="ghost" size="icon" className="rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-900 shrink-0 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white" onClick={closeAudienceModal} disabled={isApplyingAudienceAction}>
+								<Icons.close className="h-5 w-5" />
+							</Button>
+						</div>
+						<div className="flex-1 overflow-y-auto bg-transparent p-4 sm:p-6">
+							<div className="mx-auto max-w-2xl space-y-5">
+								<div className="rounded-xl border border-slate-200 bg-[linear-gradient(170deg,rgba(255,255,255,0.9),rgba(248,250,252,0.8))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/10 dark:bg-[linear-gradient(170deg,rgba(15,23,42,0.7),rgba(2,6,23,0.72))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+									<p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Type d’action</p>
+									<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+										<button type="button" className={`rounded-lg border px-3 py-2 text-sm transition-all ${audienceMode === 'all' ? 'border-orange-300/65 bg-[linear-gradient(135deg,rgba(249,115,22,0.28),rgba(236,72,153,0.22))] text-orange-900 shadow-[0_0_20px_rgba(249,115,22,0.2)] dark:text-orange-50 dark:shadow-[0_0_20px_rgba(249,115,22,0.28)]' : 'border-slate-200 bg-white text-slate-700 hover:bg-orange-50/60 hover:border-orange-400/30 hover:text-orange-700 dark:border-white/12 dark:bg-white/[0.03] dark:text-slate-200 dark:hover:bg-white/[0.07] dark:hover:text-orange-200'}`} onClick={() => setAudienceMode('all')}>
+											Réactiver pour tous
+										</button>
+										<button type="button" className={`rounded-lg border px-3 py-2 text-sm transition-all ${audienceMode === 'user' ? 'border-orange-300/65 bg-[linear-gradient(135deg,rgba(249,115,22,0.28),rgba(236,72,153,0.22))] text-orange-900 shadow-[0_0_20px_rgba(249,115,22,0.2)] dark:text-orange-50 dark:shadow-[0_0_20px_rgba(249,115,22,0.28)]' : 'border-slate-200 bg-white text-slate-700 hover:bg-orange-50/60 hover:border-orange-400/30 hover:text-orange-700 dark:border-white/12 dark:bg-white/[0.03] dark:text-slate-200 dark:hover:bg-white/[0.07] dark:hover:text-orange-200'}`} onClick={() => setAudienceMode('user')}>
+											Réactiver un utilisateur
+										</button>
+										<button type="button" className={`rounded-lg border px-3 py-2 text-sm transition-all ${audienceMode === 'segment' ? 'border-orange-300/65 bg-[linear-gradient(135deg,rgba(249,115,22,0.28),rgba(236,72,153,0.22))] text-orange-900 shadow-[0_0_20px_rgba(249,115,22,0.2)] dark:text-orange-50 dark:shadow-[0_0_20px_rgba(249,115,22,0.28)]' : 'border-slate-200 bg-white text-slate-700 hover:bg-orange-50/60 hover:border-orange-400/30 hover:text-orange-700 dark:border-white/12 dark:bg-white/[0.03] dark:text-slate-200 dark:hover:bg-white/[0.07] dark:hover:text-orange-200'}`} onClick={() => setAudienceMode('segment')}>
+											Réactiver un segment
+										</button>
+									</div>
+								</div>
+								{audienceMode === 'all' && (
+									<div className="rounded-xl border border-slate-200 bg-[linear-gradient(170deg,rgba(255,255,255,0.9),rgba(248,250,252,0.8))] p-4 dark:border-white/10 dark:bg-[linear-gradient(170deg,rgba(15,23,42,0.7),rgba(2,6,23,0.72))]">
+										<p className="text-sm text-slate-700 dark:text-slate-200">
+											Cette action réactive ce parcours pour tous les utilisateurs qui l’avaient déjà terminé ou dismiss.
+										</p>
+									</div>
+								)}
+								{audienceMode === 'user' && (
+									<div className="rounded-xl border border-slate-200 bg-[linear-gradient(170deg,rgba(255,255,255,0.9),rgba(248,250,252,0.8))] p-4 dark:border-white/10 dark:bg-[linear-gradient(170deg,rgba(15,23,42,0.7),rgba(2,6,23,0.72))]">
+										<label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">Rechercher un utilisateur (email/nom)</label>
+										<input
+											value={audienceUserQuery}
+											onChange={(e) => setAudienceUserQuery(e.target.value)}
+											placeholder="ex: user@mail.com ou prénom nom"
+											className="h-9 w-full rounded-lg border border-slate-300 bg-white/90 px-3 text-sm text-slate-800 placeholder:text-slate-500 outline-none transition-colors hover:border-orange-400/40 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400/80"
+										/>
+										<div className="mt-3 max-h-52 overflow-auto rounded-lg border border-slate-200 bg-white/75 dark:border-white/10 dark:bg-slate-950/35">
+											{isAudienceUsersLoading ? (
+												<div className="p-3 text-sm text-slate-500 dark:text-slate-400">Chargement des utilisateurs...</div>
+											) : filteredAudienceUsers.length === 0 ? (
+												<div className="p-3 text-sm text-slate-500 dark:text-slate-400">Aucun utilisateur trouvé.</div>
+											) : (
+												filteredAudienceUsers.map((user) => {
+													const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+													const isSelected = selectedAudienceUserId === user.id;
+													return (
+														<button
+															key={user.id}
+															type="button"
+															onClick={() => setSelectedAudienceUserId(user.id)}
+															className={`flex w-full items-center justify-between border-b border-slate-200 px-3 py-2 text-left text-sm transition-colors last:border-b-0 dark:border-white/10 ${
+																isSelected
+																	? 'bg-[linear-gradient(135deg,rgba(249,115,22,0.24),rgba(236,72,153,0.18))] text-orange-900 dark:text-orange-100'
+																	: 'bg-transparent text-slate-700 hover:bg-orange-50/70 dark:text-slate-200 dark:hover:bg-white/[0.06]'
+															}`}
+														>
+															<div className="min-w-0">
+																<p className="truncate font-medium">{fullName || 'Utilisateur sans nom'}</p>
+																<p className="truncate text-xs opacity-80">{user.email}</p>
+															</div>
+															{isSelected ? <Icons.check className="h-4 w-4 shrink-0" /> : null}
+														</button>
+													);
+												})
+											)}
+										</div>
+										{selectedAudienceUserId ? (
+											<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Utilisateur sélectionné: {selectedAudienceUserId}</p>
+										) : null}
+									</div>
+								)}
+								{audienceMode === 'segment' && (
+									<div className="rounded-xl border border-slate-200 bg-[linear-gradient(170deg,rgba(255,255,255,0.9),rgba(248,250,252,0.8))] p-4 space-y-4 dark:border-white/10 dark:bg-[linear-gradient(170deg,rgba(15,23,42,0.7),rgba(2,6,23,0.72))]">
+										<div>
+											<label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">Segment</label>
+											<Select
+												value={segmentType}
+												onValueChange={(value) => setSegmentType(value as 'all' | 'new_users' | 'inactive_users' | 'custom_user_ids')}
+											>
+											<SelectTrigger className="h-9 w-full rounded-lg border-slate-300 bg-white/90 text-slate-800 transition-colors hover:border-orange-400/40 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100">
+													<SelectValue placeholder="Segment" />
+												</SelectTrigger>
+												<SelectContent
+													alignItemWithTrigger={false}
+													side="bottom"
+													sideOffset={8}
+													className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+												>
+													<SelectItem value="all" className="focus:bg-orange-500/20 focus:text-orange-100">all</SelectItem>
+													<SelectItem value="new_users" className="focus:bg-orange-500/20 focus:text-orange-100">new_users</SelectItem>
+													<SelectItem value="inactive_users" className="focus:bg-orange-500/20 focus:text-orange-100">inactive_users</SelectItem>
+													<SelectItem value="custom_user_ids" className="focus:bg-orange-500/20 focus:text-orange-100">custom_user_ids</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+										{segmentType === 'new_users' && (
+											<div>
+												<label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">createdWithinDays</label>
+												<input type="number" min={1} value={segmentCreatedWithinDays} onChange={(e) => setSegmentCreatedWithinDays(Number(e.target.value || '14'))} className="h-9 w-full rounded-lg border border-slate-300 bg-white/90 px-3 text-sm text-slate-800 placeholder:text-slate-500 outline-none transition-colors hover:border-orange-400/40 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400/80" />
+											</div>
+										)}
+										{segmentType === 'inactive_users' && (
+											<div>
+												<label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">inactiveDays</label>
+												<input type="number" min={1} value={segmentInactiveDays} onChange={(e) => setSegmentInactiveDays(Number(e.target.value || '60'))} className="h-9 w-full rounded-lg border border-slate-300 bg-white/90 px-3 text-sm text-slate-800 placeholder:text-slate-500 outline-none transition-colors hover:border-orange-400/40 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400/80" />
+											</div>
+										)}
+										{segmentType === 'custom_user_ids' && (
+											<div>
+												<label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">Liste UUID (séparés par virgule)</label>
+												<textarea value={segmentUserIdsRaw} onChange={(e) => setSegmentUserIdsRaw(e.target.value)} rows={4} className="w-full rounded-lg border border-slate-300 bg-white/90 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-500 outline-none transition-colors hover:border-orange-400/40 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 dark:placeholder:text-slate-400/80" />
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						</div>
+						<div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.75),rgba(241,245,249,0.45))] px-6 py-4 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.14),rgba(2,6,23,0.3))]">
+							<Button variant="outline" className="border-slate-300 bg-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-white/15 dark:text-slate-100 dark:hover:bg-white/10 dark:hover:text-white" onClick={closeAudienceModal} disabled={isApplyingAudienceAction}>Annuler</Button>
+							<Button className="bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-[0_0_24px_rgba(255,107,0,0.25)] transition-transform hover:scale-105 hover:from-orange-400 hover:to-pink-500 active:scale-[0.99]" onClick={applyAudienceAction} disabled={isApplyingAudienceAction || (audienceMode === 'user' && !selectedAudienceUserId)}>
+								{isApplyingAudienceAction ? 'Application...' : 'Appliquer'}
+							</Button>
 						</div>
 					</div>
 				</div>

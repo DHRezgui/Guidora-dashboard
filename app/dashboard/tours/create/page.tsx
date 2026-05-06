@@ -88,6 +88,7 @@ export default function CreateTourPage() {
         organizationId,
         organization,
         createdBy,
+        currentResetVersion,
         createdAt,
         updatedAt,
         ...safeData

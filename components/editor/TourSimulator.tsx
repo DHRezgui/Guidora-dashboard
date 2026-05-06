@@ -31,6 +31,98 @@ type PreviewBridgeRectMessage = {
   selector?: string;
   rect?: { top: number; left: number; width: number; height: number } | null;
 };
+const PREVIEW_BASE_URL_STORAGE_KEY = 'trustdev_dashboard_preview_base_url_v1';
+
+function toAbsoluteHttpUrl(value?: string): URL | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function resolvePreviewPageUrl(
+  stepRouteOrUrl: string | undefined,
+  tourTargetUrl: string | undefined,
+  simulationPageUrl: string | undefined,
+): string | undefined {
+  const rawStep = (stepRouteOrUrl || '').trim();
+  const absoluteStepUrl = toAbsoluteHttpUrl(rawStep);
+  if (absoluteStepUrl) {
+    return absoluteStepUrl.href;
+  }
+
+  const absoluteTourTargetUrl = toAbsoluteHttpUrl(tourTargetUrl);
+  const absoluteSimulationPageUrl = toAbsoluteHttpUrl(simulationPageUrl);
+  const dashboardOrigin =
+    typeof window !== 'undefined' ? toAbsoluteHttpUrl(window.location.origin)?.origin : undefined;
+
+  const pickUsableBase = (...candidates: Array<URL | null>): URL | null => {
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      // If step/tour URL is relative, avoid resolving against the dashboard origin,
+      // otherwise preview often loops into dashboard/login instead of the target app.
+      if (dashboardOrigin && candidate.origin === dashboardOrigin) continue;
+      return candidate;
+    }
+    return null;
+  };
+
+  let baseUrl = pickUsableBase(absoluteTourTargetUrl, absoluteSimulationPageUrl);
+
+  if (!baseUrl && typeof window !== 'undefined') {
+    const envPreviewBase = toAbsoluteHttpUrl(process.env.NEXT_PUBLIC_PREVIEW_APP_URL);
+    const storedPreviewBase = toAbsoluteHttpUrl(window.localStorage.getItem(PREVIEW_BASE_URL_STORAGE_KEY) || undefined);
+    // Local-first fallback for developers when targetUrl is just "/".
+    const defaultLocalPreviewBase = toAbsoluteHttpUrl('http://localhost:3000');
+    baseUrl = pickUsableBase(envPreviewBase, storedPreviewBase, defaultLocalPreviewBase);
+  }
+
+  if (rawStep) {
+    if (baseUrl) {
+      try {
+        // Resolve relative multi-page routes (/about, /contact) against the target app origin.
+        return rawStep.startsWith('/')
+          ? new URL(rawStep, baseUrl.origin).href
+          : new URL(rawStep, baseUrl.href).href;
+      } catch {
+        // Fall through to local fallback.
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        return new URL(rawStep, window.location.origin).href;
+      } catch {
+        // Ignore invalid URL and fall through.
+      }
+    }
+
+    return rawStep;
+  }
+
+  if (absoluteTourTargetUrl) return absoluteTourTargetUrl.href;
+  if (absoluteSimulationPageUrl) return absoluteSimulationPageUrl.href;
+  return undefined;
+}
+
+function withSimulatorPreviewFlag(urlValue?: string): string | undefined {
+  if (!urlValue) return undefined;
+  try {
+    const parsed = new URL(urlValue);
+    parsed.searchParams.set('__trustdev_simulator_preview', '1');
+    return parsed.href;
+  } catch {
+    return urlValue;
+  }
+}
 
 function normalizeSearchText(value?: string): string {
   return (value || '')
@@ -402,11 +494,34 @@ export default function TourSimulator({
   const safeIndex = hasSteps ? Math.min(currentIndex, steps.length - 1) : 0;
   const currentStep = hasSteps ? steps[safeIndex] : null;
   const isLastStep = hasSteps ? safeIndex === steps.length - 1 : false;
-  const currentStepPageUrl = currentStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl;
+  const currentStepPageUrl = resolvePreviewPageUrl(
+    currentStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl,
+    targetUrl,
+    simulationContext?.pageUrl,
+  );
   const prevStep = hasSteps && safeIndex > 0 ? steps[safeIndex - 1] : null;
-  const prevStepPageUrl = prevStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl;
+  const prevStepPageUrl = resolvePreviewPageUrl(
+    prevStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl,
+    targetUrl,
+    simulationContext?.pageUrl,
+  );
   const nextStep = hasSteps && safeIndex < steps.length - 1 ? steps[safeIndex + 1] : null;
-  const nextStepPageUrl = nextStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl;
+  const nextStepPageUrl = resolvePreviewPageUrl(
+    nextStep?.stepTargetUrl || targetUrl || simulationContext?.pageUrl,
+    targetUrl,
+    simulationContext?.pageUrl,
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const preferredBase = toAbsoluteHttpUrl(targetUrl) || toAbsoluteHttpUrl(simulationContext?.pageUrl);
+    if (!preferredBase) return;
+    try {
+      window.localStorage.setItem(PREVIEW_BASE_URL_STORAGE_KEY, preferredBase.origin);
+    } catch {
+      // Ignore storage write errors.
+    }
+  }, [targetUrl, simulationContext?.pageUrl]);
 
   useEffect(() => {
     onPlayStateChange?.(isPlaying);
@@ -557,7 +672,9 @@ export default function TourSimulator({
 
   const fallbackPageTitle = simulationContext?.pageTitle || tourName || 'Page inconnue';
   const fallbackPageUrl = currentStepPageUrl;
-  const fallbackMainSelector = currentStep?.targetSelector || steps.find((step) => step.targetSelector)?.targetSelector;
+  const iframePageUrl = withSimulatorPreviewFlag(fallbackPageUrl);
+  const iframePrevStepPageUrl = withSimulatorPreviewFlag(prevStepPageUrl);
+  const iframeNextStepPageUrl = withSimulatorPreviewFlag(nextStepPageUrl);
   const currentStepIndex = currentStep ? steps.findIndex((step) => step.id === currentStep.id) : 0;
   const matchedElements = normalizedElements.filter((item) => {
     if (!currentStep?.targetSelector) return false;
@@ -1017,7 +1134,7 @@ export default function TourSimulator({
         >
           <iframe
             ref={iframeRef}
-            src={fallbackPageUrl}
+            src={iframePageUrl}
             title={tourName || 'Tour preview'}
             className={cn(
               'h-full w-full border-0 bg-white',
@@ -1034,9 +1151,9 @@ export default function TourSimulator({
             onError={() => setIframeState('blocked')}
           />
 
-          {useLiveIframe && prevStepPageUrl && prevStepPageUrl !== fallbackPageUrl ? (
+          {useLiveIframe && iframePrevStepPageUrl && iframePrevStepPageUrl !== iframePageUrl ? (
             <iframe
-              src={prevStepPageUrl}
+              src={iframePrevStepPageUrl}
               title={`${tourName || 'Tour preview'} prev-step-prefetch`}
               className="absolute inset-0 h-full w-full border-0 opacity-0 pointer-events-none"
               aria-hidden="true"
@@ -1045,9 +1162,9 @@ export default function TourSimulator({
             />
           ) : null}
 
-          {useLiveIframe && nextStepPageUrl && nextStepPageUrl !== fallbackPageUrl && nextStepPageUrl !== prevStepPageUrl ? (
+          {useLiveIframe && iframeNextStepPageUrl && iframeNextStepPageUrl !== iframePageUrl && iframeNextStepPageUrl !== iframePrevStepPageUrl ? (
             <iframe
-              src={nextStepPageUrl}
+              src={iframeNextStepPageUrl}
               title={`${tourName || 'Tour preview'} next-step-prefetch`}
               className="absolute inset-0 h-full w-full border-0 opacity-0 pointer-events-none"
               aria-hidden="true"

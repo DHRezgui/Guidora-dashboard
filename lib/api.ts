@@ -11,6 +11,8 @@ import {
   GuidedTour,
   GuidedTourResponse,
   GuidedTourSavePayload,
+  TourAudienceResetResponse,
+  TourSegmentResetResponse,
 } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
@@ -229,6 +231,34 @@ export const tourService = {
 
   async toggleActive(id: string, isActive: boolean): Promise<GuidedTourResponse> {
     const response = await apiClient.put(`/tours/${id}/activate`, { isActive });
+    return response.data;
+  },
+
+  async resetAudience(id: string): Promise<TourAudienceResetResponse> {
+    const response = await apiClient.post(`/tours/${id}/reset-audience`);
+    return response.data;
+  },
+
+  async resetUser(id: string, userId: string): Promise<TourAudienceResetResponse> {
+    const response = await apiClient.post(`/tours/${id}/reset-user`, { userId });
+    return response.data;
+  },
+
+  async resetSegment(
+    id: string,
+    payload: {
+      segment: 'all' | 'new_users' | 'inactive_users' | 'custom_user_ids';
+      createdWithinDays?: number;
+      inactiveDays?: number;
+      userIds?: string[];
+    },
+  ): Promise<TourSegmentResetResponse> {
+    const response = await apiClient.post(`/tours/${id}/reset-segment`, payload);
+    return response.data;
+  },
+
+  async runReplayJob(): Promise<{ success: boolean; message?: string; updatedStates?: number }> {
+    const response = await apiClient.post('/tours/jobs/replay/run');
     return response.data;
   },
 };

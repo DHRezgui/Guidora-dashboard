@@ -39,6 +39,12 @@ export default function Toolbar({
     return Math.max(0, Math.min(99, parsed));
   };
 
+  const replayAfterDaysValueRaw = tour?.replayAfterDays;
+  const replayAfterDaysValue =
+    typeof replayAfterDaysValueRaw === 'number'
+      ? replayAfterDaysValueRaw
+      : Number(replayAfterDaysValueRaw || 0);
+
   return (
     <div className="border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
       <div className="flex flex-col gap-6">
@@ -187,6 +193,51 @@ export default function Toolbar({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tour-replay-days" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Rejouer après (jours)
+                </Label>
+                <Input
+                  id="tour-replay-days"
+                  type="number"
+                  min={0}
+                  value={Number.isFinite(replayAfterDaysValue) ? replayAfterDaysValue : 0}
+                  onChange={(e) => {
+                    const raw = Number(e.target.value);
+                    const clamped = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+                    onTourChange?.({ replayAfterDays: clamped });
+                  }}
+                  className="h-9 border-slate-300 bg-white/90 text-slate-700 placeholder:text-slate-500 transition-colors hover:border-orange-400/40 focus:bg-white focus-visible:border-orange-400/60 focus-visible:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 dark:focus:bg-slate-900"
+                />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  0 = ne pas rejouer automatiquement.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tour-replay-policy" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Politique replay
+                </Label>
+                <Select
+                  value={tour?.replayPolicy || 'never'}
+                  onValueChange={(value) =>
+                    onTourChange?.({ replayPolicy: value as 'never' | 'after_period' | 'always_on_new_version' })
+                  }
+                >
+                  <SelectTrigger
+                    id="tour-replay-policy"
+                    className="h-9 w-full rounded-md border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
+                  >
+                    <SelectValue placeholder="Politique replay" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectItem value="never" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">never</SelectItem>
+                    <SelectItem value="after_period" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">after_period</SelectItem>
+                    <SelectItem value="always_on_new_version" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">always_on_new_version</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
