@@ -28,7 +28,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsClientReady(true);
-  }, []);
+    // If a session already exists, don't keep user on login page.
+    if (authService.isAuthenticated()) {
+      router.replace('/dashboard');
+    }
+  }, [router]);
 
   const {
     register,
