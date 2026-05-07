@@ -87,7 +87,7 @@ export default function StepCanvas({
       onStepsChange(newSteps);
       
       // Feedback utilisateur
-      toast.success('✅ Étape ajoutée avec succès', {
+      toast.success('Étape ajoutée avec succès', {
         description: `L'étape "${newStep.title}" a été ajoutée à la position ${insertIndex + 1}`,
       });
 
@@ -133,7 +133,7 @@ export default function StepCanvas({
 
       onStepsChange(reorderedSteps);
       
-      toast.info('🔄 Étape déplacée', {
+      toast.info('Étape déplacée', {
         description: `L'étape a été déplacée à la position ${newIndex + 1}`,
       });
     }
@@ -170,7 +170,7 @@ export default function StepCanvas({
       onSelectStep(null);
     }
     
-    toast.success('🗑️ Étape supprimée', {
+    toast.success('Étape supprimée', {
       description: `L'étape "${stepTitle}" a été supprimée`,
     });
   };
@@ -193,7 +193,7 @@ export default function StepCanvas({
     onStepsChange(newSteps);
     onSelectStep(newStep);
     
-    toast.success('📋 Étape dupliquée', {
+    toast.success('Étape dupliquée', {
       description: `L'étape "${step.title}" a été dupliquée`,
     });
   };
@@ -220,7 +220,7 @@ export default function StepCanvas({
     onStepsChange(newSteps);
     onSelectStep(newStep);
     
-    toast.success('➕ Étape insérée', {
+    toast.success('Étape insérée', {
       description: `Une nouvelle étape a été insérée à la position ${position + 1}`,
     });
   };
@@ -236,7 +236,7 @@ export default function StepCanvas({
       }));
       onStepsChange(reorderedSteps);
       
-      toast.info('⬆️ Étape déplacée vers le haut');
+      toast.info('Étape déplacée vers le haut');
     } else if (direction === 'down' && stepIndex < steps.length - 1) {
       const newSteps = [...steps];
       [newSteps[stepIndex], newSteps[stepIndex + 1]] = [newSteps[stepIndex + 1], newSteps[stepIndex]];
@@ -246,14 +246,14 @@ export default function StepCanvas({
       }));
       onStepsChange(reorderedSteps);
       
-      toast.info('⬇️ Étape déplacée vers le bas');
+      toast.info('Étape déplacée vers le bas');
     }
   };
 
   const handleClearCanvas = () => {
     onStepsChange([]);
     onSelectStep(null);
-    toast.success('🧹 Zone de conception vidée');
+    toast.success('Zone de conception vidée');
   };
 
   return (
@@ -440,7 +440,7 @@ export default function StepCanvas({
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            toast.success('📋 Parcours exporté avec succès !');
+            toast.success('Parcours exporté avec succès');
           }}>
             <Icons.download className="mr-2 h-4 w-4" />
             Exporter

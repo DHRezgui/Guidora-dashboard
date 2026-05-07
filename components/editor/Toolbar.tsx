@@ -117,7 +117,7 @@ export default function Toolbar({
               variant="default" 
               size="sm" 
               onClick={() => onSave?.(tour!)} 
-              className="gap-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-[0_0_24px_rgba(255,107,0,0.25)]"
+              className="gap-2 bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-[0_0_24px_rgba(255,107,0,0.25)] transition-transform hover:scale-105 active:scale-[0.98]"
             >
               <Icons.save className="h-4 w-4" />
               Enregistrer
@@ -187,7 +187,12 @@ export default function Toolbar({
                         <SelectValue placeholder="Statut" />
                       </div>
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      side="bottom"
+                      sideOffset={8}
+                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                    >
                       <SelectItem value="active" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Actif</SelectItem>
                       <SelectItem value="inactive" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Inactif</SelectItem>
                     </SelectContent>
@@ -232,7 +237,12 @@ export default function Toolbar({
                   >
                     <SelectValue placeholder="Politique replay" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                  <SelectContent
+                    alignItemWithTrigger={false}
+                    side="bottom"
+                    sideOffset={8}
+                    className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                  >
                     <SelectItem value="never" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">never</SelectItem>
                     <SelectItem value="after_period" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">after_period</SelectItem>
                     <SelectItem value="always_on_new_version" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">always_on_new_version</SelectItem>

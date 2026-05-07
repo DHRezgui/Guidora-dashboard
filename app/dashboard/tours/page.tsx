@@ -2,20 +2,79 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { DndContext, DragEndEvent, PointerSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/ui/icons';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TourSimulator from '@/components/editor/TourSimulator';
 import { getErrorMessage, tourService, userService } from '@/lib/api';
 import { GuidedTour, User } from '@/lib/types';
+import { concatenateToursFifo } from '@/lib/tour-concat';
 import { toast } from 'sonner';
 
 const PREVIEW_STORAGE_KEY = 'tours.previewTour.v1';
 const PREVIEW_STORAGE_TTL_MS = 2 * 60 * 1000;
+const CONCAT_PREFILL_STORAGE_KEY = 'tours.concatPrefill.v1';
+const CONCAT_DROP_ZONE_ID = 'concat-drop-zone';
+const CONCAT_DRAFT_STORAGE_KEY = 'tours.concatDraft.v1';
+
+function DraggableTourCard({
+	tourId,
+	children,
+}: {
+	tourId: string;
+	children: React.ReactNode;
+}) {
+	const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+		id: `tour-card-${tourId}`,
+		data: { tourId },
+	});
+
+	const transformStyle = transform
+		? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+		: undefined;
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={transformStyle}
+			{...attributes}
+			{...listeners}
+			className={isDragging ? 'cursor-grabbing opacity-60' : 'cursor-grab'}
+		>
+			{children}
+		</div>
+	);
+}
+
+function ConcatDropContainer({
+	onOverChange,
+	children,
+}: {
+	onOverChange: (isOver: boolean) => void;
+	children: React.ReactNode;
+}) {
+	const { setNodeRef, isOver } = useDroppable({
+		id: CONCAT_DROP_ZONE_ID,
+	});
+
+	useEffect(() => {
+		onOverChange(isOver);
+	}, [isOver, onOverChange]);
+
+	return (
+		<div ref={setNodeRef} className={`transition-colors ${isOver ? 'ring-2 ring-orange-400/50 rounded-2xl' : ''}`}>
+			{children}
+		</div>
+	);
+}
 
 export default function ToursPage() {
+	const router = useRouter();
 	const [tours, setTours] = useState<GuidedTour[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingIds, setDeletingIds] = useState<string[]>([]);
@@ -36,9 +95,29 @@ export default function ToursPage() {
 	const [filterQuery, setFilterQuery] = useState('');
 	const [filterInput, setFilterInput] = useState('');
 	const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+	const [concatQueue, setConcatQueue] = useState<string[]>([]);
+	const [concatDraft, setConcatDraft] = useState({
+		name: '',
+		targetUrl: '/',
+		priority: 0,
+		isActive: true,
+		description: '',
+		replayPolicy: 'never' as 'never' | 'after_period' | 'always_on_new_version',
+		replayAfterDays: 0,
+		dedupeSteps: true,
+	});
 	const hiddenTourIdsRef = useRef<Set<string>>(new Set());
 	const loadSeqRef = useRef(0);
 	const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+	const sensors = useSensors(
+		useSensor(PointerSensor, {
+			activationConstraint: {
+				distance: 8,
+			},
+		}),
+	);
+	const [isConcatDropOver, setIsConcatDropOver] = useState(false);
+	const [tourPendingDelete, setTourPendingDelete] = useState<GuidedTour | null>(null);
 
 	const filteredTours = useMemo(() => {
 		const query = filterQuery.trim().toLowerCase();
@@ -69,6 +148,25 @@ export default function ToursPage() {
 		const avgSteps = total > 0 ? (steps / total).toFixed(1) : '0.0';
 		return { total, active, steps, avgSteps };
 	}, [tours]);
+
+	const concatTours = useMemo(() => {
+		const byId = new Map((tours || []).map((tour) => [tour.id, tour]));
+		return concatQueue
+			.map((id) => byId.get(id))
+			.filter((tour): tour is GuidedTour => Boolean(tour));
+	}, [concatQueue, tours]);
+
+	const concatSummary = useMemo(() => {
+		const totalTours = concatTours.length;
+		const totalSourceSteps = concatTours.reduce((sum, tour) => sum + (tour.steps?.length || 0), 0);
+		const targetUrl = (concatDraft.targetUrl || '/').trim() || '/';
+		return {
+			totalTours,
+			totalSourceSteps,
+			targetUrl,
+		};
+	}, [concatTours, concatDraft.targetUrl]);
+	const concatDraftHydratedRef = useRef(false);
 
 	const formatCreatedAt = (value?: string) => {
 		if (!value) return 'Date inconnue';
@@ -169,7 +267,112 @@ export default function ToursPage() {
 		link.click();
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
-		toast.success(`Export reussi (${normalized.name})`);
+		toast.success(`Export réussi (${normalized.name})`);
+	};
+
+	const getDuplicateHref = (tour: GuidedTour) => {
+		const params = new URLSearchParams();
+		if (tour.id) {
+			params.set('duplicateId', tour.id);
+		}
+		return `/dashboard/tours/create?${params.toString()}`;
+	};
+
+	const handleDragEnd = (event: DragEndEvent) => {
+		const droppedInConcatZone =
+			(event.over && String(event.over.id) === CONCAT_DROP_ZONE_ID) || isConcatDropOver;
+		if (!droppedInConcatZone) return;
+		const fromData = event.active.data.current?.tourId;
+		const fromActiveId =
+			typeof event.active.id === 'string' && event.active.id.startsWith('tour-card-')
+				? event.active.id.replace('tour-card-', '')
+				: null;
+		const draggedTourId = fromData || fromActiveId;
+		if (!draggedTourId) return;
+		if (!tours.some((tour) => tour.id === draggedTourId)) return;
+
+		setConcatQueue((prev) => {
+			if (prev.includes(draggedTourId)) return prev;
+			return [...prev, draggedTourId];
+		});
+	};
+
+	const handleRemoveFromConcat = (tourId: string) => {
+		setConcatQueue((prev) => prev.filter((id) => id !== tourId));
+	};
+
+	const handleMoveConcatItem = (tourId: string, direction: 'up' | 'down') => {
+		setConcatQueue((prev) => {
+			const index = prev.indexOf(tourId);
+			if (index === -1) return prev;
+			const nextIndex = direction === 'up' ? index - 1 : index + 1;
+			if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+			const next = [...prev];
+			const [item] = next.splice(index, 1);
+			next.splice(nextIndex, 0, item);
+			return next;
+		});
+	};
+
+	const handleClearConcat = () => {
+		setConcatQueue([]);
+	};
+
+	const handleResetConcatWorkspace = () => {
+		setConcatQueue([]);
+		setConcatDraft({
+			name: '',
+			targetUrl: '/',
+			priority: 0,
+			isActive: true,
+			description: '',
+			replayPolicy: 'never',
+			replayAfterDays: 0,
+			dedupeSteps: true,
+		});
+	};
+
+	const handleGenerateConcatenatedTour = () => {
+		if (concatTours.length < 2) {
+			toast.error('Ajoutez au moins deux parcours à concaténer.');
+			return;
+		}
+		if (concatTours.some((tour) => (tour.steps?.length || 0) === 0)) {
+			toast.error('Un des parcours sélectionnés ne contient aucune étape.');
+			return;
+		}
+
+		const concatenatedTour = concatenateToursFifo(concatTours, {
+			existingNames: tours.map((tour) => tour.name || ''),
+			fallbackTargetUrl: concatDraft.targetUrl || '/',
+			dedupeSteps: concatDraft.dedupeSteps,
+		});
+		if ((concatenatedTour.steps?.length || 0) === 0) {
+			toast.error('La concaténation a produit un parcours vide. Vérifiez vos parcours source.');
+			return;
+		}
+
+		const hydratedTour: GuidedTour = {
+			...concatenatedTour,
+			name: concatDraft.name.trim() || concatenatedTour.name,
+			targetUrl: concatDraft.targetUrl.trim() || concatenatedTour.targetUrl,
+			priority: Number.isFinite(concatDraft.priority) ? concatDraft.priority : concatenatedTour.priority,
+			isActive: concatDraft.isActive,
+			description: concatDraft.description.trim() || concatenatedTour.description,
+			replayPolicy: concatDraft.replayPolicy,
+			replayAfterDays: concatDraft.replayPolicy === 'after_period' ? Math.max(0, concatDraft.replayAfterDays) : 0,
+		};
+
+		try {
+			if (typeof window !== 'undefined') {
+				window.sessionStorage.setItem(CONCAT_PREFILL_STORAGE_KEY, JSON.stringify({ tour: hydratedTour, ts: Date.now() }));
+			}
+		} catch {
+			toast.error('Impossible de préparer le pré-remplissage du parcours concaténé.');
+			return;
+		}
+
+		router.push('/dashboard/tours/create?prefill=concat');
 	};
 
 	useEffect(() => {
@@ -187,6 +390,75 @@ export default function ToursPage() {
 		document.addEventListener('mousedown', handleClickOutside);
 		return () => document.removeEventListener('mousedown', handleClickOutside);
 	}, []);
+
+	useEffect(() => {
+		if (concatTours.length === 0) return;
+		setConcatDraft((prev) => {
+			const first = concatTours[0];
+			if (!first) return prev;
+			return {
+				...prev,
+				targetUrl: prev.targetUrl === '/' ? first.targetUrl || '/' : prev.targetUrl,
+				priority:
+					prev.priority === 0
+						? Math.max(...concatTours.map((tour) => Number(tour.priority || 0)), 0)
+						: prev.priority,
+			};
+		});
+	}, [concatTours]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined' || concatDraftHydratedRef.current) return;
+		const raw = window.sessionStorage.getItem(CONCAT_DRAFT_STORAGE_KEY);
+		if (!raw) {
+			concatDraftHydratedRef.current = true;
+			return;
+		}
+		try {
+			const parsed = JSON.parse(raw) as {
+				queue?: string[];
+				draft?: Partial<typeof concatDraft>;
+			};
+			if (Array.isArray(parsed.queue)) {
+				setConcatQueue(parsed.queue.filter((id): id is string => typeof id === 'string' && id.length > 0));
+			}
+			if (parsed.draft && typeof parsed.draft === 'object') {
+				setConcatDraft((prev) => ({
+					...prev,
+					...parsed.draft,
+					priority:
+						typeof parsed.draft?.priority === 'number' && Number.isFinite(parsed.draft.priority)
+							? parsed.draft.priority
+							: prev.priority,
+					replayAfterDays:
+						typeof parsed.draft?.replayAfterDays === 'number' && Number.isFinite(parsed.draft.replayAfterDays)
+							? parsed.draft.replayAfterDays
+							: prev.replayAfterDays,
+					dedupeSteps: parsed.draft?.dedupeSteps !== false,
+				}));
+			}
+		} catch {
+			window.sessionStorage.removeItem(CONCAT_DRAFT_STORAGE_KEY);
+		} finally {
+			concatDraftHydratedRef.current = true;
+		}
+	}, []);
+
+	useEffect(() => {
+		if (typeof window === 'undefined' || !concatDraftHydratedRef.current) return;
+		try {
+			window.sessionStorage.setItem(
+				CONCAT_DRAFT_STORAGE_KEY,
+				JSON.stringify({
+					queue: concatQueue,
+					draft: concatDraft,
+					ts: Date.now(),
+				}),
+			);
+		} catch {
+			// Ignore persistence errors (private mode / quota).
+		}
+	}, [concatQueue, concatDraft]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined' || previewTour) {
@@ -221,7 +493,7 @@ export default function ToursPage() {
 		if (!tour.id) return;
 		try {
 			await tourService.toggleActive(tour.id, !tour.isActive);
-			toast.success(tour.isActive ? 'Parcours desactive' : 'Parcours active');
+			toast.success(tour.isActive ? 'Parcours désactivé' : 'Parcours activé');
 			await loadTours();
 		} catch (error) {
 			toast.error('Action impossible', {
@@ -237,7 +509,7 @@ export default function ToursPage() {
 		setTours((prev) => prev.filter((item) => item.id !== tour.id));
 		try {
 			await tourService.remove(tour.id);
-			toast.success(`Parcours supprime (${tour.name})`);
+			toast.success(`Parcours supprimé (${tour.name})`);
 			await loadTours();
 		} catch (error) {
 			hiddenTourIdsRef.current.delete(tour.id);
@@ -248,6 +520,12 @@ export default function ToursPage() {
 		} finally {
 			setDeletingIds((prev) => prev.filter((id) => id !== tour.id));
 		}
+	};
+
+	const handleConfirmDeleteTour = async () => {
+		if (!tourPendingDelete) return;
+		await handleDelete(tourPendingDelete);
+		setTourPendingDelete(null);
 	};
 
 	const handleResetAudience = async (tour: GuidedTour) => {
@@ -394,7 +672,7 @@ export default function ToursPage() {
 					<div>
 						<h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Parcours guides</h1>
 						<p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-							Gerez, modifiez et publiez vos parcours d'integration depuis votre espace.
+							Gerez, modifiez et publiez vos parcours d&apos;integration depuis votre espace.
 						</p>
 					</div>
 					<div ref={actionsMenuRef} className="relative w-full md:w-auto">
@@ -501,6 +779,234 @@ export default function ToursPage() {
 					</form>
 				</div>
 
+				<DndContext
+					sensors={sensors}
+					collisionDetection={pointerWithin}
+					onDragOver={(event) => {
+						setIsConcatDropOver(Boolean(event.over && String(event.over.id) === CONCAT_DROP_ZONE_ID));
+					}}
+					onDragEnd={handleDragEnd}
+				>
+				<ConcatDropContainer onOverChange={setIsConcatDropOver}>
+				<Card className="mb-6 border border-slate-200/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.92),rgba(248,250,252,0.84)_45%,rgba(241,245,249,0.82))] shadow-[0_16px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-colors dark:border-white/12 dark:bg-[linear-gradient(155deg,rgba(15,23,42,0.72),rgba(15,23,42,0.56)_45%,rgba(2,6,23,0.76))] dark:shadow-[0_20px_45px_rgba(2,6,23,0.5)]">
+					<CardHeader className="pb-3">
+						<CardTitle className="text-base text-slate-900 dark:text-white">Concaténer des parcours (FIFO)</CardTitle>
+						<p className="text-sm text-slate-600 dark:text-slate-400">
+							Glissez des cartes parcours dans la zone pour composer un nouveau parcours combiné.
+						</p>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div
+							className={`min-h-[76px] rounded-xl border-2 border-dashed p-3 backdrop-blur-sm transition-colors ${
+								isConcatDropOver
+									? 'border-orange-400/80 bg-orange-50/70 shadow-[0_0_0_1px_rgba(251,146,60,0.2),0_0_30px_rgba(249,115,22,0.2)] dark:bg-orange-500/12'
+									: 'border-slate-300/85 bg-slate-50/70 dark:border-white/15 dark:bg-slate-950/35'
+							}`}
+						>
+							{concatTours.length === 0 ? (
+								<p className="text-sm text-slate-500 dark:text-slate-400">
+									Déposez ici 2 parcours ou plus pour les concaténer.
+								</p>
+							) : (
+								<div className="flex flex-wrap gap-2">
+									{concatTours.map((tour, index) => (
+										<div
+											key={`${tour.id}-${index}`}
+											className="inline-flex items-center gap-2 rounded-md border border-slate-300/80 bg-white/85 px-2 py-1 text-xs text-slate-700 backdrop-blur-sm dark:border-white/15 dark:bg-slate-900/65 dark:text-slate-200"
+										>
+											<span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+												{index + 1}
+											</span>
+											<span className="max-w-[160px] truncate">{tour.name}</span>
+											<div className="flex items-center gap-1">
+												<button
+													type="button"
+													onClick={() => handleMoveConcatItem(tour.id || '', 'up')}
+													disabled={index === 0}
+													className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-white"
+													aria-label={`Monter ${tour.name}`}
+												>
+													<Icons.arrowUp className="h-3 w-3" />
+												</button>
+												<button
+													type="button"
+													onClick={() => handleMoveConcatItem(tour.id || '', 'down')}
+													disabled={index === concatTours.length - 1}
+													className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-white"
+													aria-label={`Descendre ${tour.name}`}
+												>
+													<Icons.arrowDown className="h-3 w-3" />
+												</button>
+											</div>
+											<button
+												type="button"
+												onClick={() => handleRemoveFromConcat(tour.id || '')}
+												className="rounded p-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+												aria-label={`Retirer ${tour.name}`}
+											>
+												<Icons.close className="h-3 w-3" />
+											</button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+
+						<div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+							<div className="space-y-1.5">
+								<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nom du parcours</Label>
+								<input
+									value={concatDraft.name}
+									onChange={(e) => setConcatDraft((prev) => ({ ...prev, name: e.target.value }))}
+									placeholder="Nom du nouveau parcours"
+									className="h-9 w-full rounded-lg border border-slate-300/80 bg-white/85 px-3 text-sm text-slate-800 backdrop-blur-sm outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100"
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">URL cible</Label>
+								<input
+									value={concatDraft.targetUrl}
+									onChange={(e) => setConcatDraft((prev) => ({ ...prev, targetUrl: e.target.value }))}
+									placeholder="URL cible"
+									className="h-9 w-full rounded-lg border border-slate-300/80 bg-white/85 px-3 text-sm text-slate-800 backdrop-blur-sm outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100"
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Priorité</Label>
+								<input
+									type="number"
+									min={0}
+									max={99}
+									value={concatDraft.priority}
+									onChange={(e) => setConcatDraft((prev) => ({ ...prev, priority: Number(e.target.value || 0) }))}
+									placeholder="Priorité"
+									className="h-9 w-full rounded-lg border border-slate-300/80 bg-white/85 px-3 text-sm text-slate-800 backdrop-blur-sm outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100"
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Statut</Label>
+								<Select
+									value={concatDraft.isActive ? 'active' : 'inactive'}
+									onValueChange={(value) => setConcatDraft((prev) => ({ ...prev, isActive: value === 'active' }))}
+								>
+									<SelectTrigger className="h-9 border-slate-300/80 bg-white/85 text-slate-800 backdrop-blur-sm dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100">
+										<SelectValue placeholder="Statut" />
+									</SelectTrigger>
+									<SelectContent
+										alignItemWithTrigger={false}
+										side="bottom"
+										sideOffset={8}
+									>
+										<SelectItem value="active">Actif</SelectItem>
+										<SelectItem value="inactive">Inactif</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+							<div className="space-y-1.5">
+								<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Description</Label>
+								<input
+									value={concatDraft.description}
+									onChange={(e) => setConcatDraft((prev) => ({ ...prev, description: e.target.value }))}
+									placeholder="Description"
+									className="h-9 w-full rounded-lg border border-slate-300/80 bg-white/85 px-3 text-sm text-slate-800 backdrop-blur-sm outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100"
+								/>
+							</div>
+							<div className="grid grid-cols-2 gap-2">
+								<div className="space-y-1.5">
+									<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Replay policy</Label>
+									<Select
+										value={concatDraft.replayPolicy}
+										onValueChange={(value) =>
+											setConcatDraft((prev) => ({
+												...prev,
+												replayPolicy: value as 'never' | 'after_period' | 'always_on_new_version',
+											}))
+										}
+									>
+										<SelectTrigger className="h-9 border-slate-300/80 bg-white/85 text-slate-800 backdrop-blur-sm dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100">
+											<SelectValue placeholder="Replay policy" />
+										</SelectTrigger>
+										<SelectContent
+											alignItemWithTrigger={false}
+											side="bottom"
+											sideOffset={8}
+										>
+											<SelectItem value="never">never</SelectItem>
+											<SelectItem value="after_period">after_period</SelectItem>
+											<SelectItem value="always_on_new_version">always_on_new_version</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								<div className="space-y-1.5">
+									<Label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Replay jours</Label>
+									<input
+										type="number"
+										min={0}
+										value={concatDraft.replayAfterDays}
+										onChange={(e) =>
+											setConcatDraft((prev) => ({ ...prev, replayAfterDays: Number(e.target.value || 0) }))
+										}
+										placeholder="Replay jours"
+										className="h-9 w-full rounded-lg border border-slate-300/80 bg-white/85 px-3 text-sm text-slate-800 backdrop-blur-sm outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-100"
+									/>
+								</div>
+							</div>
+						</div>
+
+						<div className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/65 px-3 py-2 text-xs text-slate-600 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-300">
+							<div className="inline-flex items-center gap-2">
+								<button
+									type="button"
+									role="switch"
+									aria-checked={concatDraft.dedupeSteps}
+									aria-label="Dédupliquer les étapes identiques"
+									onClick={() => setConcatDraft((prev) => ({ ...prev, dedupeSteps: !prev.dedupeSteps }))}
+									className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-all focus:outline-none focus:ring-2 focus:ring-orange-400/35 ${
+										concatDraft.dedupeSteps
+											? 'border-orange-500/70 bg-orange-500 shadow-[0_0_22px_rgba(249,115,22,0.35)]'
+											: 'border-slate-300/80 bg-slate-300/80 dark:border-white/20 dark:bg-slate-700/70'
+									}`}
+								>
+									<span
+										className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+											concatDraft.dedupeSteps ? 'translate-x-7' : 'translate-x-0.5'
+										}`}
+									/>
+								</button>
+								<span>Dédupliquer les étapes identiques</span>
+							</div>
+							<span>
+								Résumé: {concatSummary.totalTours} parcours, {concatSummary.totalSourceSteps} étapes source, URL finale {concatSummary.targetUrl}
+							</span>
+						</div>
+
+						<div className="flex items-center justify-between">
+							<p className="inline-flex items-center rounded-full border border-orange-400/45 bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-600 shadow-[0_0_18px_rgba(249,115,22,0.25)] dark:border-orange-400/40 dark:bg-orange-500/15 dark:text-orange-300">
+								Ordre FIFO: {concatTours.length} parcours sélectionné(s)
+							</p>
+							<div className="flex items-center gap-2">
+								<Button variant="outline" onClick={handleClearConcat} disabled={concatTours.length === 0}>
+									Vider
+								</Button>
+								<Button variant="outline" onClick={handleResetConcatWorkspace}>
+									Retirer tout + reset champs
+								</Button>
+								<Button
+									type="button"
+									onClick={handleGenerateConcatenatedTour}
+									className="h-10 rounded-lg px-4 shadow-sm transition-transform hover:scale-105 active:scale-[0.98]"
+								>
+									Concaténer
+								</Button>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+				</ConcatDropContainer>
+
 				{/* Contenu */}
 				{isLoading ? (
 					<Card className="border-slate-200 bg-white/85 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/45">
@@ -518,7 +1024,7 @@ export default function ToursPage() {
 							<div className="max-w-[400px]">
 								<h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Aucun parcours pour le moment</h3>
 								<p className="text-sm text-slate-600 dark:text-slate-400">
-									Vous n'avez pas encore cree de parcours guide. Creer un parcours vous permettra d'accompagner vos utilisateurs de maniere interactive.
+									Vous n&apos;avez pas encore cree de parcours guide. Creer un parcours vous permettra d&apos;accompagner vos utilisateurs de maniere interactive.
 								</p>
 							</div>
 							<Link href="/dashboard/tours/create" className="mt-2">
@@ -548,9 +1054,10 @@ export default function ToursPage() {
 					</Card>
 				) : (
 					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{filteredTours.map((tour) => (
-							<Card 
-								key={tour.id || tour.name} 
+						{filteredTours.map((tour) => {
+							const hasStableId = Boolean(tour.id);
+							const cardNode = (
+								<Card 
 								className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(160deg,rgba(255,255,255,0.95),rgba(248,250,252,0.95)_55%,rgba(241,245,249,0.95))] shadow-[0_12px_28px_rgba(2,6,23,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/35 hover:shadow-[0_22px_40px_rgba(249,115,22,0.18)] dark:border-white/10 dark:bg-[linear-gradient(160deg,rgba(15,23,42,0.9),rgba(15,23,42,0.7)_55%,rgba(2,6,23,0.95))] dark:shadow-[0_12px_28px_rgba(2,6,23,0.36)]"
 							>
 								<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_42%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -645,6 +1152,19 @@ export default function ToursPage() {
 												Éditer
 											</Button>
 										</Link>
+										{tour.id ? (
+											<Link href={getDuplicateHref(tour)}>
+												<Button
+													variant="outline"
+													size="icon"
+													className="h-9 w-9 border-slate-300 bg-white/90 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+													title="Dupliquer ce parcours dans un nouveau brouillon"
+													aria-label="Dupliquer ce parcours"
+												>
+													<Icons.copy className="h-4 w-4" />
+												</Button>
+											</Link>
+										) : null}
 										
 										<div className="flex items-center gap-1.5">
 											<Button
@@ -685,11 +1205,7 @@ export default function ToursPage() {
 												variant="outline"
 												size="icon"
 												className="h-9 w-9 border-slate-300 bg-white/90 text-slate-600 transition-colors hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300/70 focus:ring-2 focus:ring-rose-500/20 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-300 dark:hover:bg-rose-500/15 dark:hover:text-rose-300 dark:hover:border-rose-400/30"
-												onClick={() => {
-													if (confirm("Êtes-vous sûr de vouloir supprimer ce parcours ? Cette action est irréversible.")) {
-														handleDelete(tour);
-													}
-												}}
+												onClick={() => setTourPendingDelete(tour)}
 												disabled={deletingIds.includes(tour.id || '')}
 												title="Supprimer"
 											>
@@ -699,9 +1215,21 @@ export default function ToursPage() {
 									</div>
 								</CardContent>
 							</Card>
-						))}
+							);
+
+							if (!hasStableId) {
+								return <div key={tour.name}>{cardNode}</div>;
+							}
+
+							return (
+								<DraggableTourCard key={tour.id} tourId={tour.id as string}>
+									{cardNode}
+								</DraggableTourCard>
+							);
+						})}
 					</div>
 				)}
+				</DndContext>
 			</div>
 
 			{previewTour && (
@@ -797,6 +1325,7 @@ export default function ToursPage() {
 																	</span>
 																</div>
 															)}
+
 														</div>
 														<div className="flex flex-col items-end gap-2 shrink-0">
 															<Badge variant={resolvedStepType === 'highlight' ? 'secondary' : 'outline'} className="text-[10px] font-medium capitalize flex items-center gap-1.5">
@@ -976,6 +1505,48 @@ export default function ToursPage() {
 					</div>
 				</div>
 			)}
+
+			{tourPendingDelete ? (
+				<div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+					<div
+						className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+						onClick={() => setTourPendingDelete(null)}
+					/>
+					<div className="relative z-10 w-full max-w-md rounded-2xl border border-orange-400/35 bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(248,250,252,0.95)_58%,rgba(241,245,249,0.96))] p-5 shadow-[0_14px_34px_rgba(15,23,42,0.18)] dark:bg-[linear-gradient(165deg,rgba(20,28,42,0.95),rgba(10,16,28,0.94)_58%,rgba(5,10,20,0.98))] dark:shadow-[0_18px_45px_rgba(2,6,23,0.62)]">
+						<div className="mb-4 flex items-start gap-3">
+							<div className="mt-0.5 rounded-xl border border-amber-400/35 bg-amber-500/15 p-2">
+								<Icons.warning className="h-4 w-4 text-amber-300" />
+							</div>
+							<div>
+								<h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Supprimer ce parcours ?</h3>
+								<p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+									Cette action est irréversible.
+								</p>
+								<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+									Parcours: {tourPendingDelete.name || 'Sans nom'}
+								</p>
+							</div>
+						</div>
+						<div className="flex justify-end gap-2">
+							<Button
+								variant="outline"
+								className="border-slate-300 bg-white/90 text-slate-700 hover:bg-white dark:border-white/20 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900"
+								onClick={() => setTourPendingDelete(null)}
+							>
+								Annuler
+							</Button>
+							<button
+								type="button"
+								onClick={handleConfirmDeleteTour}
+								disabled={deletingIds.includes(tourPendingDelete.id || '')}
+								className="inline-flex h-9 items-center rounded-lg border border-rose-400/40 bg-rose-500/20 px-3 text-sm font-medium text-rose-700 transition-transform hover:scale-105 hover:bg-rose-500/28 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-400/35 dark:bg-rose-500/20 dark:text-rose-100 dark:hover:bg-rose-500/30"
+							>
+								Supprimer
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 		</div>
 	);
 }

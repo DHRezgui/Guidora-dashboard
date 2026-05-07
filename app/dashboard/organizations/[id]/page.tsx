@@ -47,6 +47,7 @@ export default function EditOrganizationPage() {
     resolver: zodResolver(editOrgSchema),
   });
   const planValue = watch('plan');
+  const isActiveValue = watch('isActive');
 
   const normalizeMaxUsers = (value: string): number => {
     const parsed = Number(value);
@@ -188,7 +189,12 @@ export default function EditOrganizationPage() {
                   >
                       <SelectValue placeholder="Choisir un plan" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      side="bottom"
+                      sideOffset={8}
+                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                    >
                       <SelectItem value="FREE" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Free</SelectItem>
                       <SelectItem value="STARTER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Starter</SelectItem>
                       <SelectItem value="PRO" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Pro</SelectItem>
@@ -262,13 +268,31 @@ export default function EditOrganizationPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  {...register('isActive')}
-                  className="h-4 w-4 rounded border-slate-300 bg-white/90 text-orange-500 accent-orange-500 focus:ring-2 focus:ring-orange-400/35 dark:border-white/25 dark:bg-slate-950/55"
-                />
-                <Label htmlFor="isActive" className="text-[13px]">Organisation active</Label>
+                <input type="checkbox" id="isActive" {...register('isActive')} className="sr-only" />
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={Boolean(isActiveValue)}
+                  aria-label="Organisation active"
+                  onClick={() =>
+                    setValue('isActive', !Boolean(isActiveValue), {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  }
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full border transition-all focus:outline-none focus:ring-2 focus:ring-orange-400/35 ${
+                    isActiveValue
+                      ? 'border-orange-500/70 bg-orange-500 shadow-[0_0_22px_rgba(249,115,22,0.35)]'
+                      : 'border-slate-300/80 bg-slate-300/80 dark:border-white/20 dark:bg-slate-700/70'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      isActiveValue ? 'translate-x-7' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+                <Label htmlFor="isActive" className="cursor-pointer text-[13px]">Organisation active</Label>
               </div>
 
               {error && (

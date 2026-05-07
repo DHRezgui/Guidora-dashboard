@@ -124,6 +124,12 @@ export interface Step {
   action?: ActionType;
   skipAllowed?: boolean;
   highlightElement?: boolean;
+  concatSourceMeta?: {
+    sourceTourId?: string;
+    sourceTourName?: string;
+    sourceTourIndex: number;
+    sourceStepIndex: number;
+  };
 }
 
 export type StepType = 'tooltip' | 'highlight' | 'modal' | 'form' | 'tutorial' | 'checklist';

@@ -143,7 +143,11 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner une position" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                alignItemWithTrigger={false}
+                side="bottom"
+                sideOffset={8}
+              >
                 {POSITION_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -163,7 +167,11 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner une action" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                alignItemWithTrigger={false}
+                side="bottom"
+                sideOffset={8}
+              >
                 {ACTION_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}

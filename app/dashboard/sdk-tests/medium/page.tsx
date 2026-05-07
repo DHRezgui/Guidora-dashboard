@@ -177,7 +177,12 @@ export default function MediumTestPage() {
                     >
                       <SelectValue placeholder="Stratégie de conflit" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      side="bottom"
+                      sideOffset={8}
+                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                    >
                       <SelectItem value="hybrid">hybrid</SelectItem>
                       <SelectItem value="highest-score">highest-score</SelectItem>
                       <SelectItem value="highest-confidence">highest-confidence</SelectItem>
@@ -197,7 +202,12 @@ export default function MediumTestPage() {
                     >
                       <SelectValue placeholder="Stage session" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectContent
+                      alignItemWithTrigger={false}
+                      side="bottom"
+                      sideOffset={8}
+                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                    >
                       <SelectItem value="discovery">discovery</SelectItem>
                       <SelectItem value="activation">activation</SelectItem>
                       <SelectItem value="adoption">adoption</SelectItem>

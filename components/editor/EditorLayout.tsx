@@ -6,6 +6,7 @@ import StepPalette from './StepPalette';
 import StepCanvas from './StepCanvas';
 import StepProperties from './StepProperties';
 import TourSimulator from './TourSimulator';
+import { Icons } from '@/components/ui/icons';
 import { GuidedTour, Step } from '@/lib/types';
 
 interface EditorLayoutProps {
@@ -113,6 +114,7 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
   const [tourMeta, setTourMeta] = useState<Partial<GuidedTour>>(initialTourMeta);
   const [selectedStep, setSelectedStep] = useState<Step | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const baselineSnapshotRef = useRef<string>('');
   const lastCommitRef = useRef<{ at: number; stepId: string | null; kind: 'text' | 'other' }>({
     at: 0,
@@ -268,14 +270,14 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
       onBack();
       return;
     }
-
-    const shouldLeave = window.confirm(
-      'Vous avez des modifications non enregistrees. Voulez-vous vraiment quitter sans enregistrer ?',
-    );
-    if (shouldLeave) {
-      onBack();
-    }
+    setShowUnsavedChangesModal(true);
   }, [hasUnsavedChanges, onBack]);
+
+  const confirmLeaveWithoutSaving = useCallback(() => {
+    if (!onBack) return;
+    setShowUnsavedChangesModal(false);
+    onBack();
+  }, [onBack]);
 
   const handleTourChange = (changes: Partial<GuidedTour>) => {
     setTourMeta((prev) => {
@@ -424,6 +426,44 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
           </div>
         )}
       </div>
+
+      {showUnsavedChangesModal ? (
+        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+            onClick={() => setShowUnsavedChangesModal(false)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-orange-400/35 bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(248,250,252,0.95)_58%,rgba(241,245,249,0.96))] p-5 shadow-[0_14px_34px_rgba(15,23,42,0.18)] dark:bg-[linear-gradient(165deg,rgba(20,28,42,0.95),rgba(10,16,28,0.94)_58%,rgba(5,10,20,0.98))] dark:shadow-[0_18px_45px_rgba(2,6,23,0.62)]">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="mt-0.5 rounded-xl border border-amber-400/35 bg-amber-500/15 p-2">
+                <Icons.warning className="h-4 w-4 text-amber-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Quitter sans enregistrer ?</h3>
+                <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                  Vous avez des modifications non enregistrées. Voulez-vous vraiment quitter cette page ?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowUnsavedChangesModal(false)}
+                className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white/90 px-3 text-sm text-slate-700 transition-colors hover:bg-white dark:border-white/20 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmLeaveWithoutSaving}
+                className="inline-flex h-9 items-center rounded-lg border border-rose-400/40 bg-rose-500/20 px-3 text-sm font-medium text-rose-700 transition-transform hover:scale-105 hover:bg-rose-500/28 active:scale-[0.98] dark:border-rose-400/35 dark:bg-rose-500/20 dark:text-rose-100 dark:hover:bg-rose-500/30"
+              >
+                Quitter
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
