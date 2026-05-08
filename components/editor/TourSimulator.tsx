@@ -235,6 +235,13 @@ function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
+function clampRange(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+const LIVE_RECT_MIN_PCT = -20;
+const LIVE_RECT_MAX_PCT = 120;
+
 function normalizeRect(
   bbox: { top: number; left: number; width: number; height: number },
   viewport: { width: number; height: number },
@@ -314,23 +321,39 @@ function getTooltipAnchorPoint(
   arrowStartX: number,
   arrowStartY: number,
 ): { x: number; y: number } {
-  // Arrow length in pixels
-  const arrowLength = 60;
+  // Arrow length in pixels (aligned with SDK runtime spacing).
+  const arrowLength = 84;
   
   switch (placement) {
     case 'LEFT':
-    case 'TOP_LEFT':
-    case 'BOTTOM_LEFT':
       return {
         x: arrowStartX - arrowLength,
         y: arrowStartY,
       };
     case 'RIGHT':
-    case 'TOP_RIGHT':
-    case 'BOTTOM_RIGHT':
       return {
         x: arrowStartX + arrowLength,
         y: arrowStartY,
+      };
+    case 'TOP_LEFT':
+      return {
+        x: arrowStartX - arrowLength,
+        y: arrowStartY - arrowLength,
+      };
+    case 'TOP_RIGHT':
+      return {
+        x: arrowStartX + arrowLength,
+        y: arrowStartY - arrowLength,
+      };
+    case 'BOTTOM_LEFT':
+      return {
+        x: arrowStartX - arrowLength,
+        y: arrowStartY + arrowLength,
+      };
+    case 'BOTTOM_RIGHT':
+      return {
+        x: arrowStartX + arrowLength,
+        y: arrowStartY + arrowLength,
       };
     case 'TOP':
       return {
@@ -344,6 +367,29 @@ function getTooltipAnchorPoint(
         y: arrowStartY + arrowLength,
       };
   }
+}
+
+function getRectBoundaryPoint(
+  rect: { top: number; left: number; width: number; height: number },
+  toward: { x: number; y: number },
+): { x: number; y: number } {
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = toward.x - cx;
+  const dy = toward.y - cy;
+
+  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+    return { x: cx, y: cy };
+  }
+
+  const halfW = Math.max(1, rect.width / 2);
+  const halfH = Math.max(1, rect.height / 2);
+  const scale = 1 / Math.max(Math.abs(dx) / halfW, Math.abs(dy) / halfH);
+
+  return {
+    x: cx + dx * scale,
+    y: cy + dy * scale,
+  };
 }
 
 function getTooltipPositionFromArrowAnchor(
@@ -489,6 +535,7 @@ export default function TourSimulator({
   const [arrowAnchorPixels, setArrowAnchorPixels] = useState<{ x: number; y: number } | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
   const syncLiveTargetRef = useRef<(() => void) | null>(null);
   const hasSteps = steps.length > 0;
   const safeIndex = hasSteps ? Math.min(currentIndex, steps.length - 1) : 0;
@@ -752,19 +799,22 @@ export default function TourSimulator({
       const stageHeight = Math.max(1, stageRect.height);
 
       const nextRect: NormalizedRect = {
-        topPct: clampPercent((absoluteTop / stageHeight) * 100),
-        leftPct: clampPercent((absoluteLeft / stageWidth) * 100),
-        widthPct: Math.max(2, clampPercent((targetRect.width / stageWidth) * 100)),
-        heightPct: Math.max(2, clampPercent((targetRect.height / stageHeight) * 100)),
+        // Keep preview highlight/anchor locked to the real selector,
+        // even when the selector is partially outside the stage viewport.
+        // Use a soft range to avoid tooltip snapping to a corner.
+        topPct: clampRange((absoluteTop / stageHeight) * 100, LIVE_RECT_MIN_PCT, LIVE_RECT_MAX_PCT),
+        leftPct: clampRange((absoluteLeft / stageWidth) * 100, LIVE_RECT_MIN_PCT, LIVE_RECT_MAX_PCT),
+        widthPct: Math.max(2, (targetRect.width / stageWidth) * 100),
+        heightPct: Math.max(2, (targetRect.height / stageHeight) * 100),
       };
 
       setLiveTargetRect((prev) => {
         if (
           prev &&
-          Math.abs(prev.topPct - nextRect.topPct) < 0.05 &&
-          Math.abs(prev.leftPct - nextRect.leftPct) < 0.05 &&
-          Math.abs(prev.widthPct - nextRect.widthPct) < 0.05 &&
-          Math.abs(prev.heightPct - nextRect.heightPct) < 0.05
+          Math.abs(prev.topPct - nextRect.topPct) < 0.005 &&
+          Math.abs(prev.leftPct - nextRect.leftPct) < 0.005 &&
+          Math.abs(prev.widthPct - nextRect.widthPct) < 0.005 &&
+          Math.abs(prev.heightPct - nextRect.heightPct) < 0.005
         ) {
           return prev;
         }
@@ -850,19 +900,22 @@ export default function TourSimulator({
       const absoluteLeft = iframeRect.left - stageRect.left + rect.left;
 
       const nextRect: NormalizedRect = {
-        topPct: clampPercent((absoluteTop / stageHeight) * 100),
-        leftPct: clampPercent((absoluteLeft / stageWidth) * 100),
-        widthPct: Math.max(2, clampPercent((rect.width / stageWidth) * 100)),
-        heightPct: Math.max(2, clampPercent((rect.height / stageHeight) * 100)),
+        // Keep preview highlight/anchor locked to the real selector,
+        // even when the selector is partially outside the stage viewport.
+        // Use a soft range to avoid tooltip snapping to a corner.
+        topPct: clampRange((absoluteTop / stageHeight) * 100, LIVE_RECT_MIN_PCT, LIVE_RECT_MAX_PCT),
+        leftPct: clampRange((absoluteLeft / stageWidth) * 100, LIVE_RECT_MIN_PCT, LIVE_RECT_MAX_PCT),
+        widthPct: Math.max(2, (rect.width / stageWidth) * 100),
+        heightPct: Math.max(2, (rect.height / stageHeight) * 100),
       };
 
       setLiveTargetRect((prev) => {
         if (
           prev &&
-          Math.abs(prev.topPct - nextRect.topPct) < 0.05 &&
-          Math.abs(prev.leftPct - nextRect.leftPct) < 0.05 &&
-          Math.abs(prev.widthPct - nextRect.widthPct) < 0.05 &&
-          Math.abs(prev.heightPct - nextRect.heightPct) < 0.05
+          Math.abs(prev.topPct - nextRect.topPct) < 0.005 &&
+          Math.abs(prev.leftPct - nextRect.leftPct) < 0.005 &&
+          Math.abs(prev.widthPct - nextRect.widthPct) < 0.005 &&
+          Math.abs(prev.heightPct - nextRect.heightPct) < 0.005
         ) {
           return prev;
         }
@@ -919,6 +972,26 @@ export default function TourSimulator({
   const tooltipStyle = arrowAnchorPixels && stageRectForTooltip
     ? clampTooltipStyle(getTooltipPositionFromArrowAnchor(arrowAnchorPixels.x, arrowAnchorPixels.y, tooltipPlacement, stageRectForTooltip))
     : undefined;
+  const previewUiSafeTopPx = 64;
+  const previewUiSafeTopPct = stageRectForTooltip
+    ? (previewUiSafeTopPx / Math.max(1, stageRectForTooltip.height)) * 100
+    : 0;
+  const rawHighlightTopPct = targetRectForTooltip?.topPct ?? 0;
+  const rawHighlightLeftPct = targetRectForTooltip?.leftPct ?? 0;
+  const rawHighlightWidthPct = targetRectForTooltip?.widthPct ?? 0;
+  const rawHighlightHeightPct = targetRectForTooltip?.heightPct ?? 0;
+  const rawHighlightBottomPct = rawHighlightTopPct + rawHighlightHeightPct;
+  const rawHighlightRightPct = rawHighlightLeftPct + rawHighlightWidthPct;
+  const clippedHighlightTopPct = Math.max(rawHighlightTopPct, previewUiSafeTopPct);
+  const clippedHighlightHeightPct = Math.max(0, rawHighlightBottomPct - clippedHighlightTopPct);
+  const canRenderClippedHighlight = clippedHighlightHeightPct > 0.5;
+  const clippedEdgeLineLeftPct = clampRange(rawHighlightLeftPct, 0, 100);
+  const clippedEdgeLineRightPct = clampRange(rawHighlightRightPct, 0, 100);
+  const clippedEdgeLineWidthPct = Math.max(0, clippedEdgeLineRightPct - clippedEdgeLineLeftPct);
+  const shouldShowTopEdgeLine = rawHighlightTopPct < previewUiSafeTopPct && clippedEdgeLineWidthPct > 0.5;
+  const shouldShowBottomEdgeLine = rawHighlightBottomPct > 100 && clippedEdgeLineWidthPct > 0.5;
+  const shouldShowEdgeLine = shouldShowTopEdgeLine || shouldShowBottomEdgeLine;
+  const shouldRenderFullHighlight = canRenderClippedHighlight && !shouldShowEdgeLine;
 
   useEffect(() => {
     if (!stageRef.current || !targetRectForTooltip || viewMode !== 'preview') {
@@ -930,11 +1003,32 @@ export default function TourSimulator({
 
     const stageRect = stageRef.current.getBoundingClientRect();
 
+    const clampPointToStage = (point: { x: number; y: number }): { x: number; y: number } => ({
+      x: clampRange(point.x, 0, stageRect.width),
+      y: clampRange(point.y, previewUiSafeTopPx, stageRect.height),
+    });
+
     // Target-side anchor (the arrow head must point here).
-    const targetAnchor = getArrowAnchorOnTarget(tooltipPlacement, targetRectForTooltip, stageRect);
+    const targetAnchor = clampPointToStage(
+      getArrowAnchorOnTarget(tooltipPlacement, targetRectForTooltip, stageRect),
+    );
 
     // Tooltip-side anchor (tail of the arrow).
-    const tooltipAnchor = getTooltipAnchorPoint(tooltipPlacement, targetAnchor.x, targetAnchor.y);
+    let tooltipAnchor = getTooltipAnchorPoint(tooltipPlacement, targetAnchor.x, targetAnchor.y);
+    const tooltipEl = tooltipRef.current;
+    if (tooltipEl) {
+      const tooltipRect = tooltipEl.getBoundingClientRect();
+      tooltipAnchor = getRectBoundaryPoint(
+        {
+          top: tooltipRect.top - stageRect.top,
+          left: tooltipRect.left - stageRect.left,
+          width: tooltipRect.width,
+          height: tooltipRect.height,
+        },
+        targetAnchor,
+      );
+    }
+    tooltipAnchor = clampPointToStage(tooltipAnchor);
 
     // Draw smooth curve from tooltip to target so markerEnd points at selector.
     const dx = targetAnchor.x - tooltipAnchor.x;
@@ -1122,7 +1216,7 @@ export default function TourSimulator({
 
       {useLiveIframe ? (
         <div
-          className="absolute inset-0 overflow-hidden rounded-xl bg-slate-100/45 dark:bg-slate-950/5"
+          className="absolute inset-x-0 bottom-0 top-16 overflow-hidden rounded-xl bg-slate-100/45 dark:bg-slate-950/5"
           onWheel={
             useLiveIframe && canInspectIframeDom
               ? (event) => {
@@ -1181,23 +1275,10 @@ export default function TourSimulator({
             </div>
           ) : null}
 
-          <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/80 dark:text-slate-300">
-            <span className="font-medium text-slate-800 dark:text-slate-100">Mode live iframe actif</span>
-            <span className={isLiveTargetMissing ? 'text-amber-700 font-medium' : ''}>
-              {iframeState === 'loading'
-                ? 'Transition de page...'
-                : !canInspectIframeDom
-                  ? 'Live cross-origin (DOM restreint)'
-                : isLiveCalibrating
-                  ? 'Calibrage...'
-                  : isLiveTargetMissing
-                    ? 'Cible introuvable'
-                    : 'Prêt'}
-            </span>
-          </div>
+          {/* Live iframe status bar intentionally hidden for cleaner preview. */}
         </div>
       ) : hasStructuredContext ? (
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-x-0 bottom-0 top-16 overflow-hidden">
           <div className="relative h-full w-full rounded-xl border border-slate-200 bg-white/90 shadow-inner">
             {normalizedElements.map((element) => (
               <div
@@ -1229,7 +1310,7 @@ export default function TourSimulator({
           </div>
         </div>
       ) : (
-        <div className="absolute inset-0 p-8 flex flex-col gap-6 opacity-50 pointer-events-none">
+        <div className="absolute inset-x-0 bottom-0 top-16 p-8 flex flex-col gap-6 opacity-50 pointer-events-none">
           <div className="h-12 bg-slate-300 rounded-md w-full flex items-center px-4 gap-4">
             <div className="h-6 w-32 bg-slate-400 rounded-md"></div>
             <div className="h-6 w-16 bg-slate-400 rounded-md ml-auto"></div>
@@ -1253,15 +1334,43 @@ export default function TourSimulator({
       )}
 
       {/* Spotlight "mettre en evidence" autour de la cible */}
-      {currentStep.highlightElement && viewMode === 'preview' && targetRectForTooltip ? (
+      {currentStep.highlightElement && viewMode === 'preview' && targetRectForTooltip && shouldRenderFullHighlight ? (
         <div
           className="pointer-events-none absolute z-[15] rounded-md border-2 border-primary/90 transition-all duration-300"
           style={{
-            top: `${targetRectForTooltip.topPct}%`,
-            left: `${targetRectForTooltip.leftPct}%`,
-            width: `${targetRectForTooltip.widthPct}%`,
-            height: `${targetRectForTooltip.heightPct}%`,
+            top: `${clippedHighlightTopPct}%`,
+            left: `${rawHighlightLeftPct}%`,
+            width: `${rawHighlightWidthPct}%`,
+            height: `${clippedHighlightHeightPct}%`,
             boxShadow: '0 0 0 9999px rgba(2, 6, 23, 0.45), 0 0 0 6px rgba(59, 130, 246, 0.2)',
+          }}
+        />
+      ) : null}
+      {currentStep.highlightElement && viewMode === 'preview' && targetRectForTooltip && shouldShowTopEdgeLine ? (
+        <div
+          className="pointer-events-none absolute z-[16]"
+          style={{
+            top: `${previewUiSafeTopPct}%`,
+            left: `${clippedEdgeLineLeftPct}%`,
+            width: `${clippedEdgeLineWidthPct}%`,
+            height: 2,
+            borderRadius: 999,
+            background: 'rgba(249, 115, 22, 0.9)',
+            boxShadow: '0 0 0 3px rgba(148, 163, 184, 0.38)',
+          }}
+        />
+      ) : null}
+      {currentStep.highlightElement && viewMode === 'preview' && targetRectForTooltip && shouldShowBottomEdgeLine ? (
+        <div
+          className="pointer-events-none absolute z-[16]"
+          style={{
+            bottom: 0,
+            left: `${clippedEdgeLineLeftPct}%`,
+            width: `${clippedEdgeLineWidthPct}%`,
+            height: 2,
+            borderRadius: 999,
+            background: 'rgba(249, 115, 22, 0.9)',
+            boxShadow: '0 0 0 3px rgba(148, 163, 184, 0.38)',
           }}
         />
       ) : null}
@@ -1270,11 +1379,11 @@ export default function TourSimulator({
         <svg className="pointer-events-none absolute inset-0 z-30" width="100%" height="100%" aria-hidden="true">
           <defs>
             <marker id="tooltipArrowHead" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-              <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+              <path d="M0 0 L10 5 L0 10 z" fill="#ec4899" />
             </marker>
           </defs>
-          <path d={connectorPath} stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="text-slate-900/90 drop-shadow-[0_1px_1px_rgba(255,255,255,0.55)]" markerEnd="url(#tooltipArrowHead)" />
-          {connectorStart ? <circle cx={connectorStart.x} cy={connectorStart.y} r="3.5" className="fill-slate-900/90" /> : null}
+          <path d={connectorPath} fill="none" stroke="#f97316" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" markerEnd="url(#tooltipArrowHead)" />
+          {connectorStart ? <circle cx={connectorStart.x} cy={connectorStart.y} r="3.5" fill="#f97316" stroke="rgba(255,255,255,0.72)" strokeWidth="1" /> : null}
         </svg>
       ) : null}
 
@@ -1303,17 +1412,17 @@ export default function TourSimulator({
             </div>
           )}
 
-          {hasStructuredContext && targetRectForTooltip && viewMode === 'preview' && !useLiveIframe ? (
+          {hasStructuredContext && targetRectForTooltip && viewMode === 'preview' && !useLiveIframe && shouldRenderFullHighlight ? (
             <div
               className={cn(
                 'absolute rounded-md border-2 border-dashed border-primary pointer-events-none',
                 currentStep.highlightElement ? 'ring-4 ring-primary/60 shadow-[0_0_0_3px_rgba(59,130,246,0.25)]' : '',
               )}
               style={{
-                top: `${targetRectForTooltip.topPct}%`,
-                left: `${targetRectForTooltip.leftPct}%`,
-                width: `${targetRectForTooltip.widthPct}%`,
-                height: `${targetRectForTooltip.heightPct}%`,
+                top: `${clippedHighlightTopPct}%`,
+                left: `${rawHighlightLeftPct}%`,
+                width: `${rawHighlightWidthPct}%`,
+                height: `${clippedHighlightHeightPct}%`,
               }}
             />
           ) : null}
@@ -1352,7 +1461,7 @@ export default function TourSimulator({
             >
 
             {/* Infobulle */}
-            <div className="bg-white rounded-lg shadow-2xl p-5 w-87.5 text-left border border-slate-100 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto">
+            <div ref={tooltipRef} className="bg-white rounded-lg shadow-2xl p-5 w-87.5 text-left border border-slate-100 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto">
               <div className="mb-2 flex items-start justify-between">
                 <h3 className="text-lg font-semibold text-slate-900 leading-tight">{currentStep.title || "Sans titre"}</h3>
                 <Button
@@ -1439,8 +1548,8 @@ export default function TourSimulator({
       {viewMode === 'debug' ? renderDebugPanel() : null}
 
       {/* Floating control panel */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-md backdrop-blur animate-in slide-in-from-top-4 dark:border-white/10 dark:bg-slate-950/85">
-        <div className="px-2 py-1 rounded text-xs font-bold flex items-center gap-1 border border-amber-400/25 bg-amber-500/10 text-amber-300">
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md backdrop-blur animate-in slide-in-from-top-4 dark:border-white/10 dark:bg-slate-950/85">
+        <div className="h-8 px-3 rounded-md text-xs font-bold flex items-center gap-1 border border-amber-400/25 bg-amber-500/10 text-amber-300">
           <Icons.eye className="h-3 w-3" /> PREVIEW
         </div>
         {fallbackPageUrl ? (
