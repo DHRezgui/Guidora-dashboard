@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SimulationContext, Step } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,109 @@ type PreviewBridgeRectMessage = {
 };
 const PREVIEW_BASE_URL_STORAGE_KEY = 'trustdev_dashboard_preview_base_url_v1';
 
+/** Pages du lab SDK (même origine que le dashboard — preview iframe same-origin). */
+const DASHBOARD_SDK_LAB_PREFIX = '/dashboard/sdk-tests';
+
+/** Alias utilisés par le lab de test (cibles courtes) → routes réelles App Router. */
+const LAB_PREVIEW_PATH_ALIASES: Record<string, string> = {
+	'/simple': `${DASHBOARD_SDK_LAB_PREFIX}/simple`,
+	'/moyenne': `${DASHBOARD_SDK_LAB_PREFIX}/medium`,
+	'/dynamique': `${DASHBOARD_SDK_LAB_PREFIX}/dynamic`,
+	'/stress': `${DASHBOARD_SDK_LAB_PREFIX}/stress`,
+};
+
+function isDashboardSdkLabPathname(pathname: string): boolean {
+	const p = (pathname.split('?')[0] || '').replace(/\/+$/, '') || '/';
+	return p === DASHBOARD_SDK_LAB_PREFIX || p.startsWith(`${DASHBOARD_SDK_LAB_PREFIX}/`);
+}
+
+function expandDashboardLabPreviewRoute(route?: string): string | undefined {
+	if (!route) return undefined;
+	const t = route.trim();
+	if (!t) return undefined;
+
+	const applyAlias = (pathname: string, searchAndHash: string): string => {
+		const mapped = LAB_PREVIEW_PATH_ALIASES[pathname];
+		if (mapped) return `${mapped}${searchAndHash}`;
+		return `${pathname}${searchAndHash}`;
+	};
+
+	if (t.startsWith('http://') || t.startsWith('https://')) {
+		try {
+			const u = new URL(t);
+			const mapped = LAB_PREVIEW_PATH_ALIASES[u.pathname];
+			if (mapped) {
+				u.pathname = mapped;
+				return u.href;
+			}
+			return t;
+		} catch {
+			return t;
+		}
+	}
+
+	const qIdx = t.indexOf('?');
+	const pathOnly = (qIdx >= 0 ? t.slice(0, qIdx) : t) || '';
+	const rest = qIdx >= 0 ? t.slice(qIdx) : '';
+	return applyAlias(pathOnly, rest);
+}
+
+/** Résout une cible lab en URL absolue sur l’origine courante (null si ce n’est pas le lab). */
+function tryResolveDashboardLabUrl(route?: string): URL | null {
+	const expanded = expandDashboardLabPreviewRoute(route);
+	if (!expanded || typeof window === 'undefined') return null;
+	const trimmed = expanded.trim();
+	try {
+		if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+			const u = new URL(trimmed);
+			if (!isDashboardSdkLabPathname(u.pathname)) return null;
+			return u.origin === window.location.origin ? u : null;
+		}
+		const pathOnly = trimmed.split('?')[0] || '';
+		if (!isDashboardSdkLabPathname(pathOnly)) return null;
+		return new URL(trimmed, window.location.origin);
+	} catch {
+		return null;
+	}
+}
+
+function getFullscreenElement(): Element | null {
+  if (typeof document === 'undefined') return null;
+  const doc = document as Document & { webkitFullscreenElement?: Element | null };
+  return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}
+
+async function exitDocumentFullscreen(): Promise<void> {
+  if (typeof document === 'undefined') return;
+  const doc = document as Document & {
+    exitFullscreen?: () => Promise<void>;
+    webkitExitFullscreen?: () => void;
+  };
+  if (doc.exitFullscreen) {
+    await doc.exitFullscreen().catch(() => {});
+    return;
+  }
+  if (doc.webkitExitFullscreen) {
+    doc.webkitExitFullscreen();
+  }
+}
+
+async function requestElementFullscreen(el: HTMLElement): Promise<void> {
+  const node = el as HTMLElement & {
+    requestFullscreen?: () => Promise<void>;
+    webkitRequestFullscreen?: () => void;
+  };
+  if (node.requestFullscreen) {
+    await node.requestFullscreen();
+    return;
+  }
+  if (node.webkitRequestFullscreen) {
+    node.webkitRequestFullscreen();
+    return;
+  }
+  throw new Error('Fullscreen API not supported');
+}
+
 function toAbsoluteHttpUrl(value?: string): URL | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -49,68 +152,92 @@ function toAbsoluteHttpUrl(value?: string): URL | null {
 }
 
 function resolvePreviewPageUrl(
-  stepRouteOrUrl: string | undefined,
-  tourTargetUrl: string | undefined,
-  simulationPageUrl: string | undefined,
+	stepRouteOrUrl: string | undefined,
+	tourTargetUrl: string | undefined,
+	simulationPageUrl: string | undefined,
 ): string | undefined {
-  const rawStep = (stepRouteOrUrl || '').trim();
-  const absoluteStepUrl = toAbsoluteHttpUrl(rawStep);
-  if (absoluteStepUrl) {
-    return absoluteStepUrl.href;
-  }
+	const expandedStep = expandDashboardLabPreviewRoute(stepRouteOrUrl) ?? (stepRouteOrUrl || '').trim();
+	const rawStep = expandedStep.trim();
+	const absoluteStepUrl = toAbsoluteHttpUrl(rawStep);
+	if (absoluteStepUrl) {
+		return absoluteStepUrl.href;
+	}
 
-  const absoluteTourTargetUrl = toAbsoluteHttpUrl(tourTargetUrl);
-  const absoluteSimulationPageUrl = toAbsoluteHttpUrl(simulationPageUrl);
-  const dashboardOrigin =
-    typeof window !== 'undefined' ? toAbsoluteHttpUrl(window.location.origin)?.origin : undefined;
+	const absoluteTourTargetUrl =
+		tryResolveDashboardLabUrl(tourTargetUrl) ?? toAbsoluteHttpUrl(expandDashboardLabPreviewRoute(tourTargetUrl) || tourTargetUrl || '');
+	const absoluteSimulationPageUrl =
+		tryResolveDashboardLabUrl(simulationPageUrl) ?? toAbsoluteHttpUrl(expandDashboardLabPreviewRoute(simulationPageUrl) || simulationPageUrl || '');
+	const dashboardOrigin =
+		typeof window !== 'undefined' ? toAbsoluteHttpUrl(window.location.origin)?.origin : undefined;
 
-  const pickUsableBase = (...candidates: Array<URL | null>): URL | null => {
-    for (const candidate of candidates) {
-      if (!candidate) continue;
-      // If step/tour URL is relative, avoid resolving against the dashboard origin,
-      // otherwise preview often loops into dashboard/login instead of the target app.
-      if (dashboardOrigin && candidate.origin === dashboardOrigin) continue;
-      return candidate;
-    }
-    return null;
-  };
+	const pickUsableBase = (...candidates: Array<URL | null>): URL | null => {
+		for (const candidate of candidates) {
+			if (!candidate) continue;
+			// Évite de charger le dashboard comme « appli externe », sauf pages du lab SDK (même origine voulue).
+			if (dashboardOrigin && candidate.origin === dashboardOrigin) {
+				if (isDashboardSdkLabPathname(candidate.pathname)) {
+					return candidate;
+				}
+				continue;
+			}
+			return candidate;
+		}
+		return null;
+	};
 
-  let baseUrl = pickUsableBase(absoluteTourTargetUrl, absoluteSimulationPageUrl);
+	let baseUrl = pickUsableBase(absoluteTourTargetUrl, absoluteSimulationPageUrl);
 
-  if (!baseUrl && typeof window !== 'undefined') {
-    const envPreviewBase = toAbsoluteHttpUrl(process.env.NEXT_PUBLIC_PREVIEW_APP_URL);
-    const storedPreviewBase = toAbsoluteHttpUrl(window.localStorage.getItem(PREVIEW_BASE_URL_STORAGE_KEY) || undefined);
-    // Local-first fallback for developers when targetUrl is just "/".
-    const defaultLocalPreviewBase = toAbsoluteHttpUrl('http://localhost:3000');
-    baseUrl = pickUsableBase(envPreviewBase, storedPreviewBase, defaultLocalPreviewBase);
-  }
+	if (!baseUrl && typeof window !== 'undefined') {
+		const envPreviewBase = toAbsoluteHttpUrl(process.env.NEXT_PUBLIC_PREVIEW_APP_URL);
+		const storedPreviewBase = toAbsoluteHttpUrl(window.localStorage.getItem(PREVIEW_BASE_URL_STORAGE_KEY) || undefined);
+		const defaultLocalPreviewBase = toAbsoluteHttpUrl('http://localhost:3000');
+		baseUrl = pickUsableBase(envPreviewBase, storedPreviewBase, defaultLocalPreviewBase);
+	}
 
-  if (rawStep) {
-    if (baseUrl) {
-      try {
-        // Resolve relative multi-page routes (/about, /contact) against the target app origin.
-        return rawStep.startsWith('/')
-          ? new URL(rawStep, baseUrl.origin).href
-          : new URL(rawStep, baseUrl.href).href;
-      } catch {
-        // Fall through to local fallback.
-      }
-    }
+	if (rawStep) {
+		let stepPathOnly = rawStep;
+		try {
+			if (rawStep.startsWith('http://') || rawStep.startsWith('https://')) {
+				stepPathOnly = new URL(rawStep).pathname;
+			} else {
+				stepPathOnly = rawStep.split('?')[0] || rawStep;
+			}
+		} catch {
+			stepPathOnly = rawStep.split('?')[0] || rawStep;
+		}
 
-    if (typeof window !== 'undefined') {
-      try {
-        return new URL(rawStep, window.location.origin).href;
-      } catch {
-        // Ignore invalid URL and fall through.
-      }
-    }
+		if (isDashboardSdkLabPathname(stepPathOnly) && typeof window !== 'undefined') {
+			try {
+				return new URL(rawStep, window.location.origin).href;
+			} catch {
+				// Fall through.
+			}
+		}
 
-    return rawStep;
-  }
+		if (baseUrl) {
+			try {
+				return rawStep.startsWith('/')
+					? new URL(rawStep, baseUrl.origin).href
+					: new URL(rawStep, baseUrl.href).href;
+			} catch {
+				// Fall through to local fallback.
+			}
+		}
 
-  if (absoluteTourTargetUrl) return absoluteTourTargetUrl.href;
-  if (absoluteSimulationPageUrl) return absoluteSimulationPageUrl.href;
-  return undefined;
+		if (typeof window !== 'undefined') {
+			try {
+				return new URL(rawStep, window.location.origin).href;
+			} catch {
+				// Ignore invalid URL and fall through.
+			}
+		}
+
+		return rawStep;
+	}
+
+	if (absoluteTourTargetUrl) return absoluteTourTargetUrl.href;
+	if (absoluteSimulationPageUrl) return absoluteSimulationPageUrl.href;
+	return undefined;
 }
 
 function withSimulatorPreviewFlag(urlValue?: string): string | undefined {
@@ -537,6 +664,55 @@ export default function TourSimulator({
   const stageRef = useRef<HTMLDivElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const syncLiveTargetRef = useRef<(() => void) | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const sync = () => {
+      const fs = getFullscreenElement();
+      setIsFullscreen(Boolean(fs && stageRef.current && fs === stageRef.current));
+    };
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync as EventListener);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying && getFullscreenElement() === stageRef.current) {
+      void exitDocumentFullscreen();
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      const stage = stageRef.current;
+      if (stage && getFullscreenElement() === stage) {
+        void exitDocumentFullscreen();
+      }
+    };
+  }, []);
+
+  const exitPreviewSafe = useCallback(() => {
+    void exitDocumentFullscreen();
+    onExitPreview();
+  }, [onExitPreview]);
+
+  const togglePreviewFullscreen = useCallback(async () => {
+    const el = stageRef.current;
+    if (!el) return;
+    try {
+      if (getFullscreenElement() === el) {
+        await exitDocumentFullscreen();
+      } else {
+        await requestElementFullscreen(el);
+      }
+    } catch {
+      // Some browsers block fullscreen without user gesture or on iframes; ignore silently.
+    }
+  }, []);
+
   const hasSteps = steps.length > 0;
   const safeIndex = hasSteps ? Math.min(currentIndex, steps.length - 1) : 0;
   const currentStep = hasSteps ? steps[safeIndex] : null;
@@ -1068,7 +1244,7 @@ export default function TourSimulator({
         <Icons.info className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-xl font-semibold mb-2">Aucune étape à simuler</h3>
         <p className="text-muted-foreground mb-6">Ajoutez des étapes à votre parcours pour pouvoir tester l&apos;expérience utilisateur.</p>
-        <Button onClick={onExitPreview}>Retour à l&apos;édition</Button>
+        <Button onClick={exitPreviewSafe}>Retour à l&apos;édition</Button>
       </div>
     );
   }
@@ -1089,7 +1265,7 @@ export default function TourSimulator({
           <div className="flex gap-3 justify-center">
             <Button
               variant="outline"
-              onClick={onExitPreview}
+              onClick={exitPreviewSafe}
               className="transition-transform hover:scale-105 active:scale-[0.99]"
             >
               Quitter
@@ -1189,7 +1365,13 @@ export default function TourSimulator({
   );
 
   return (
-    <div ref={stageRef} className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white/65 dark:border-white/10 dark:bg-slate-900/50">
+    <div
+      ref={stageRef}
+      className={cn(
+        'relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white/65 dark:border-white/10 dark:bg-slate-900/50',
+        isFullscreen && 'h-screen max-h-screen w-screen rounded-none',
+      )}
+    >
       <div className="absolute top-4 left-4 z-50 flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md backdrop-blur dark:border-white/10 dark:bg-slate-950/85">
         <Button
           variant={viewMode === 'preview' ? 'default' : 'ghost'}
@@ -1562,7 +1744,26 @@ export default function TourSimulator({
             <Icons.globe className="h-3.5 w-3.5 mr-1" /> Ouvrir la page
           </Button>
         ) : null}
-        <Button variant="ghost" size="sm" onClick={onExitPreview} className="h-8 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-transform hover:scale-105 active:scale-[0.99] dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs border-slate-300 bg-white/90 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-transform hover:scale-105 active:scale-[0.99] dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 dark:hover:bg-white/10 dark:hover:text-white"
+          onClick={() => void togglePreviewFullscreen()}
+          title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+          aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+        >
+          {isFullscreen ? (
+            <>
+              <Icons.minimize className="h-3.5 w-3.5 mr-1" /> Fenêtre
+            </>
+          ) : (
+            <>
+              <Icons.maximize className="h-3.5 w-3.5 mr-1" /> Plein écran
+            </>
+          )}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={exitPreviewSafe} className="h-8 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-transform hover:scale-105 active:scale-[0.99] dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white">
           Quitter la simulation
         </Button>
       </div>

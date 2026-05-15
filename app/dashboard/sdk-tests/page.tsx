@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Layers3, FlaskConical, Sparkles, AlertTriangle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Layers3, FlaskConical, Sparkles, AlertTriangle, HeartPulse } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,13 +36,20 @@ const scenarios = [
     href: '/dashboard/sdk-tests/stress',
     tags: ['arbitraire', 'anti-biais', 'chaos DOM', 'validation finale'],
   },
+  {
+    title: 'Intégration réelle',
+    description: 'Exemple avec le pack healthtechBlueprints (remplaçable), feedback synchronisé et prévisualisation runtime comme sur une app cliente.',
+    icon: HeartPulse,
+    href: '/dashboard/sdk-tests/integration',
+    tags: ['blueprints', 'feedback', 'runtime', 'healthtech'],
+  },
 ];
 
 export default function SdkTestsHubPage() {
   return (
     <SdkLabShell
       title="Lab de test du SDK"
-      description="Point d’entrée pour valider les heuristiques, le ranking, le contexte session et la robustesse DOM sur trois interfaces de complexité croissante."
+      description="Validez la génération contextuelle de bout en bout : moteur, publication API, boucle feedback et lecture des parcours sur le DOM réel du lab."
       badges={["sandbox", "validation SDK", "production-style"]}
     >
       <div className="grid gap-5 lg:grid-cols-3">
@@ -90,9 +97,9 @@ export default function SdkTestsHubPage() {
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-3">
           {[
-            'La qualité des drafts générés',
-            'La stabilité des sélecteurs sur différents layouts',
-            'Le comportement sur DOM dynamique et bruit UI',
+            'Génération + publication (tours inactifs par défaut)',
+            'Feedback shown / clicked / completed → backend',
+            'Lecture runtime (Jouer) et scénario blueprints',
           ].map((item) => (
             <div key={item} className="flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />

@@ -12,14 +12,21 @@ import {
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useContextualTourSuggestions } from '@sdk/hooks/useContextualTourSuggestions';
+import type { SuggestedTourDraft } from '@sdk/types/sdk';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 import { SdkLabShell } from '../_components';
+import { labContextualDefaults } from '../lab-shared';
+import { SdkLabTwoZoneLayout, SdkLabSubjectZone } from '../lab-layout';
+import {
+	SdkLabAnalyzeToolbar,
+	SdkLabDraftPlayerModal,
+	SdkLabSdkConsole,
+	SdkLabSessionControls,
+} from '../lab-ui';
+import { useSdkLabPage } from '../use-sdk-lab-page';
 
 type ChaosJob = {
   id: string;
@@ -76,7 +83,7 @@ export default function StressTestPage() {
   const [strategy, setStrategy] = useState<'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid'>('hybrid');
   const [stage, setStage] = useState<'discovery' | 'activation' | 'adoption' | 'retention'>('activation');
   const [progress, setProgress] = useState(52);
-  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
+  const [playDraft, setPlayDraft] = useState<SuggestedTourDraft | null>(null);
 
   const [jobs, setJobs] = useState<ChaosJob[]>(() => Array.from({ length: 6 }).map((_, i) => createJob(i)));
   const [feed, setFeed] = useState<FeedEvent[]>(() => [createFeedEvent(), createFeedEvent(), createFeedEvent()]);
@@ -115,25 +122,14 @@ export default function StressTestPage() {
   }, [jobs]);
 
   const sdkOptions = useMemo(
-    () => ({
-      enabled: true,
-      autoGenerate: false,
-      autoPublish: true,
+    () =>
+      labContextualDefaults({
       publishScenario: 'stress' as const,
-      autoActivatePublishedDrafts: true,
-      publishConfig: {
-        apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
-        apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
-        getAccessToken: () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null),
-      },
       persona: 'operator',
-      useSemanticRanking: true,
       enableSequenceDetection: false,
       includeFormDraft: false,
       includeNavigationDraft: true,
       includeSupportDraft: true,
-      noiseFilteringEnabled: true,
-      ignoreTransientUi: true,
       noiseSelectors: [
         '.stress-transient',
         '[role="status"]',
@@ -143,10 +139,6 @@ export default function StressTestPage() {
         '[data-tour-id="tour-stress-action-burst"]',
         '[data-tour-id="tour-stress-action-randomize"]',
         '[data-tour-id="tour-stress-secondary-guide"]',
-        '[data-tour-id^="tour-sdk-lab-nav-"]',
-        '[data-tour-id="tour-sdk-lab-action-back-dashboard"]',
-        'nav a[href^="/dashboard"]',
-        'aside a[href^="/dashboard"]',
       ],
       mutationBatchWindowMs: 90,
       maxDirtyNodesPerBatch: 420,
@@ -185,31 +177,25 @@ export default function StressTestPage() {
       flowVersioningEnabled: true,
       flowVersion: 'stress-lab-v1',
       baselineFlowVersion: 'stress-lab-v0',
-      flowCompatibilityMode: 'lenient' as const,
     }),
     [progress, severeScore, stage, strategy, tick],
   );
 
-  const {
-    drafts,
-    isGenerating,
-    isPublishing,
-    error,
-    publishError,
-    lastPublishReport,
-    refresh,
-    getDebugReport,
-    getFlowRegistry,
-  } = useContextualTourSuggestions(sdkOptions);
+  const lab = useSdkLabPage(sdkOptions, { labKey: 'stress', publishScenario: 'stress' });
 
-  const debugReport = getDebugReport();
-  const flowRegistry = getFlowRegistry();
-
-  const runAnalysis = () => {
-    const next = refresh();
-    setLastRunAt(new Date().toLocaleTimeString());
-    console.info('[SDK Tests][Stress] Drafts generated:', next);
-    console.info('[SDK Tests][Stress] Debug report:', getDebugReport());
+  const runBindings = {
+    drafts: lab.drafts,
+    debugReport: lab.debugReport,
+    flowRegistry: lab.flowRegistry,
+    lastPublishReport: lab.lastPublishReport,
+    publishError: lab.publishError,
+    error: lab.error,
+    isGenerating: lab.isGenerating,
+    isPublishing: lab.isPublishing,
+    suggestionsApi: lab.suggestionsApi,
+    resetFeedback: lab.resetFeedback,
+    feedbackVersion: lab.feedbackVersion,
+    onPlayDraft: setPlayDraft,
   };
 
   const triggerBurst = () => {
@@ -243,138 +229,13 @@ export default function StressTestPage() {
       description="Scénario non calibré avec bruit, faux signaux, mutations rapides et blocs contradictoires pour tester la robustesse réelle du SDK."
       badges={["stress", "anti-biais", "chaos DOM", "validation finale"]}
     >
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Orchestrateur de stress</CardTitle>
-              <CardDescription>Contrôles et actions pour générer des conditions imprévisibles au moment de l’analyse.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="grid gap-2">
-                  <label htmlFor="stress-strategy" className="text-sm font-medium">Stratégie de conflit</label>
-                  <Select
-                    value={strategy}
-                    onValueChange={(value) => setStrategy(value as 'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid')}
-                  >
-                    <SelectTrigger
-                      id="stress-strategy"
-                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
-                    >
-                      <SelectValue placeholder="Stratégie de conflit" />
-                    </SelectTrigger>
-                    <SelectContent
-                      alignItemWithTrigger={false}
-                      side="bottom"
-                      sideOffset={8}
-                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
-                    >
-                      <SelectItem value="hybrid">hybrid</SelectItem>
-                      <SelectItem value="highest-score">highest-score</SelectItem>
-                      <SelectItem value="highest-confidence">highest-confidence</SelectItem>
-                      <SelectItem value="intent-priority">intent-priority</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <label htmlFor="stress-stage" className="text-sm font-medium">Étape session</label>
-                  <Select
-                    value={stage}
-                    onValueChange={(value) => setStage(value as 'discovery' | 'activation' | 'adoption' | 'retention')}
-                  >
-                    <SelectTrigger
-                      id="stress-stage"
-                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
-                    >
-                      <SelectValue placeholder="Étape session" />
-                    </SelectTrigger>
-                    <SelectContent
-                      alignItemWithTrigger={false}
-                      side="bottom"
-                      sideOffset={8}
-                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
-                    >
-                      <SelectItem value="discovery">discovery</SelectItem>
-                      <SelectItem value="activation">activation</SelectItem>
-                      <SelectItem value="adoption">adoption</SelectItem>
-                      <SelectItem value="retention">retention</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <label htmlFor="stress-progress" className="text-sm font-medium">Progression: {progress}%</label>
-                  <input
-                    id="stress-progress"
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={progress}
-                    onChange={(event) => setProgress(Number(event.target.value))}
-                    className="h-2 w-full cursor-pointer accent-violet-600 dark:accent-violet-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={runAnalysis} data-tour-id="tour-stress-action-analyze" className="rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(255,107,0,0.35)] active:translate-y-0" disabled={isGenerating || isPublishing}>
-                  {isGenerating ? 'Analyse en cours...' : 'Analyser ce chaos'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={triggerBurst}
-                  data-tour-id="tour-stress-action-burst"
-                  data-testid="noise-burst-action"
-                  className="rounded-xl"
-                  disabled={isBursting}
-                >
-                  <Zap className="mr-2 h-4 w-4" />
-                  {isBursting ? 'Burst en cours...' : 'Lancer burst DOM'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setJobs(Array.from({ length: 6 }).map((_, i) => createJob(i)));
-                    setFeed([createFeedEvent(), createFeedEvent(), createFeedEvent()]);
-                    toast.success('Etat arbitraire régénéré');
-                  }}
-                  data-tour-id="tour-stress-action-randomize"
-                  data-testid="noise-randomize-action"
-                  className="rounded-xl"
-                >
-                  <RefreshCcw className="mr-2 h-4 w-4" />
-                  Rejouer un état arbitraire
-                </Button>
-                {lastRunAt ? <Badge variant="outline">Dernier run: {lastRunAt}</Badge> : null}
-              </div>
-
-              {error ? <p className="text-sm font-medium text-destructive">Erreur SDK: {error}</p> : null}
-              {publishError ? <p className="text-sm font-medium text-destructive">Erreur publication: {publishError}</p> : null}
-
-              <div className="grid gap-3 sm:grid-cols-5">
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Drafts</p>
-                  <p className="mt-1 text-lg font-semibold">{drafts.length}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Acceptés</p>
-                  <p className="mt-1 text-lg font-semibold">{debugReport?.candidateMetrics.accepted ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Rejet bruit</p>
-                  <p className="mt-1 text-lg font-semibold">{debugReport?.candidateMetrics.rejectedNoise ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Score chaos</p>
-                  <p className="mt-1 text-lg font-semibold">{severeScore}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Publiés</p>
-                  <p className="mt-1 text-lg font-semibold">{lastPublishReport?.created ?? 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <SdkLabTwoZoneLayout
+        subject={
+          <SdkLabSubjectZone
+            title="Chaos métier & DOM"
+            description="Bruit, faux signaux et mutations : le SDK doit isoler l’action principale."
+          >
+            <div className="space-y-6">
 
           <Card className="border-border/60 shadow-card">
             <CardHeader>
@@ -447,80 +308,6 @@ export default function StressTestPage() {
               ))}
             </CardContent>
           </Card>
-        </div>
-
-        <div className="space-y-5">
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Résultats explainability</CardTitle>
-              <CardDescription>Lecture rapide des drafts détectés dans ce scénario arbitraire.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {drafts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun parcours pour le moment. Lance une analyse.</p>
-              ) : (
-                drafts.slice(0, 3).map((draft) => (
-                  <div key={`${draft.name}-${draft.intent}`} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                    <p className="text-sm font-semibold">{draft.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      intent: {draft.intent} | confidence: {draft.confidence} | score: {Math.round(draft.score)}
-                    </p>
-                    {draft.explainability ? (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        signals: semantic={Math.round(draft.explainability.signalScores.semantic)}, sequence={Math.round(draft.explainability.signalScores.sequence)}, confidence={Math.round(draft.explainability.signalScores.confidence)}
-                      </p>
-                    ) : null}
-                    {draft.detectedSelectors[0] ? <p className="mt-2 text-xs text-primary">selector: {draft.detectedSelectors[0]}</p> : null}
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Rapport debug</CardTitle>
-              <CardDescription>Résumé technique pour analyser les décisions du moteur en mode sévère.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {debugReport ? (
-                <pre className="max-h-72 overflow-auto rounded-2xl bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-                  {JSON.stringify(
-                    {
-                      generatedAt: debugReport.generatedAt,
-                      elapsedMs: debugReport.elapsedMs,
-                      optionsSnapshot: debugReport.optionsSnapshot,
-                      candidateMetrics: debugReport.candidateMetrics,
-                      draftMetrics: debugReport.draftMetrics,
-                      conflicts: debugReport.conflicts,
-                    },
-                    null,
-                    2,
-                  )}
-                </pre>
-              ) : (
-                <p className="text-sm text-muted-foreground">Aucun rapport debug disponible. Lance une analyse.</p>
-              )}
-              <p className="text-xs text-muted-foreground">Flow registry entries: {flowRegistry.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Rapport publication</CardTitle>
-              <CardDescription>Résultat de publication backend pour ce scénario arbitraire.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {lastPublishReport ? (
-                <pre className="max-h-72 overflow-auto rounded-2xl bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-                  {JSON.stringify(lastPublishReport, null, 2)}
-                </pre>
-              ) : (
-                <p className="text-sm text-muted-foreground">Aucun rapport de publication disponible. Lance une analyse.</p>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Indicateurs de bruit</CardTitle>
@@ -541,8 +328,68 @@ export default function StressTestPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+            </div>
+          </SdkLabSubjectZone>
+        }
+        sdk={
+          <SdkLabSdkConsole
+            run={runBindings}
+            sessionControls={
+              <SdkLabSessionControls
+                idPrefix="stress"
+                strategy={strategy}
+                onStrategyChange={setStrategy}
+                stage={stage}
+                onStageChange={setStage}
+                progress={progress}
+                onProgressChange={setProgress}
+                columns={3}
+              />
+            }
+            toolbar={
+              <SdkLabAnalyzeToolbar
+                onAnalyze={lab.runAnalysis}
+                isGenerating={lab.isGenerating}
+                isPublishing={lab.isPublishing}
+                lastRunAt={lab.lastRunAt}
+                analyzeLabel="Analyser ce chaos"
+                analyzeDataTourId="tour-stress-action-analyze"
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={triggerBurst}
+                  data-tour-id="tour-stress-action-burst"
+                  data-testid="noise-burst-action"
+                  className="rounded-xl"
+                  disabled={isBursting}
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  {isBursting ? 'Burst en cours...' : 'Lancer burst DOM'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setJobs(Array.from({ length: 6 }).map((_, i) => createJob(i)));
+                    setFeed([createFeedEvent(), createFeedEvent(), createFeedEvent()]);
+                    toast.success('Etat arbitraire régénéré');
+                  }}
+                  data-tour-id="tour-stress-action-randomize"
+                  data-testid="noise-randomize-action"
+                  className="rounded-xl"
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Rejouer un état arbitraire
+                </Button>
+              </SdkLabAnalyzeToolbar>
+            }
+            extraMetrics={[{ label: 'Score chaos', value: severeScore }]}
+          />
+        }
+      />
+
+      <SdkLabDraftPlayerModal draft={playDraft} onClose={() => setPlayDraft(null)} />
     </SdkLabShell>
   );
 }

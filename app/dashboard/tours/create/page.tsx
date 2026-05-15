@@ -204,14 +204,15 @@ export default function CreateTourPage() {
         toast.success('Parcours mis à jour', {
           description: 'Vos modifications ont ete enregistrees avec succes.',
         });
+        router.push('/dashboard/tours');
       } else {
-        await tourService.create(payload);
+        const res = await tourService.create(payload);
+        const createdId = res.tour?.id;
         toast.success('Parcours créé', {
           description: 'Le parcours a ete enregistre avec succes.',
         });
+        router.push(createdId ? `/dashboard/tours?new=${encodeURIComponent(createdId)}` : '/dashboard/tours');
       }
-
-      router.push('/dashboard/tours');
     } catch (error) {
       const message = getErrorMessage(error, 'Impossible de sauvegarder le parcours.');
       setSaveError(message);

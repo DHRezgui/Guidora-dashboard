@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DndContext, DragEndEvent, PointerSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,12 +15,68 @@ import { getErrorMessage, tourService, userService } from '@/lib/api';
 import { GuidedTour, User } from '@/lib/types';
 import { concatenateToursFifo } from '@/lib/tour-concat';
 import { toast } from 'sonner';
+import { reconcileAllSdkLabRunSnapshots } from '@/app/dashboard/sdk-tests/lab-run-persist';
+import {
+	reconcileAutoPublishedSessionWithTours,
+	removeAutoPublishedSignaturesForTour,
+} from '@sdk/utils/auto-publish-session-dedupe';
 
 const PREVIEW_STORAGE_KEY = 'tours.previewTour.v1';
 const PREVIEW_STORAGE_TTL_MS = 2 * 60 * 1000;
 const CONCAT_PREFILL_STORAGE_KEY = 'tours.concatPrefill.v1';
 const CONCAT_DROP_ZONE_ID = 'concat-drop-zone';
 const CONCAT_DRAFT_STORAGE_KEY = 'tours.concatDraft.v1';
+
+/** Durée du halo après arrivée sur la liste. */
+const NEW_TOUR_GLOW_VISIBLE_MS = 5 * 60 * 1000;
+
+function parseCreatedAtMs(createdAt?: string): number | null {
+	if (!createdAt) return null;
+	const t = new Date(createdAt).getTime();
+	return Number.isNaN(t) ? null : t;
+}
+
+/** Même granularité que l’affichage « Créé le » (jour + heure + minute). */
+function createdAtMinuteKey(ms: number): string {
+	const d = new Date(ms);
+	return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${d.getMinutes()}`;
+}
+
+/** Tous les parcours dont la date d’affichage correspond à celle de l’ancre (ex. publication groupée). */
+function getTourIdsInSameCreatedMinute(tours: GuidedTour[], anchorMs: number): Set<string> {
+	const key = createdAtMinuteKey(anchorMs);
+	const ids = new Set<string>();
+	for (const tour of tours) {
+		const id = tour.id;
+		const t = parseCreatedAtMs(tour.createdAt);
+		if (!id || t === null) continue;
+		if (createdAtMinuteKey(t) === key) {
+			ids.add(id);
+		}
+	}
+	return ids;
+}
+
+/** Parcours les plus récents : tous ceux partageant la même minute « Créé le » que le max. */
+function getNewestTourIdsForGlow(tours: GuidedTour[]): Set<string> {
+	let bestTime = -Infinity;
+	for (const tour of tours) {
+		const t = parseCreatedAtMs(tour.createdAt);
+		if (t !== null && t > bestTime) {
+			bestTime = t;
+		}
+	}
+	if (bestTime === -Infinity) {
+		return new Set();
+	}
+	return getTourIdsInSameCreatedMinute(tours, bestTime);
+}
+
+function tourEligibleForNewGlow(tour: GuidedTour, newGlowTourIds: Set<string>): boolean {
+	const id = tour.id;
+	if (!id) return false;
+	return newGlowTourIds.has(id);
+}
 
 function DraggableTourCard({
 	tourId,
@@ -75,6 +131,7 @@ function ConcatDropContainer({
 
 export default function ToursPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [tours, setTours] = useState<GuidedTour[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingIds, setDeletingIds] = useState<string[]>([]);
@@ -118,6 +175,63 @@ export default function ToursPage() {
 	);
 	const [isConcatDropOver, setIsConcatDropOver] = useState(false);
 	const [tourPendingDelete, setTourPendingDelete] = useState<GuidedTour | null>(null);
+	const [highlightNewTourId, setHighlightNewTourId] = useState<string | null>(null);
+	const [newGlowExpiredIds, setNewGlowExpiredIds] = useState<Set<string>>(() => new Set());
+	const newGlowExpiredIdsRef = useRef<Set<string>>(new Set());
+	const newGlowTimersScheduledRef = useRef<Set<string>>(new Set());
+
+	useEffect(() => {
+		newGlowExpiredIdsRef.current = newGlowExpiredIds;
+	}, [newGlowExpiredIds]);
+
+	useEffect(() => {
+		const fromQuery = searchParams.get('new');
+		if (!fromQuery) return;
+		setHighlightNewTourId((prev) => prev ?? fromQuery);
+		router.replace('/dashboard/tours', { scroll: false });
+	}, [searchParams, router]);
+
+	const newGlowTourIds = useMemo(() => {
+		if (highlightNewTourId) {
+			const anchor = tours.find((t) => t.id === highlightNewTourId);
+			const anchorMs = parseCreatedAtMs(anchor?.createdAt);
+			if (anchorMs !== null) {
+				return getTourIdsInSameCreatedMinute(tours, anchorMs);
+			}
+			return new Set([highlightNewTourId]);
+		}
+		return getNewestTourIdsForGlow(tours);
+	}, [tours, highlightNewTourId]);
+
+	useEffect(() => {
+		const scheduled: { id: string; handle: ReturnType<typeof setTimeout> }[] = [];
+		for (const tour of tours) {
+			const id = tour.id;
+			if (!id || newGlowExpiredIdsRef.current.has(id)) continue;
+			if (!tourEligibleForNewGlow(tour, newGlowTourIds)) continue;
+			if (newGlowTimersScheduledRef.current.has(id)) continue;
+			newGlowTimersScheduledRef.current.add(id);
+			const handle = setTimeout(() => {
+				newGlowTimersScheduledRef.current.delete(id);
+				setNewGlowExpiredIds((prev) => new Set(prev).add(id));
+			}, NEW_TOUR_GLOW_VISIBLE_MS);
+			scheduled.push({ id, handle });
+		}
+		return () => {
+			for (const { id, handle } of scheduled) {
+				clearTimeout(handle);
+				newGlowTimersScheduledRef.current.delete(id);
+			}
+		};
+	}, [tours, newGlowTourIds]);
+
+	useEffect(() => {
+		if (!highlightNewTourId || newGlowTourIds.size === 0) return;
+		const allExpired = [...newGlowTourIds].every((id) => newGlowExpiredIds.has(id));
+		if (allExpired) {
+			setHighlightNewTourId(null);
+		}
+	}, [highlightNewTourId, newGlowTourIds, newGlowExpiredIds]);
 
 	const filteredTours = useMemo(() => {
 		const query = filterQuery.trim().toLowerCase();
@@ -208,7 +322,10 @@ export default function ToursPage() {
 			if (currentSeq !== loadSeqRef.current) {
 				return;
 			}
-			setTours(fetchedTours.filter((t) => !hiddenTourIdsRef.current.has(t.id || '')));
+			const visibleTours = fetchedTours.filter((t) => !hiddenTourIdsRef.current.has(t.id || ''));
+			setTours(visibleTours);
+			reconcileAutoPublishedSessionWithTours(visibleTours);
+			reconcileAllSdkLabRunSnapshots(visibleTours);
 		} catch (error) {
 			toast.error('Impossible de charger les parcours', {
 				description: getErrorMessage(error, 'Une erreur est survenue.'),
@@ -509,6 +626,7 @@ export default function ToursPage() {
 		setTours((prev) => prev.filter((item) => item.id !== tour.id));
 		try {
 			await tourService.remove(tour.id);
+			removeAutoPublishedSignaturesForTour(normalizeTour(tour));
 			toast.success(`Parcours supprimé (${tour.name})`);
 			await loadTours();
 		} catch (error) {
@@ -1056,10 +1174,18 @@ export default function ToursPage() {
 					<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{filteredTours.map((tour) => {
 							const hasStableId = Boolean(tour.id);
+							const tourIdStr = typeof tour.id === 'string' ? tour.id : '';
+							const showNewGlow =
+								Boolean(tourIdStr) &&
+								!newGlowExpiredIds.has(tourIdStr) &&
+								tourEligibleForNewGlow(tour, newGlowTourIds);
 							const cardNode = (
-								<Card 
-								className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(160deg,rgba(255,255,255,0.95),rgba(248,250,252,0.95)_55%,rgba(241,245,249,0.95))] shadow-[0_12px_28px_rgba(2,6,23,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/35 hover:shadow-[0_22px_40px_rgba(249,115,22,0.18)] dark:border-white/10 dark:bg-[linear-gradient(160deg,rgba(15,23,42,0.9),rgba(15,23,42,0.7)_55%,rgba(2,6,23,0.95))] dark:shadow-[0_12px_28px_rgba(2,6,23,0.36)]"
-							>
+								<Card
+									title={showNewGlow ? 'Parcours récemment ajouté — mise en avant temporaire' : undefined}
+									className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(160deg,rgba(255,255,255,0.95),rgba(248,250,252,0.95)_55%,rgba(241,245,249,0.95))] shadow-[0_12px_28px_rgba(2,6,23,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-400/35 hover:shadow-[0_22px_40px_rgba(249,115,22,0.18)] dark:border-white/10 dark:bg-[linear-gradient(160deg,rgba(15,23,42,0.9),rgba(15,23,42,0.7)_55%,rgba(2,6,23,0.95))] dark:shadow-[0_12px_28px_rgba(2,6,23,0.36)] ${
+										showNewGlow ? 'z-[1] ring-2 ring-orange-400/50 tour-card-new-glow dark:ring-orange-400/40' : ''
+									}`}
+								>
 								<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_42%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 								{/* Indice de statut subtil */}
 								<div className={`absolute top-0 left-0 h-1 w-full transition-colors ${tour.isActive ? 'bg-emerald-500' : 'bg-slate-400/60'}`} />

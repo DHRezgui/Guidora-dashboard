@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, FlaskConical, Grid3X3, Layers3, Sparkles } from 'lucide-react';
+import { AlertTriangle, FlaskConical, Grid3X3, HeartPulse, Layers3, Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,32 @@ const routes = [
   { href: '/dashboard/sdk-tests/medium', label: 'Moyenne', icon: Layers3 },
   { href: '/dashboard/sdk-tests/dynamic', label: 'Dynamique', icon: FlaskConical },
   { href: '/dashboard/sdk-tests/stress', label: 'Stress', icon: AlertTriangle },
+  { href: '/dashboard/sdk-tests/integration', label: 'Intégration', icon: HeartPulse },
 ] as const;
+
+type LabScenarioKey = 'hub' | 'simple' | 'medium' | 'dynamic' | 'stress' | 'integration';
+
+const LAB_TEST_TIPS: Record<LabScenarioKey, string> = {
+	hub: 'Choisissez un scénario selon la complexité à valider : CTA simple, formulaire + navigation, DOM dynamique, stress anti-bruit, ou intégration par blueprints. Chaque écran utilise le même moteur SDK (génération, publication, feedback, lecture runtime).',
+	simple:
+		'Validez la hiérarchie des intentions sur une page courte : CTA principal, actions secondaires et sélecteurs stables. Lancez l’analyse, simulez du feedback (shown / clicked), puis « Jouer » pour vérifier le parcours en conditions réelles sur cette page.',
+	medium:
+		'Testez navigation interne, formulaire et validation avant enregistrement. Vérifiez que le moteur propose des drafts form-flow et primary-action cohérents, puis utilisez feedback + lecture runtime pour confirmer le parcours multi-zones.',
+	dynamic:
+		'Observez le comportement sous mutations DOM, modals et toasts : le batching et le filtrage du bruit doivent garder une action utile visible. Relancez l’analyse après une rafale DOM pour comparer drafts et rapport debug.',
+	stress:
+		'Scénario volontairement bruyant : faux signaux, éléments transitoires et scores contradictoires. Le moteur doit résister au chaos et publier au plus une action métier claire — contrôlez les rejets bruit et les conflits dans le rapport debug.',
+	integration:
+		'Exemple d’intégration avec un pack de blueprints (healthtechBlueprints, remplaçable en production par vos journeyBlueprints). Validez les drafts « blueprint », le feedback backend et la lecture runtime sur l’interface fictive portail patient.',
+};
+
+function resolveLabScenarioKey(pathname: string): LabScenarioKey {
+	const segment = pathname.split('/').filter(Boolean).at(-1);
+	if (segment === 'simple' || segment === 'medium' || segment === 'dynamic' || segment === 'stress' || segment === 'integration') {
+		return segment;
+	}
+	return 'hub';
+}
 
 export function SdkLabShell({
   title,
@@ -29,7 +54,9 @@ export function SdkLabShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const pageKey = pathname.split('/').filter(Boolean).at(-1) ?? 'hub';
+  const scenarioKey = resolveLabScenarioKey(pathname);
+  const pageKey = scenarioKey;
+  const testTip = LAB_TEST_TIPS[scenarioKey];
 
   return (
     <div className="space-y-6">
@@ -98,10 +125,7 @@ export function SdkLabShell({
       <Card className="border-slate-200 bg-white/85 shadow-card dark:border-white/10 dark:bg-slate-900/45">
         <CardHeader>
           <CardTitle className="text-slate-800 dark:text-slate-100">Conseil de test</CardTitle>
-          <CardDescription className="text-slate-600 dark:text-slate-300">
-            Lance chaque écran avec le hook de génération contextuelle pour vérifier la pertinence des tours, la
-            robustesse face au bruit et le comportement sur DOM dynamique.
-          </CardDescription>
+          <CardDescription className="text-slate-600 dark:text-slate-300">{testTip}</CardDescription>
         </CardHeader>
       </Card>
 

@@ -105,6 +105,62 @@
   .phoenix-primary {
     background: linear-gradient(135deg, #ff6b00 0%, #bb008c 100%);
   }
+  /** Slider lab SDK — piste remplie à gauche du curseur (variable --phoenix-range-fill). */
+  .phoenix-range {
+    --phoenix-range-track: rgba(148, 163, 184, 0.32);
+    --phoenix-range-fill: 0%;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    background: transparent;
+  }
+  .dark .phoenix-range {
+    --phoenix-range-track: rgba(255, 255, 255, 0.14);
+  }
+  .phoenix-range::-webkit-slider-runnable-track {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      #f97316 0%,
+      #db2777 var(--phoenix-range-fill),
+      var(--phoenix-range-track) var(--phoenix-range-fill),
+      var(--phoenix-range-track) 100%
+    );
+    box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.12);
+  }
+  .phoenix-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    margin-top: -0.25rem;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #f97316 0%, #db2777 100%);
+    box-shadow: 0 0 14px rgba(255, 107, 0, 0.45);
+    cursor: pointer;
+  }
+  .phoenix-range::-moz-range-track {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: var(--phoenix-range-track);
+    box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.12);
+  }
+  .phoenix-range::-moz-range-progress {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #f97316 0%, #db2777 100%);
+  }
+  .phoenix-range::-moz-range-thumb {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #f97316 0%, #db2777 100%);
+    box-shadow: 0 0 14px rgba(255, 107, 0, 0.45);
+    cursor: pointer;
+  }
   .phoenix-active {
     background: linear-gradient(90deg, rgba(255, 107, 0, 0.12), rgba(255, 255, 255, 0));
     border-left: 2px solid #ff6b00;
@@ -152,6 +208,13 @@
   }
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
+  }
+
+  .tour-card-new-glow {
+    animation: tourCardNewGlowPulse 2.2s ease-in-out infinite;
+  }
+  .dark .tour-card-new-glow {
+    animation-name: tourCardNewGlowPulseDark;
   }
 
   .phoenix-toaster [data-sonner-toast] {
@@ -321,4 +384,36 @@
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tourCardNewGlowPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 12px 28px rgba(2, 6, 23, 0.12),
+      0 0 0 1px rgba(249, 115, 22, 0.2),
+      0 0 18px rgba(249, 115, 22, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 12px 28px rgba(2, 6, 23, 0.12),
+      0 0 0 1px rgba(249, 115, 22, 0.42),
+      0 0 34px rgba(249, 115, 22, 0.32);
+  }
+}
+
+@keyframes tourCardNewGlowPulseDark {
+  0%,
+  100% {
+    box-shadow:
+      0 12px 28px rgba(2, 6, 23, 0.36),
+      0 0 0 1px rgba(251, 146, 60, 0.22),
+      0 0 20px rgba(249, 115, 22, 0.14);
+  }
+  50% {
+    box-shadow:
+      0 12px 28px rgba(2, 6, 23, 0.36),
+      0 0 0 1px rgba(251, 146, 60, 0.45),
+      0 0 40px rgba(249, 115, 22, 0.28);
+  }
 }

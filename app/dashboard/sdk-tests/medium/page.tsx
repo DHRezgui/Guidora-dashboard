@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowRight, LayoutPanelTop, Save, ShieldCheck, UserPlus } from 'lucide-react';
-import { useContextualTourSuggestions } from '@sdk/hooks/useContextualTourSuggestions';
+import type { SuggestedTourDraft } from '@sdk/types/sdk';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 
 import { SdkLabShell } from '../_components';
+import { labContextualDefaults } from '../lab-shared';
+import { SdkLabTwoZoneLayout, SdkLabSubjectZone } from '../lab-layout';
+import {
+	SdkLabAnalyzeToolbar,
+	SdkLabDraftPlayerModal,
+	SdkLabPhase1Banner,
+	SdkLabPhase1MetricsCard,
+	SdkLabSdkConsole,
+	SdkLabSessionControls,
+} from '../lab-ui';
+import { useSdkLabPage } from '../use-sdk-lab-page';
+import { usePhase1RunHistory } from '../use-phase1-run-history';
 
 const menuItems = [
   { label: 'Aperçu', href: '#overview' },
@@ -28,7 +40,7 @@ export default function MediumTestPage() {
   const [strategy, setStrategy] = useState<'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid'>('hybrid');
   const [stage, setStage] = useState<'discovery' | 'activation' | 'adoption' | 'retention'>('activation');
   const [progress, setProgress] = useState(45);
-  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
+  const [playDraft, setPlayDraft] = useState<SuggestedTourDraft | null>(null);
 
   const completeness = useMemo(() => {
     const fields = [email, company, notes].filter(Boolean).length;
@@ -36,33 +48,14 @@ export default function MediumTestPage() {
   }, [email, company, notes]);
 
   const sdkOptions = useMemo(
-    () => ({
-      enabled: true,
-      autoGenerate: false,
-      autoPublish: true,
+    () =>
+      labContextualDefaults({
       publishScenario: 'medium' as const,
-      autoActivatePublishedDrafts: true,
-      publishConfig: {
-        apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
-        apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
-        getAccessToken: () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null),
-      },
       persona: 'admin',
-      useSemanticRanking: true,
-      enableSequenceDetection: true,
-      includeFormDraft: true,
-      includeNavigationDraft: true,
-      includeSupportDraft: true,
-      noiseFilteringEnabled: true,
-      ignoreTransientUi: true,
-      noiseSelectors: [
-        '[data-tour-id^="tour-sdk-lab-nav-"]',
-        '[data-tour-id="tour-sdk-lab-action-back-dashboard"]',
-        'nav a[href^="/dashboard"]',
-        'aside a[href^="/dashboard"]',
-        'nav a[href^="#"]',
-        'aside a[href^="#"]',
-      ],
+      maxDrafts: 2,
+      includeFormDraft: false,
+      includeNavigationDraft: false,
+      includeSupportDraft: false,
       mutationBatchWindowMs: 120,
       maxDirtyNodesPerBatch: 280,
       conflictResolutionEnabled: true,
@@ -72,7 +65,7 @@ export default function MediumTestPage() {
       publishFallbackPolicy: {
         enabled: true,
         maxAttempts: 2,
-        retryOnRejectedReasons: ['confidence_below_threshold'],
+        retryOnRejectedReasons: ['confidence_below_threshold', 'score_below_threshold'],
         relaxedMinConfidence: 24,
         relaxedMinScore: 16,
         includeSupportDraft: true,
@@ -80,12 +73,13 @@ export default function MediumTestPage() {
         includeFormDraft: true,
       },
       minConfidence: 60,
-      semanticHints: ['formulaire', 'validation', 'enregistrer', 'navigation'],
-      businessObjectives: ['completion du formulaire', 'action principale', 'validation'],
+      semanticHints: ['formulaire', 'validation', 'enregistrer', 'navigation', 'menu', 'sidebar', 'aperçu'],
       customKeywords: {
         'primary-action': ['Enregistrer', 'Valider', 'Publier', 'Soumettre'],
         'form-flow': ['Email de contact', 'Nom de organisation', "Notes d'onboarding"],
+        'support-navigation': ['Aperçu', 'Formulaire', 'Validation', 'Historique', 'navigation'],
       },
+      businessObjectives: ['completion du formulaire', 'action principale', 'validation', 'navigation'],
       sessionContext: {
         sessionId: 'sdk-tests-medium-session',
         isNewUser: progress < 40,
@@ -98,43 +92,52 @@ export default function MediumTestPage() {
       flowVersioningEnabled: true,
       flowVersion: 'medium-lab-v1',
       baselineFlowVersion: 'medium-lab-v0',
-      flowCompatibilityMode: 'lenient' as const,
     }),
     [completeness, progress, stage, strategy],
   );
 
-  const {
-    drafts,
-    isGenerating,
-    isPublishing,
-    error,
-    publishError,
-    lastPublishReport,
-    refresh,
-    getDebugReport,
-    getFlowRegistry,
-  } = useContextualTourSuggestions(sdkOptions);
-  const debugReport = getDebugReport();
-  const flowRegistry = getFlowRegistry();
+  const lab = useSdkLabPage(sdkOptions, { labKey: 'medium', publishScenario: 'medium' });
 
-  const runAnalysis = () => {
-    const nextDrafts = refresh();
-    const report = getDebugReport();
-    setLastRunAt(new Date().toLocaleTimeString());
+  const phase1 = usePhase1RunHistory({
+    page: 'medium',
+    debugReport: lab.debugReport,
+    draftCount: lab.drafts.length,
+    lastRunAt: lab.lastRunAt,
+  });
 
-    console.info('[SDK Tests][Medium] Drafts generated:', nextDrafts);
-    console.info('[SDK Tests][Medium] Debug report:', report);
-    console.info('[SDK Tests][Medium] Flow registry:', getFlowRegistry());
+  const runBindings = {
+    drafts: lab.drafts,
+    debugReport: lab.debugReport,
+    flowRegistry: lab.flowRegistry,
+    lastPublishReport: lab.lastPublishReport,
+    publishError: lab.publishError,
+    error: lab.error,
+    isGenerating: lab.isGenerating,
+    isPublishing: lab.isPublishing,
+    suggestionsApi: lab.suggestionsApi,
+    resetFeedback: lab.resetFeedback,
+    feedbackVersion: lab.feedbackVersion,
+    onPlayDraft: setPlayDraft,
   };
 
   return (
     <SdkLabShell
       title="Interface moyenne"
       description="Scénario plus riche avec navigation, formulaire, validation et zones structurées. Parfait pour tester les séquences d’actions et le ranking contextuel."
-      badges={["navigation", "formulaire", "validation"]}
+      badges={["navigation", "formulaire", "validation", "Phase 1"]}
     >
-      <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="space-y-3 rounded-3xl border border-border/60 bg-card p-4 shadow-card">
+      <SdkLabPhase1Banner
+        validationPhase={phase1.runs.at(-1)?.report?.validationPhase}
+        backendImplementation={phase1.runs.at(-1)?.report?.backendImplementation}
+      />
+      <SdkLabTwoZoneLayout
+        subject={
+          <SdkLabSubjectZone
+            title="Application métier (navigation + formulaire)"
+            description="Sidebar, formulaire et validation : le SDK doit proposer des parcours form-flow et primary-action cohérents."
+          >
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
+        <aside className="shrink-0 space-y-3 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Navigation</p>
           <nav className="space-y-2">
             {menuItems.map((item) => (
@@ -155,117 +158,8 @@ export default function MediumTestPage() {
           </div>
         </aside>
 
-        <div className="space-y-6">
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Analyse SDK (debug + explainability)</CardTitle>
-              <CardDescription>
-                Lance l&aposanalyse sur un scenario medium avec navigation, formulaire et validation.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="grid gap-2">
-                  <label htmlFor="medium-strategy" className="text-sm font-medium">Strategie de conflit</label>
-                  <Select
-                    value={strategy}
-                    onValueChange={(value) => setStrategy(value as 'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid')}
-                  >
-                    <SelectTrigger
-                      id="medium-strategy"
-                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
-                    >
-                      <SelectValue placeholder="Stratégie de conflit" />
-                    </SelectTrigger>
-                    <SelectContent
-                      alignItemWithTrigger={false}
-                      side="bottom"
-                      sideOffset={8}
-                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
-                    >
-                      <SelectItem value="hybrid">hybrid</SelectItem>
-                      <SelectItem value="highest-score">highest-score</SelectItem>
-                      <SelectItem value="highest-confidence">highest-confidence</SelectItem>
-                      <SelectItem value="intent-priority">intent-priority</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <label htmlFor="medium-stage" className="text-sm font-medium">Stage session</label>
-                  <Select
-                    value={stage}
-                    onValueChange={(value) => setStage(value as 'discovery' | 'activation' | 'adoption' | 'retention')}
-                  >
-                    <SelectTrigger
-                      id="medium-stage"
-                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
-                    >
-                      <SelectValue placeholder="Stage session" />
-                    </SelectTrigger>
-                    <SelectContent
-                      alignItemWithTrigger={false}
-                      side="bottom"
-                      sideOffset={8}
-                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
-                    >
-                      <SelectItem value="discovery">discovery</SelectItem>
-                      <SelectItem value="activation">activation</SelectItem>
-                      <SelectItem value="adoption">adoption</SelectItem>
-                      <SelectItem value="retention">retention</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <label htmlFor="medium-progress" className="text-sm font-medium">Progression: {progress}%</label>
-                  <input
-                    id="medium-progress"
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={progress}
-                    onChange={(event) => setProgress(Number(event.target.value))}
-                    className="h-2 w-full cursor-pointer accent-violet-600 dark:accent-violet-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={runAnalysis} data-tour-id="tour-medium-action-analyze" className="rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(255,107,0,0.35)] active:translate-y-0" disabled={isGenerating || isPublishing}>
-                  {isGenerating ? 'Analyse en cours...' : 'Analyser cette page'}
-                </Button>
-                {isPublishing ? <Badge variant="outline">Publication en cours...</Badge> : null}
-                {lastRunAt ? <Badge variant="outline">Dernier run: {lastRunAt}</Badge> : null}
-              </div>
-
-              {error ? <p className="text-sm font-medium text-destructive">Erreur SDK: {error}</p> : null}
-              {publishError ? <p className="text-sm font-medium text-destructive">Erreur publication: {publishError}</p> : null}
-
-              <div className="grid gap-3 sm:grid-cols-4">
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Drafts</p>
-                  <p className="mt-1 text-lg font-semibold">{drafts.length}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Candidats acceptes</p>
-                  <p className="mt-1 text-lg font-semibold">{debugReport?.candidateMetrics.accepted ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Conflits</p>
-                  <p className="mt-1 text-lg font-semibold">{debugReport?.conflicts.length ?? 0}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Flow entries</p>
-                  <p className="mt-1 text-lg font-semibold">{flowRegistry.length}</p>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Publies</p>
-                  <p className="mt-1 text-lg font-semibold">{lastPublishReport?.created ?? 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div id="overview" className="grid gap-4 md:grid-cols-3">
+        <div className="min-w-0 space-y-6">
+          <div id="overview" className="grid min-w-0 gap-4 md:grid-cols-3">
             <Card className="border-border/60 shadow-card">
               <CardHeader>
                 <CardTitle>Comptes actifs</CardTitle>
@@ -292,13 +186,13 @@ export default function MediumTestPage() {
             </Card>
           </div>
 
-          <Card id="form-section" className="border-border/60 shadow-card">
+          <Card id="form-section" className="min-w-0 overflow-hidden border-border/60 shadow-card">
             <CardHeader>
               <CardTitle>Formulaire de configuration</CardTitle>
               <CardDescription>Le SDK doit repérer les champs, le bouton principal et la hiérarchie logique du flux.</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-4">
+            <CardContent className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+              <div className="min-w-0 space-y-4">
                 <div className="grid gap-2">
                   <label className="text-sm font-medium" htmlFor="medium-email">Email de contact</label>
                   <Input
@@ -334,19 +228,22 @@ export default function MediumTestPage() {
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/30 p-4">
-                <div className="grid gap-2">
+              <div className="min-w-0 w-full max-w-full space-y-4 rounded-2xl border border-border/60 bg-muted/30 p-4">
+                <div className="grid min-w-0 gap-2">
                   <label className="text-sm font-medium" htmlFor="medium-plan">Plan</label>
                   <Select value={plan} onValueChange={setPlan}>
                     <SelectTrigger
                       id="medium-plan"
                       data-testid="medium-plan"
                       data-tour-id="tour-medium-form-plan"
-                      className="h-10 w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
+                      className="h-10 w-full max-w-full rounded-xl border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100"
                     >
                       <SelectValue placeholder="Plan" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]">
+                    <SelectContent
+                      position="popper"
+                      className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                    >
                       <SelectItem value="Starter">Starter</SelectItem>
                       <SelectItem value="Growth">Growth</SelectItem>
                       <SelectItem value="Enterprise">Enterprise</SelectItem>
@@ -354,20 +251,20 @@ export default function MediumTestPage() {
                   </Select>
                 </div>
 
-                <div id="validation" className="rounded-2xl bg-background p-4 shadow-sm">
+                <div id="validation" className="min-w-0 rounded-2xl bg-background p-4 shadow-sm">
                   <div className="flex items-center gap-2 text-sm font-semibold">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
                     Vérification avant publication
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Le flux doit guider l&aposutilisateur de la navigation vers le formulaire puis vers la validation finale.
+                  <p className="mt-2 break-words text-sm text-muted-foreground">
+                    Le flux doit guider l&apos;utilisateur de la navigation vers le formulaire puis vers la validation finale.
                   </p>
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       id="medium-validation-save"
                       data-testid="medium-validation-save"
                       data-tour-id="tour-medium-validation-save"
-                      className="rounded-xl"
+                      className="shrink-0 rounded-xl"
                       disabled={!email || !company}
                     >
                       <Save className="mr-2 h-4 w-4" />
@@ -378,7 +275,7 @@ export default function MediumTestPage() {
                       data-testid="medium-validation-preview"
                       data-tour-id="tour-medium-validation-preview"
                       variant="outline"
-                      className="rounded-xl"
+                      className="shrink-0 rounded-xl"
                     >
                       Prévisualiser
                     </Button>
@@ -406,62 +303,43 @@ export default function MediumTestPage() {
               ))}
             </CardContent>
           </Card>
-
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Resultats explainability</CardTitle>
-              <CardDescription>Top drafts medium avec intent, score, confidence et selector principal.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {drafts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun draft pour le moment. Clique sur Analyser cette page.</p>
-              ) : (
-                drafts.slice(0, 3).map((draft) => (
-                  <div key={`${draft.name}-${draft.intent}`} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                    <p className="text-sm font-semibold">{draft.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">intent: {draft.intent} | confidence: {draft.confidence} | score: {Math.round(draft.score)}</p>
-                    {draft.explainability ? (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        signals: semantic={Math.round(draft.explainability.signalScores.semantic)}, sequence={Math.round(draft.explainability.signalScores.sequence)}, confidence={Math.round(draft.explainability.signalScores.confidence)}
-                      </p>
-                    ) : null}
-                    {draft.detectedSelectors[0] ? (
-                      <p className="mt-2 text-xs text-primary">selector: {draft.detectedSelectors[0]}</p>
-                    ) : null}
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Rapport debug</CardTitle>
-              <CardDescription>Resume brut du dernier run pour comparer les iterations medium.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {debugReport ? (
-                <pre className="max-h-72 overflow-auto rounded-2xl bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-                  {JSON.stringify(
-                    {
-                      generatedAt: debugReport.generatedAt,
-                      elapsedMs: debugReport.elapsedMs,
-                      optionsSnapshot: debugReport.optionsSnapshot,
-                      candidateMetrics: debugReport.candidateMetrics,
-                      draftMetrics: debugReport.draftMetrics,
-                      conflicts: debugReport.conflicts,
-                    },
-                    null,
-                    2,
-                  )}
-                </pre>
-              ) : (
-                <p className="text-sm text-muted-foreground">Aucun rapport debug disponible. Lance une analyse.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </div>
+            </div>
+        </SdkLabSubjectZone>
+        }
+        sdk={
+          <SdkLabSdkConsole
+            run={runBindings}
+            sessionControls={
+              <SdkLabSessionControls
+                idPrefix="medium"
+                strategy={strategy}
+                onStrategyChange={setStrategy}
+                stage={stage}
+                onStageChange={setStage}
+                progress={progress}
+                onProgressChange={setProgress}
+                columns={3}
+              />
+            }
+            toolbar={
+              <SdkLabAnalyzeToolbar
+                onAnalyze={lab.runAnalysis}
+                isGenerating={lab.isGenerating}
+                isPublishing={lab.isPublishing}
+                lastRunAt={lab.lastRunAt}
+                analyzeDataTourId="tour-medium-action-analyze"
+              />
+            }
+          />
+        }
+      />
+      <SdkLabPhase1MetricsCard
+        runs={phase1.runs}
+        aggregates={phase1.aggregates}
+        onReset={phase1.reset}
+      />
+      <SdkLabDraftPlayerModal draft={playDraft} onClose={() => setPlayDraft(null)} />
     </SdkLabShell>
   );
 }

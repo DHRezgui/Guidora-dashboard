@@ -60,6 +60,8 @@ import {
   Square,
   Hexagon,
   Play,
+  Maximize2,
+  Minimize2,
   type LucideProps,
 } from 'lucide-react';
 
@@ -137,4 +139,6 @@ export const Icons = {
   square: Square,
   hexagon: Hexagon,
   play: Play,
+  maximize: Maximize2,
+  minimize: Minimize2,
 };
