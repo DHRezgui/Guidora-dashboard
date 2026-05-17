@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AppWindow, Cpu } from 'lucide-react';
+import { AppWindow, Cpu, Layers3 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -99,7 +99,36 @@ export function SdkLabSdkZone({ children, className }: { children: ReactNode; cl
 					Console SDK
 				</Badge>
 				<p className="text-sm text-muted-foreground">
-					Génération contextuelle, publication, feedback, lecture runtime et rapports techniques.
+					Génération contextuelle, publication, feedback, rapports debug (rankings candidats) et preview locale.
+					Les correctifs runtime TourViewer s’exercent après activation d’un parcours publié, pas dans « Jouer ».
+				</p>
+			</header>
+			<div className="space-y-5">{children}</div>
+		</section>
+	);
+}
+
+/** Zone basse : validation sémantique (phase, fusion, métriques cumulées). */
+export function SdkLabInsightsZone({ children, className }: { children: ReactNode; className?: string }) {
+	return (
+		<section
+			data-sdk-lab-insights
+			className={cn(
+				'rounded-3xl border-2 border-violet-500/25 bg-gradient-to-br from-violet-500/[0.08] via-card to-indigo-500/[0.06] p-5 shadow-card md:p-6',
+				className,
+			)}
+			aria-label="Validation sémantique"
+		>
+			<header className="mb-5 space-y-2 border-b border-violet-500/15 pb-4">
+				<Badge
+					variant="outline"
+					className="gap-1.5 border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-100"
+				>
+					<Layers3 className="h-3.5 w-3.5" />
+					Validation sémantique
+				</Badge>
+				<p className="max-w-3xl text-sm text-muted-foreground">
+					Phase active, mécanique de fusion et distributions cumulées des runs de cette session lab.
 				</p>
 			</header>
 			<div className="space-y-5">{children}</div>

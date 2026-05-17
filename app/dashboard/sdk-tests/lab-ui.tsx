@@ -25,9 +25,10 @@ import {
 import TourSimulator from '@/components/editor/TourSimulator';
 import type { GuidedTour } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { SdkLabSdkZone } from './lab-layout';
+import { SdkLabInsightsZone, SdkLabSdkZone } from './lab-layout';
 import {
 	LAB_PROGRESS_RANGE_CLASS,
+	LAB_RUNTIME_CAPABILITIES_NOTE,
 	LAB_SELECT_CONTENT_CLASS,
 	LAB_SELECT_TRIGGER_CLASS,
 	type LabConflictStrategy,
@@ -70,6 +71,102 @@ export function SdkLabPublisherOverlay({
 	);
 }
 
+/** Rappel visible : génération lab ≠ runtime TourViewer (preview TourSimulator). */
+export function SdkLabRuntimeCapabilitiesNote({ className }: { className?: string }) {
+	return (
+		<p
+			className={cn(
+				'rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] p-3 text-xs leading-relaxed text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50',
+				className,
+			)}
+			role="note"
+		>
+			<strong className="bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold text-transparent dark:from-orange-200 dark:to-pink-300">
+				Runtime :
+			</strong>{' '}
+			{LAB_RUNTIME_CAPABILITIES_NOTE}
+		</p>
+	);
+}
+
+/** Chaîne singlePageTour 7 slots (rempli / skipped par slot). */
+export function SdkLabSinglePageChainCard({
+	debugReport,
+}: {
+	debugReport: ContextualGenerationDebugReport | null;
+}) {
+	const slots = debugReport?.singlePageChainSlots;
+
+	return (
+		<Card className="border-border/60 shadow-card">
+			<CardHeader>
+				<CardTitle>Single-page chain (7 slots)</CardTitle>
+				<CardDescription>
+					Décisions slot par slot du profil <code className="text-xs">singlePageTour</code> (primary, search, secondary, navigation, analytics, utility, settings).
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-1">
+				{slots?.length ? (
+					slots.map((row) => (
+						<p
+							key={`${row.slot}-${row.slotId}`}
+							className={`font-mono text-xs leading-5 ${
+								row.status === 'filled' ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'
+							}`}
+						>
+							{row.line}
+						</p>
+					))
+				) : (
+					<p className="text-sm text-muted-foreground">
+						Non disponible — activez <code className="text-xs">singlePageTour: true</code> et relancez l’analyse.
+					</p>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+/** Top 5 candidats / intent (même données que le panneau SDK ContextualSuggestionsPublisher). */
+export function SdkLabCandidateRankingsCard({
+	debugReport,
+}: {
+	debugReport: ContextualGenerationDebugReport | null;
+}) {
+	const groups = debugReport?.candidateRankings;
+
+	return (
+		<Card className="border-border/60 shadow-card">
+			<CardHeader>
+				<CardTitle>Candidate rankings (top 5 / intent)</CardTitle>
+				<CardDescription>
+					Scores et raisons de rejet par intention — alimenté par le générateur SDK après « Analyser ».
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-3">
+				{groups?.length ? (
+					groups.map((group) => (
+						<div key={group.intent} className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+							<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.intent}</p>
+							<ul className="mt-2 space-y-1 text-xs leading-5 text-foreground">
+								{group.lines.map((line, idx) => (
+									<li key={`${group.intent}-${idx}`} className="font-mono">
+										{line}
+									</li>
+								))}
+							</ul>
+						</div>
+					))
+				) : (
+					<p className="text-sm text-muted-foreground">
+						Aucun classement disponible. Lancez une analyse — les rankings sont inclus dans le rapport debug SDK.
+					</p>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
 export function SdkLabDraftPlayerModal({
 	draft,
 	onClose,
@@ -91,6 +188,7 @@ export function SdkLabDraftPlayerModal({
 							{draft.steps?.length || 0} étape(s) · intent {draft.intent}
 							{draft.origin?.kind === 'blueprint' ? ` · blueprint ${draft.origin.blueprintId}` : ''}
 						</p>
+						<SdkLabRuntimeCapabilitiesNote className="mt-2 max-w-2xl" />
 					</div>
 					<Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer la lecture">
 						<X className="h-4 w-4" />
@@ -181,12 +279,12 @@ export function SdkLabDraftResultsCard({
 				{drafts.length === 0 ? (
 					<p className="text-sm text-muted-foreground">Aucun parcours. Lancez une analyse.</p>
 				) : (
-					drafts.slice(0, 5).map((draft) => {
+					drafts.slice(0, 5).map((draft, draftIdx) => {
 						const selector = draft.steps[0]?.targetSelector;
 						const local = suggestions.getLocalFeedback(selector);
 						return (
 							<div
-								key={`${draft.name}-${draft.intent}-${draft.generatedAt}`}
+								key={`draft-result-${draftIdx}-${draft.name}-${draft.intent}-${draft.generatedAt ?? ''}`}
 								className="rounded-2xl border border-border/60 bg-muted/20 p-3"
 							>
 								<div className="flex flex-wrap items-start justify-between gap-2">
@@ -350,6 +448,8 @@ const DEBUG_REPORT_PREVIEW_KEYS = [
 	'elapsedMs',
 	'optionsSnapshot',
 	'candidateMetrics',
+	'candidateRankings',
+	'singlePageChainSlots',
 	'draftMetrics',
 	'conflicts',
 	'semanticEnhancement',
@@ -393,11 +493,8 @@ export function SdkLabDebugReportCard({
 }
 
 /**
- * Persistent banner that labels the active lab phase. Reflects what
- * the **last observed** run reported — Phase 1 when the backend ran
- * the rule mirror (or no backend was called), Phase 2 when the
- * backend ran sentence-transformers. Defaults to Phase 1 until at
- * least one run is observed.
+ * Persistent banner that reflects the **last observed** run: local rules + fusion
+ * vs. sentence-transformers embeddings. Defaults to local rules until a run is observed.
  */
 export interface SdkLabPhase1BannerProps {
 	/** Validation phase reported by the most recent semantic debug report. */
@@ -406,7 +503,13 @@ export interface SdkLabPhase1BannerProps {
 	backendImplementation?: {
 		kind: 'rule-based-mirror' | 'sentence-transformers' | 'unknown';
 		model?: string;
-		fallbackReason?: 'embeddings_disabled' | 'embeddings_timeout' | 'embeddings_error';
+		fallbackReason?:
+			| 'embeddings_disabled'
+			| 'embeddings_timeout'
+			| 'embeddings_error'
+			| 'embeddings_worker_unavailable'
+			| 'sdk_http_timeout'
+			| 'sdk_http_error';
 	};
 }
 
@@ -416,9 +519,9 @@ export function SdkLabPhase1Banner({ validationPhase, backendImplementation }: S
 
 	if (isPhase2) {
 		return (
-			<div className="rounded-2xl border border-emerald-400/40 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-100">
-				<p className="font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-					Phase 2 — sentence-transformers actif
+			<div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/[0.12] via-card to-card px-4 py-3 text-sm text-emerald-950 shadow-card dark:border-emerald-500/35 dark:from-emerald-500/[0.14] dark:via-card dark:to-card dark:text-emerald-50">
+				<p className="bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text font-semibold uppercase tracking-wide text-transparent dark:from-emerald-200 dark:to-teal-200">
+					Embeddings sentence-transformers
 				</p>
 				<p className="mt-1 text-xs leading-5">
 					Backend en mode <strong>embeddings</strong>
@@ -429,22 +532,22 @@ export function SdkLabPhase1Banner({ validationPhase, backendImplementation }: S
 					) : null}
 					, confiance recalibrée par marge top-1/top-2. Les métriques ci-dessous valident à la fois la
 					mécanique de fusion <em>et</em> la qualité sémantique apprise sur des prototypes de rôles
-					multilingues. Fallback automatique vers Phase 1 (règles miroir) en cas de timeout/erreur.
+					multilingues. Retour automatique vers le moteur local (règles miroir) en cas de timeout ou d&apos;erreur.
 				</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="rounded-2xl border border-orange-400/40 bg-orange-50/70 px-4 py-3 text-sm text-orange-900 shadow-sm dark:border-orange-500/40 dark:bg-orange-950/40 dark:text-orange-100">
-			<p className="font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">
-				Phase 1 — fusion pipeline validation
+		<div className="rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] px-4 py-3 text-sm text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50">
+			<p className="bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold uppercase tracking-wide text-transparent dark:from-orange-200 dark:to-pink-300">
+				Moteur local &amp; fusion (règles)
 			</p>
 			<p className="mt-1 text-xs leading-5">
 				Moteur local rule-vote{' '}
 				{fallback ? (
 					<>
-						(<strong>fallback Phase 2 → Phase 1</strong>, raison: <code className="font-mono">{fallback}</code>)
+						(<strong>fallback embeddings → moteur local</strong>, raison: <code className="font-mono">{fallback}</code>)
 					</>
 				) : (
 					<>(backend en mode règles miroir ou inactif)</>
@@ -508,9 +611,9 @@ export function SdkLabPhase1MetricsCard({ runs, aggregates, onReset }: Phase1Met
 	const confidenceTotal = aggregates.confidenceBuckets.reduce((sum, bucket) => sum + bucket.count, 0);
 
 	return (
-		<Card className="border-orange-400/30 shadow-card">
+		<Card className="border-violet-400/25 bg-card/80 shadow-card">
 			<CardHeader>
-				<CardTitle className="text-base">Suite Phase 1 — distributions de fusion</CardTitle>
+				<CardTitle className="text-base">Distributions de fusion — session lab</CardTitle>
 				<CardDescription>
 					Agrégation cumulative des <strong>{aggregates.totalRuns}</strong> run(s) de cette session de
 					lab. Réinitialisez pour redémarrer un baseline propre.
@@ -714,6 +817,25 @@ export function SdkLabPhase1MetricsCard({ runs, aggregates, onReset }: Phase1Met
 	);
 }
 
+/** Zone 3 : bannière de phase + métriques cumulées (pleine largeur, sous sujet + console). */
+export function SdkLabSemanticInsightsSection({
+	validationPhase,
+	backendImplementation,
+	runs,
+	aggregates,
+	onReset,
+}: SdkLabPhase1BannerProps & Phase1MetricsCardProps) {
+	return (
+		<SdkLabInsightsZone>
+			<SdkLabPhase1Banner
+				validationPhase={validationPhase}
+				backendImplementation={backendImplementation}
+			/>
+			<SdkLabPhase1MetricsCard runs={runs} aggregates={aggregates} onReset={onReset} />
+		</SdkLabInsightsZone>
+	);
+}
+
 export function SdkLabSemanticEnhancementCard({
 	debugReport,
 }: {
@@ -765,9 +887,10 @@ export function SdkLabSemanticEnhancementCard({
 				: `${stability.domAgeMs}ms < ${stability.requiredAgeMs}ms`;
 		return { variant: 'destructive', label: `DOM instable (${reason})` };
 	})();
-	const phaseLabel = semantic.validationPhase === 'phase-2-embeddings'
-		? 'Phase 2 — embeddings'
-		: 'Phase 1 — moteur local (règles)';
+	const phaseLabel =
+		semantic.validationPhase === 'phase-2-embeddings'
+			? 'phase-2-embeddings'
+			: 'phase-1-local';
 	const phaseBadgeVariant: 'default' | 'secondary' =
 		semantic.validationPhase === 'phase-2-embeddings' ? 'default' : 'secondary';
 	const backendImpl = semantic.backendImplementation;
@@ -791,7 +914,7 @@ export function SdkLabSemanticEnhancementCard({
 			</CardHeader>
 			<CardContent className="space-y-3">
 				<div className="flex flex-wrap items-center gap-2">
-					<Badge variant={phaseBadgeVariant} className="uppercase tracking-wide">
+					<Badge variant={phaseBadgeVariant} className="font-mono text-[10px] uppercase tracking-wide">
 						{phaseLabel}
 					</Badge>
 					<Badge variant="outline">{backendImplLabel}</Badge>
@@ -808,14 +931,17 @@ export function SdkLabSemanticEnhancementCard({
 				</div>
 				{semantic.validationPhase === 'phase-1-local' ? (
 					<p className="rounded-xl border border-orange-400/50 bg-orange-50/60 p-2 text-xs text-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
-						<strong>Périmètre de ce run :</strong> validation Phase 1 — moteur local & mécanique de fusion uniquement.
-						Le backend renvoie aujourd&apos;hui un miroir des règles locales (pas d&apos;embeddings).
-						Ne pas présenter ces résultats comme une validation sémantique apprise.
+						<strong>Périmètre de ce run :</strong> moteur local (règles) et mécanique de fusion uniquement — pas
+						d&apos;embeddings. Le backend renvoie ici un miroir des règles locales ; ne pas présenter ces
+						résultats comme une validation sémantique apprise.
 					</p>
 				) : null}
 				{backendImpl?.disclaimer ? (
-					<p className="rounded-xl border border-slate-300/50 bg-slate-50/60 p-2 text-xs text-slate-800 dark:bg-slate-900/40 dark:text-slate-100">
-						<strong>Backend :</strong> {backendImpl.disclaimer}
+					<p className="rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] p-3 text-xs leading-relaxed text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50">
+						<strong className="bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold text-transparent dark:from-orange-200 dark:to-pink-300">
+							Backend :
+						</strong>{' '}
+						{backendImpl.disclaimer}
 					</p>
 				) : null}
 				{stability && !stability.stable ? (
@@ -825,8 +951,11 @@ export function SdkLabSemanticEnhancementCard({
 					</p>
 				) : null}
 				{semantic.calibrationNote ? (
-					<p className="rounded-xl border border-amber-400/40 bg-amber-50/60 p-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-						<strong>Note de calibration :</strong> {semantic.calibrationNote}
+					<p className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/[0.12] via-card to-card p-3 text-xs leading-relaxed text-emerald-950 shadow-card dark:border-emerald-500/35 dark:from-emerald-500/[0.14] dark:via-card dark:to-card dark:text-emerald-50">
+						<strong className="bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text font-semibold text-transparent dark:from-emerald-200 dark:to-teal-200">
+							Note de calibration :
+						</strong>{' '}
+						{semantic.calibrationNote}
 					</p>
 				) : null}
 				{semantic.drafts.length === 0 ? (
@@ -835,9 +964,9 @@ export function SdkLabSemanticEnhancementCard({
 					</p>
 				) : (
 					<div className="space-y-3">
-						{semantic.drafts.map((draftReport) => (
+						{semantic.drafts.map((draftReport, draftIdx) => (
 							<div
-								key={`${draftReport.draftName}-${draftReport.intent}`}
+								key={`semantic-draft-${draftIdx}-${draftReport.draftName}-${draftReport.intent}`}
 								className="rounded-2xl border border-border/40 bg-muted/30 p-3 text-xs"
 							>
 								<div className="flex flex-wrap items-center justify-between gap-2">
@@ -860,7 +989,7 @@ export function SdkLabSemanticEnhancementCard({
 									</div>
 								</div>
 								<ul className="mt-2 space-y-1 text-muted-foreground">
-									{draftReport.steps.map((stepReport) => {
+									{draftReport.steps.map((stepReport, stepIdx) => {
 										const decisionVariant: 'default' | 'secondary' | 'outline' =
 											stepReport.decisionSource === 'backend'
 												? 'default'
@@ -875,7 +1004,7 @@ export function SdkLabSemanticEnhancementCard({
 													: 'règles locales';
 										return (
 											<li
-												key={`${draftReport.draftName}-${stepReport.selector}`}
+												key={`semantic-step-${draftIdx}-${stepIdx}-${stepReport.selector}`}
 												className="flex flex-wrap items-center gap-2"
 											>
 												<Badge variant="outline" className="font-mono text-[10px]">
@@ -969,6 +1098,8 @@ export function SdkLabResultsColumn({
 			<SdkLabDraftResultsCard drafts={drafts} suggestions={suggestionsApi} onPlayDraft={onPlayDraft} />
 			<SdkLabFeedbackPanel suggestions={{ resetFeedback, feedbackVersion }} />
 			<SdkLabSemanticEnhancementCard debugReport={debugReport} />
+			<SdkLabSinglePageChainCard debugReport={debugReport} />
+			<SdkLabCandidateRankingsCard debugReport={debugReport} />
 			<SdkLabDebugReportCard debugReport={debugReport} flowRegistry={flowRegistry} />
 			<SdkLabPublishReportCard lastPublishReport={lastPublishReport} />
 		</div>
@@ -1182,6 +1313,7 @@ export function SdkLabSdkConsole({
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
+					<SdkLabRuntimeCapabilitiesNote />
 					{sessionControls ? sessionControls : null}
 					{toolbar}
 					<SdkLabRunErrors error={run.error} publishError={run.publishError} />

@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: path.join(process.cwd(), ".."),
+    /** Next dev (Turbopack) ignores webpack aliases — keep @sdk on live sources in Docker. */
+    resolveAlias: {
+      "@sdk": sdkReactSrc,
+      "@trustdev/onboarding-sdk-react": sdkReactSrc,
+    },
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',

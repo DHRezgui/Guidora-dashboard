@@ -1,5 +1,14 @@
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Layers3, FlaskConical, Sparkles, AlertTriangle, HeartPulse } from 'lucide-react';
+import {
+	ArrowRight,
+	CheckCircle2,
+	Layers3,
+	FlaskConical,
+	Sparkles,
+	AlertTriangle,
+	HeartPulse,
+	LayoutPanelTop,
+} from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +44,14 @@ const scenarios = [
     icon: AlertTriangle,
     href: '/dashboard/sdk-tests/stress',
     tags: ['arbitraire', 'anti-biais', 'chaos DOM', 'validation finale'],
+  },
+  {
+    title: 'Single-page — 7 slots',
+    description:
+      'Mock dashboard type SaaS avec singlePageTour : un draft, chaîne générique 7 slots (primary, search, nav, analytics…), debug slot par slot.',
+    icon: LayoutPanelTop,
+    href: '/dashboard/sdk-tests/single-page',
+    tags: ['singlePageTour', '7 slots', 'dashboard mock', '1 draft'],
   },
   {
     title: 'Intégration réelle',
@@ -93,13 +110,18 @@ export default function SdkTestsHubPage() {
       <Card className="border-slate-200 bg-white/85 shadow-card dark:border-white/10 dark:bg-slate-900/45">
         <CardHeader>
           <CardTitle className="text-slate-800 dark:text-slate-100">Ce que tu peux vérifier</CardTitle>
-          <CardDescription className="text-slate-600 dark:text-slate-300">Utilise ces interfaces pour observer les tours proposés, le debug report et les comportements de filtrage/conflict resolution.</CardDescription>
+          <CardDescription className="text-slate-600 dark:text-slate-300">
+            Chaque scénario partage le même moteur ; Single-page valide en plus la chaîne 7 slots et singlePageTour.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
+        <CardContent className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {[
-            'Génération + publication (tours inactifs par défaut)',
-            'Feedback shown / clicked / completed → backend',
-            'Lecture runtime (Jouer) et scénario blueprints',
+            'Génération + publication API (parcours inactifs par défaut, activation via dashboard)',
+            'Feedback shown / clicked / completed synchronisé avec le backend',
+            'Single-page : carte « 7 slots » filled/skipped + ordre des étapes = ordre des slots',
+            'Multi-drafts (Simple → Stress) : conflits, bruit, rankings par intent',
+            'Surbrillance activée sur chaque étape des parcours autogénérés',
+            'Intégration : blueprints métier + preview runtime sur app fictive',
           ].map((item) => (
             <div key={item} className="flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />

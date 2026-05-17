@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowRight, LayoutPanelTop, Save, ShieldCheck, UserPlus } from 'lucide-react';
+import { ArrowRight, LayoutPanelTop, Save, ShieldCheck } from 'lucide-react';
 import type { SuggestedTourDraft } from '@sdk/types/sdk';
 
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +17,7 @@ import { SdkLabTwoZoneLayout, SdkLabSubjectZone } from '../lab-layout';
 import {
 	SdkLabAnalyzeToolbar,
 	SdkLabDraftPlayerModal,
-	SdkLabPhase1Banner,
-	SdkLabPhase1MetricsCard,
+	SdkLabSemanticInsightsSection,
 	SdkLabSdkConsole,
 	SdkLabSessionControls,
 } from '../lab-ui';
@@ -124,12 +123,8 @@ export default function MediumTestPage() {
     <SdkLabShell
       title="Interface moyenne"
       description="Scénario plus riche avec navigation, formulaire, validation et zones structurées. Parfait pour tester les séquences d’actions et le ranking contextuel."
-      badges={["navigation", "formulaire", "validation", "Phase 1"]}
+      badges={['navigation', 'formulaire', 'validation', 'hybrid']}
     >
-      <SdkLabPhase1Banner
-        validationPhase={phase1.runs.at(-1)?.report?.validationPhase}
-        backendImplementation={phase1.runs.at(-1)?.report?.backendImplementation}
-      />
       <SdkLabTwoZoneLayout
         subject={
           <SdkLabSubjectZone
@@ -334,7 +329,9 @@ export default function MediumTestPage() {
           />
         }
       />
-      <SdkLabPhase1MetricsCard
+      <SdkLabSemanticInsightsSection
+        validationPhase={phase1.runs.at(-1)?.report?.validationPhase}
+        backendImplementation={phase1.runs.at(-1)?.report?.backendImplementation}
         runs={phase1.runs}
         aggregates={phase1.aggregates}
         onReset={phase1.reset}

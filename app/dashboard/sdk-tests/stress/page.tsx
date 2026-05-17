@@ -2,9 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
-  Bell,
-  CircleDashed,
   LayoutGrid,
   RefreshCcw,
   ShieldCheck,
@@ -23,10 +20,12 @@ import { SdkLabTwoZoneLayout, SdkLabSubjectZone } from '../lab-layout';
 import {
 	SdkLabAnalyzeToolbar,
 	SdkLabDraftPlayerModal,
+	SdkLabSemanticInsightsSection,
 	SdkLabSdkConsole,
 	SdkLabSessionControls,
 } from '../lab-ui';
 import { useSdkLabPage } from '../use-sdk-lab-page';
+import { usePhase1RunHistory } from '../use-phase1-run-history';
 
 type ChaosJob = {
   id: string;
@@ -178,10 +177,17 @@ export default function StressTestPage() {
       flowVersion: 'stress-lab-v1',
       baselineFlowVersion: 'stress-lab-v0',
     }),
-    [progress, severeScore, stage, strategy, tick],
+    [progress, stage, strategy, tick],
   );
 
   const lab = useSdkLabPage(sdkOptions, { labKey: 'stress', publishScenario: 'stress' });
+
+  const phase1 = usePhase1RunHistory({
+    page: 'stress',
+    debugReport: lab.debugReport,
+    draftCount: lab.drafts.length,
+    lastRunAt: lab.lastRunAt,
+  });
 
   const runBindings = {
     drafts: lab.drafts,
@@ -227,7 +233,7 @@ export default function StressTestPage() {
     <SdkLabShell
       title="Stress test arbitraire"
       description="Scénario non calibré avec bruit, faux signaux, mutations rapides et blocs contradictoires pour tester la robustesse réelle du SDK."
-      badges={["stress", "anti-biais", "chaos DOM", "validation finale"]}
+      badges={['stress', 'anti-biais', 'chaos DOM', 'validation finale', 'hybrid']}
     >
       <SdkLabTwoZoneLayout
         subject={
@@ -258,7 +264,7 @@ export default function StressTestPage() {
                 </Button>
                 <Button data-tour-id="tour-stress-open-panel" data-testid="stress-secondary-panel" data-tour-label="Ouvrir le panneau opérationnel" variant="outline" className="rounded-xl">
                   <LayoutGrid className="mr-2 h-4 w-4" />
-                  Ouvrir panneau d'analyse
+                  Ouvrir panneau d&apos;analyse
                 </Button>
                 <Button data-tour-id="tour-stress-secondary-guide" data-testid="stress-secondary-help" data-tour-label="Contenu d'aide secondaire" variant="ghost" className="rounded-xl">
                   <WandSparkles className="mr-2 h-4 w-4" />
@@ -306,26 +312,6 @@ export default function StressTestPage() {
                   <span className="text-xs text-muted-foreground">event</span>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-card">
-            <CardHeader>
-              <CardTitle>Indicateurs de bruit</CardTitle>
-              <CardDescription>Repères visuels pour confirmer que le SDK ne sur-réagit pas aux artefacts transitoires.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <CircleDashed className="h-4 w-4" />
-                <span>Le flux est volontairement instable et partiellement aléatoire.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                <span>Les événements live doivent être majoritairement filtrés comme bruit.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>Le moteur doit conserver une action principale claire malgré les faux signaux.</span>
-              </div>
             </CardContent>
           </Card>
             </div>
@@ -387,6 +373,13 @@ export default function StressTestPage() {
             extraMetrics={[{ label: 'Score chaos', value: severeScore }]}
           />
         }
+      />
+      <SdkLabSemanticInsightsSection
+        validationPhase={phase1.runs.at(-1)?.report?.validationPhase}
+        backendImplementation={phase1.runs.at(-1)?.report?.backendImplementation}
+        runs={phase1.runs}
+        aggregates={phase1.aggregates}
+        onReset={phase1.reset}
       />
 
       <SdkLabDraftPlayerModal draft={playDraft} onClose={() => setPlayDraft(null)} />

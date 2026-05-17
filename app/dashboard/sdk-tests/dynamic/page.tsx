@@ -14,10 +14,12 @@ import { SdkLabTwoZoneLayout, SdkLabSubjectZone } from '../lab-layout';
 import {
 	SdkLabAnalyzeToolbar,
 	SdkLabDraftPlayerModal,
+	SdkLabSemanticInsightsSection,
 	SdkLabSdkConsole,
 	SdkLabSessionControls,
 } from '../lab-ui';
 import { useSdkLabPage } from '../use-sdk-lab-page';
+import { usePhase1RunHistory } from '../use-phase1-run-history';
 
 const stages = [
   'Préparation du contexte',
@@ -36,7 +38,7 @@ export default function DynamicTestPage() {
   const [stage, setStage] = useState<'discovery' | 'activation' | 'adoption' | 'retention'>('activation');
   const [progress, setProgress] = useState(50);
   const [playDraft, setPlayDraft] = useState<SuggestedTourDraft | null>(null);
-  const [notifications, setNotifications] = useState<Array<{ id: number; label: string }>>([
+  const [, setNotifications] = useState<Array<{ id: number; label: string }>>([
     { id: 1, label: 'Parcours généré' },
   ]);
 
@@ -116,6 +118,13 @@ export default function DynamicTestPage() {
 
   const lab = useSdkLabPage(sdkOptions, { labKey: 'dynamic', publishScenario: 'dynamic' });
 
+  const phase1 = usePhase1RunHistory({
+    page: 'dynamic',
+    debugReport: lab.debugReport,
+    draftCount: lab.drafts.length,
+    lastRunAt: lab.lastRunAt,
+  });
+
   const runBindings = {
     drafts: lab.drafts,
     debugReport: lab.debugReport,
@@ -135,7 +144,7 @@ export default function DynamicTestPage() {
     <SdkLabShell
       title="Interface dynamique"
       description="Scénario riche avec chargements, modales, toasts et mutations rapides du DOM pour valider la robustesse du moteur."
-      badges={["loaders", "modals", "toasts", "DOM rapide"]}
+      badges={['loaders', 'modals', 'toasts', 'DOM rapide', 'hybrid']}
     >
       <SdkLabTwoZoneLayout
         subject={
@@ -251,6 +260,13 @@ export default function DynamicTestPage() {
             }
           />
         }
+      />
+      <SdkLabSemanticInsightsSection
+        validationPhase={phase1.runs.at(-1)?.report?.validationPhase}
+        backendImplementation={phase1.runs.at(-1)?.report?.backendImplementation}
+        runs={phase1.runs}
+        aggregates={phase1.aggregates}
+        onReset={phase1.reset}
       />
 
       {modalOpen && (

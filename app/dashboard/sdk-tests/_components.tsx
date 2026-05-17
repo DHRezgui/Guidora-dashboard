@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, FlaskConical, Grid3X3, HeartPulse, Layers3, Sparkles } from 'lucide-react';
+import { AlertTriangle, FlaskConical, Grid3X3, HeartPulse, Layers3, LayoutPanelTop, Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const routes = [
@@ -15,28 +15,39 @@ const routes = [
   { href: '/dashboard/sdk-tests/medium', label: 'Moyenne', icon: Layers3 },
   { href: '/dashboard/sdk-tests/dynamic', label: 'Dynamique', icon: FlaskConical },
   { href: '/dashboard/sdk-tests/stress', label: 'Stress', icon: AlertTriangle },
+  { href: '/dashboard/sdk-tests/single-page', label: 'Single-page', icon: LayoutPanelTop },
   { href: '/dashboard/sdk-tests/integration', label: 'Intégration', icon: HeartPulse },
 ] as const;
 
-type LabScenarioKey = 'hub' | 'simple' | 'medium' | 'dynamic' | 'stress' | 'integration';
+type LabScenarioKey = 'hub' | 'simple' | 'medium' | 'dynamic' | 'stress' | 'single-page' | 'integration';
 
 const LAB_TEST_TIPS: Record<LabScenarioKey, string> = {
-	hub: 'Choisissez un scénario selon la complexité à valider : CTA simple, formulaire + navigation, DOM dynamique, stress anti-bruit, ou intégration par blueprints. Chaque écran utilise le même moteur SDK (génération, publication, feedback, lecture runtime).',
+	hub:
+		'Parcourez les scénarios via les onglets : génération contextuelle, publication API, feedback et preview « Jouer ». Pour la chaîne générique à 7 slots (profil singlePageTour, un draft, surbrillance sur chaque étape), ouvrez Single-page. Simple à Stress couvrent le mode multi-drafts et les filtres bruit / conflits. Les contrôles session (stratégie, stage, progression) s’appliquent au prochain « Analyser ».',
 	simple:
-		'Validez la hiérarchie des intentions sur une page courte : CTA principal, actions secondaires et sélecteurs stables. Lancez l’analyse, simulez du feedback (shown / clicked), puis « Jouer » pour vérifier le parcours en conditions réelles sur cette page.',
+		'Surface hôte réduite à la vue métier (CTA principal, actions secondaires, repères sélecteurs). Validez la hiérarchie des intentions : lancez l’analyse, simulez du feedback (shown / clicked), puis « Jouer » sur cette page.',
 	medium:
 		'Testez navigation interne, formulaire et validation avant enregistrement. Vérifiez que le moteur propose des drafts form-flow et primary-action cohérents, puis utilisez feedback + lecture runtime pour confirmer le parcours multi-zones.',
 	dynamic:
-		'Observez le comportement sous mutations DOM, modals et toasts : le batching et le filtrage du bruit doivent garder une action utile visible. Relancez l’analyse après une rafale DOM pour comparer drafts et rapport debug.',
+		'Observez le comportement sous mutations DOM, modals et toasts : le batching et le filtrage du bruit doivent garder une action utile visible. Relancez l’analyse quand le DOM est calme pour activer la fusion sémantique, ou juste après une rafale pour comparer bypass et heuristiques.',
 	stress:
-		'Scénario volontairement bruyant : faux signaux, éléments transitoires et scores contradictoires. Le moteur doit résister au chaos et publier au plus une action métier claire — contrôlez les rejets bruit et les conflits dans le rapport debug.',
+		'Scénario volontairement bruyant : faux signaux, flux mouvant et événements transitoires. Le moteur doit résister au chaos et isoler une action métier claire — contrôlez rejets bruit et conflits dans le rapport debug. Utilisez « Lancer burst DOM » puis réanalysez pour tester bypass puis récupération.',
+	'single-page':
+		'Profil singlePageTour : un seul draft séquentiel (jusqu’à 7 étapes). Après « Analyser », consultez la carte « Single-page chain (7 slots) » (filled / skipped par slot), les candidate rankings, puis publiez. Vérifiez que l’ordre des étapes suit la chaîne (primary → search → secondary → nav → analytics → settings), que chaque étape a la surbrillance active, et que « Jouer » reflète le parcours sur le mock dashboard.',
 	integration:
 		'Exemple d’intégration avec un pack de blueprints (healthtechBlueprints, remplaçable en production par vos journeyBlueprints). Validez les drafts « blueprint », le feedback backend et la lecture runtime sur l’interface fictive portail patient.',
 };
 
 function resolveLabScenarioKey(pathname: string): LabScenarioKey {
 	const segment = pathname.split('/').filter(Boolean).at(-1);
-	if (segment === 'simple' || segment === 'medium' || segment === 'dynamic' || segment === 'stress' || segment === 'integration') {
+	if (
+		segment === 'simple' ||
+		segment === 'medium' ||
+		segment === 'dynamic' ||
+		segment === 'stress' ||
+		segment === 'single-page' ||
+		segment === 'integration'
+	) {
 		return segment;
 	}
 	return 'hub';

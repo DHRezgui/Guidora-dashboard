@@ -34,59 +34,105 @@ export type LabSessionStage = 'discovery' | 'activation' | 'adoption' | 'retenti
 
 export type LabConflictStrategy = 'highest-confidence' | 'highest-score' | 'intent-priority' | 'hybrid';
 
+/**
+ * Note affichée dans le lab : la preview dashboard utilise TourSimulator, pas TourViewer.
+ * Les correctifs runtime (seuil sémantique 28, auto-heal 30 min, badge match, throttle rect)
+ * ne s’exercent qu’avec TourViewer en intégration hôte ou après activation d’un parcours publié.
+ */
+export const LAB_RUNTIME_CAPABILITIES_NOTE =
+	'Correctifs SDK (validation sémantique seuil 28, auto-heal sessionStorage 30 min + pageHash, badge match sans low-confidence sur sélecteur stable, throttle sync rect 120 ms) — actifs dans TourViewer uniquement, pas dans la preview « Jouer » (TourSimulator).';
+
+const LAB_SUBJECT_INTERACTIVE_PROBE =
+	'button, a[href], input, select, textarea, [role="button"], [data-tour-id]';
+
+/**
+ * Attend que la zone sujet lab contienne au moins un contrôle interactif
+ * (évite un scan à 0 candidat pendant skeleton / navigation Next).
+ */
+export async function waitForLabSubjectReady(maxWaitMs = 5000): Promise<boolean> {
+	if (typeof document === 'undefined') return false;
+	const deadline = Date.now() + maxWaitMs;
+	while (Date.now() < deadline) {
+		const root = document.querySelector(LAB_ANALYSIS_ROOT_SELECTOR);
+		if (root instanceof HTMLElement && root.isConnected) {
+			if (root.querySelector(LAB_SUBJECT_INTERACTIVE_PROBE)) {
+				return true;
+			}
+		}
+		await new Promise<void>((resolve) => {
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+		});
+	}
+	return false;
+}
+
+/** JWT used by lab API calls (publish + semantic-hints). */
+export function getLabAccessToken(): string | null {
+	if (typeof window === 'undefined') return null;
+	return localStorage.getItem('auth_token');
+}
+
 export function getLabPublishConfig(): Partial<SDKConfig> {
 	return {
 		apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
 		apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
-		getAccessToken: () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null),
+		getAccessToken: getLabAccessToken,
 	};
 }
 
 /**
  * Couche sémantique hybride (labs-first).
- *
- * Activée par défaut dans le lab pour valider la fusion sémantique +
- * heuristique. Reste désactivée pour toutes les intégrations clientes
- * (la valeur par défaut côté SDK est `false`). Ne change pas le contrat
- * de publication : les filtres qualité backend restent souverains et la
- * fusion applique un delta borné (cf. `semantic-step-intelligence.ts`).
+ * Fix: active la fusion locale + hints backend ; défaut SDK client = false.
  */
 export const LAB_SEMANTIC_ENHANCEMENT_ENABLED = true;
 
 /**
- * Mode du moteur sémantique en lab. `hybrid` exerce le round-trip
- * backend (Phase 2 — sentence-transformers) avec fallback automatique
- * vers le moteur local en cas de timeout/erreur. Passer à `local`
- * pour rester en Phase 1 purement déterministe sans appel réseau.
+ * Mode moteur sémantique. `hybrid` = round-trip `/semantic-hints` avec fallback local.
  */
 export const LAB_SEMANTIC_ENGINE_MODE: 'local' | 'hybrid' | 'backend' = 'hybrid';
 
-/**
- * URL de l'endpoint backend `/v1/tours/contextual/semantic-hints`.
- * Concaténée au-dessus de `NEXT_PUBLIC_API_URL` quand le mode est
- * hybride. Laisser `null` pour désactiver l'appel backend sans changer
- * le mode (le SDK fera fallback automatiquement).
- */
+/** Chemin relatif de l’endpoint semantic-hints (concaténé à NEXT_PUBLIC_API_URL). */
 export const LAB_SEMANTIC_BACKEND_PATH = '/tours/contextual/semantic-hints';
 
 /**
- * Timeout de l'appel backend semantic-hints (ms). Phase 2 utilise
- * sentence-transformers côté backend dont le cold-start (chargement
- * modèle + import lib) peut prendre quelques secondes. 5000ms laisse
- * la marge pour cette latence; en cas de dépassement le SDK fallback
- * sur le moteur local.
+ * Timeout semantic-hints (ms). Doit dépasser le timeout backend (~8 s) + marge réseau.
  */
-export const LAB_SEMANTIC_BACKEND_TIMEOUT_MS = 5000;
+export const LAB_SEMANTIC_BACKEND_TIMEOUT_MS = 12000;
 
 /**
- * Durée minimale d'inactivité du DOM (en ms) avant que la couche
- * sémantique soit autorisée à s'exécuter. Le SDK installe un
- * `MutationObserver` partagé et bypasse la couche tant que le DOM n'a
- * pas été silencieux pendant cette fenêtre. Si le DOM se stabilise
- * trop tard, le panneau debug indique `DOM instable` et garde le
- * résultat heuristique inchangé.
+ * DOM settle avant couche sémantique (ms). Aligné sur MIN_MUTATION_BATCH_WINDOW_MS du SDK (300).
+ * Fix perf: évite fusion sémantique pendant rafales MutationObserver.
  */
 export const LAB_SEMANTIC_DOM_SETTLE_MS = 300;
+
+/**
+ * Plancher MutationObserver côté générateur (tour-suggestion-generator.ts).
+ * Toute valeur inférieure passée par un scénario est relevée à 300 ms par le SDK.
+ */
+export const LAB_MUTATION_BATCH_WINDOW_MS = 300;
+
+/**
+ * Seuil minimal de confiance pour accepter un draft « sequence ».
+ * Fix: abaisse le plancher (défaut SDK séquence ~45) pour garder les parcours multi-étapes en lab.
+ */
+export const LAB_SEQUENCE_MIN_CONFIDENCE = 35;
+
+/**
+ * Nombre max d’étapes par draft (séquence et heuristiques multi-step).
+ */
+export const LAB_GENERATOR_MAX_STEPS = 7;
+
+/** Profil singlePageTour (chaîne générique 7 slots, 1 draft). */
+export const LAB_SINGLE_PAGE_TOUR_DEFAULTS = {
+	singlePageTour: true,
+	maxDrafts: 1,
+	maxSteps: LAB_GENERATOR_MAX_STEPS,
+	sequenceMinConfidence: LAB_SEQUENCE_MIN_CONFIDENCE,
+	minConfidence: 45,
+	includeSupportDraft: false,
+	includeNavigationDraft: false,
+	includeFormDraft: false,
+} as const satisfies Partial<UseContextualTourSuggestionsOptions>;
 
 function resolveSemanticBackendUrl(): string | undefined {
 	if (!LAB_SEMANTIC_BACKEND_PATH) return undefined;
@@ -95,7 +141,16 @@ function resolveSemanticBackendUrl(): string | undefined {
 	return `${base.replace(/\/$/, '')}${LAB_SEMANTIC_BACKEND_PATH}`;
 }
 
-/** Options communes pour rapprocher le lab du comportement intégration réelle. */
+/**
+ * Options communes pour tous les scénarios lab (simple, medium, dynamic, stress, integration).
+ * Les pages peuvent surcharger via `...overrides` sans changer leur scénario métier.
+ *
+ * Performance (toujours actives via le code SDK lié en source) :
+ * - MutationObserver debounce ≥ 300 ms (mutationBatchWindowMs, plancher SDK)
+ * - Cache sémantique 512 entrées (WeakMap, semantic-step-intelligence.ts)
+ * - Heals sessionStorage chargés une fois au mount TourViewer
+ * - scheduleTargetRectSync throttle 120 ms + skip onglet caché (TourViewer)
+ */
 export function labContextualDefaults(
 	overrides: UseContextualTourSuggestionsOptions,
 ): UseContextualTourSuggestionsOptions {
@@ -111,18 +166,70 @@ export function labContextualDefaults(
 		noiseSelectors: [...LAB_NOISE_SELECTORS],
 		analysisRootSelector: LAB_ANALYSIS_ROOT_SELECTOR,
 		useSemanticRanking: true,
+		/** Fix: drafts séquentiels (navigation interne, enchaînement CTA). */
 		enableSequenceDetection: true,
+		/** Fix: seuil séquence abaissé pour lab (voir LAB_SEQUENCE_MIN_CONFIDENCE). */
+		sequenceMinConfidence: LAB_SEQUENCE_MIN_CONFIDENCE,
+		/** Fix: jusqu’à 7 étapes par draft généré. */
+		maxSteps: LAB_GENERATOR_MAX_STEPS,
+		/**
+		 * Fix perf: debounce scan DOM ≥ 300 ms (plancher SDK).
+		 * Les scénarios qui passent une valeur plus basse sont relevés automatiquement.
+		 */
+		mutationBatchWindowMs: LAB_MUTATION_BATCH_WINDOW_MS,
 		explainabilityEnabled: true,
 		flowVersioningEnabled: true,
 		flowCompatibilityMode: 'lenient',
+		/** Fix: fusion sémantique hybride (voir LAB_SEMANTIC_*). */
 		semanticEnhancementEnabled: LAB_SEMANTIC_ENHANCEMENT_ENABLED,
 		semanticEngineMode: LAB_SEMANTIC_ENGINE_MODE,
+		/** Fix: endpoint Phase 2 sentence-transformers + fallback local. */
 		semanticBackendUrl: resolveSemanticBackendUrl(),
 		semanticBackendTimeoutMs: LAB_SEMANTIC_BACKEND_TIMEOUT_MS,
+		/** Required: `/tours/contextual/semantic-hints` is behind JwtAuthGuard (same token as publish). */
+		semanticBackendAccessToken: getLabAccessToken,
 		semanticRoleWeights: { role: 0.6, order: 0.4, copy: 0.5 },
+		/** Fix: aligné sur debounce MutationObserver (300 ms). */
 		semanticSnapshotMinDomAgeMs: LAB_SEMANTIC_DOM_SETTLE_MS,
 		/** Plus permissif en lab pour pouvoir republier lors des tests (dédup navigateur). */
 		maxAutoPublishedTours: 12,
 		...overrides,
 	};
+}
+
+/** Defaults lab + profil singlePageTour (7 slots, 1 draft). */
+export function labSinglePageTourDefaults(
+	overrides: UseContextualTourSuggestionsOptions,
+): UseContextualTourSuggestionsOptions {
+	return labContextualDefaults({
+		...LAB_SINGLE_PAGE_TOUR_DEFAULTS,
+		publishScenario: 'simple',
+		persona: 'admin',
+		businessObjectives: [
+			'discover and use the main features',
+			'complete the primary action on this page',
+			'navigate between sections',
+			'search and filter content',
+			'manage account and settings',
+		],
+		semanticHints: [
+			'search',
+			'add',
+			'create',
+			'save',
+			'submit',
+			'dashboard',
+			'settings',
+			'profile',
+			'navigation',
+			'filter',
+			'analytics',
+		],
+		customKeywords: {
+			'primary-action': ['Add', 'Create', 'New', 'Save', 'Submit', 'Import'],
+			'support-navigation': ['Dashboard', 'Home', 'Overview', 'Tasks', 'Analytics', 'Settings', 'Help'],
+			discovery: ['Analytics', 'Reports', 'Insights', 'Overview', 'Summary', 'Activity', 'KPI'],
+		},
+		...overrides,
+	});
 }

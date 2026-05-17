@@ -8,8 +8,10 @@ import {
 import type { ContextualGenerationDebugReport, ContextualScenario } from '@sdk/types/sdk';
 import {
 	clearLastContextualGenerationDebugReport,
+	invalidateContextualCandidateScanState,
 	restoreLastContextualGenerationDebugReport,
 } from '@sdk/utils/tour-suggestion-generator';
+import { waitForLabSubjectReady } from './lab-shared';
 import { reconcileAutoPublishedSessionWithTours } from '@sdk/utils/auto-publish-session-dedupe';
 import { tourService } from '@/lib/api';
 import {
@@ -82,11 +84,18 @@ export function useSdkLabPage(
 		};
 	}, [meta.labKey]);
 
+	useEffect(() => {
+		invalidateContextualCandidateScanState();
+	}, [meta.labKey]);
+
 	const persistLabRun = useCallback(
 		(runAt: string) => {
 			const liveDebug = suggestions.getDebugReport();
 			const debugReport = liveDebug ?? restoredSnapshot?.debugReport ?? null;
+			const emptyScan =
+				debugReport?.candidateMetrics?.considered === 0 && suggestions.drafts.length === 0;
 			if (!debugReport && suggestions.drafts.length === 0) return;
+			if (emptyScan) return;
 
 			const targetUrl =
 				meta.targetUrl ??
@@ -139,15 +148,19 @@ export function useSdkLabPage(
 		suggestions.isGenerating,
 		suggestions.isPublishing,
 		suggestions.lastPublishReport,
+		suggestions.debugReportTick,
 	]);
 
 	const runAnalysis = useCallback(() => {
-		suggestions.refresh();
-		const runAt = new Date().toLocaleTimeString();
-		setLastRunAt(runAt);
-		pendingPersistRunAtRef.current = runAt;
+		void (async () => {
+			await suggestions.refresh();
+			const runAt = new Date().toLocaleTimeString();
+			setLastRunAt(runAt);
+			pendingPersistRunAtRef.current = runAt;
+		})();
 	}, [suggestions]);
 
+	void suggestions.debugReportTick;
 	const liveDebugReport = suggestions.getDebugReport();
 	const debugReport: ContextualGenerationDebugReport | null =
 		liveDebugReport ?? restoredSnapshot?.debugReport ?? null;

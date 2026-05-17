@@ -236,9 +236,18 @@ export default function ToursPage() {
 	const filteredTours = useMemo(() => {
 		const query = filterQuery.trim().toLowerCase();
 		if (!query) return tours;
-		return tours.filter((tour) =>
-			(tour.targetUrl || '').toLowerCase().includes(query)
-		);
+		return tours.filter((tour) => {
+			const hay = [
+				tour.targetUrl,
+				tour.name,
+				tour.description,
+				typeof tour.id === 'string' ? tour.id : '',
+			]
+				.filter(Boolean)
+				.join(' ')
+				.toLowerCase();
+			return hay.includes(query);
+		});
 	}, [tours, filterQuery]);
 
 	const filteredAudienceUsers = useMemo(() => {
@@ -870,7 +879,7 @@ export default function ToursPage() {
 							<input
 								value={filterInput}
 								onChange={(e) => setFilterInput(e.target.value)}
-								placeholder="Filtrer par URL cible..."
+								placeholder="Filtrer par nom, URL, description ou id…"
 								className="h-10 w-full rounded-lg border border-slate-300 bg-white/85 pl-9 pr-9 text-sm text-slate-800 shadow-sm outline-none transition-colors placeholder:text-slate-500 focus:border-orange-400/60 focus:ring-2 focus:ring-orange-400/20 dark:border-white/15 dark:bg-slate-900/45 dark:text-slate-200"
 							/>
 							{filterInput ? (
@@ -895,6 +904,11 @@ export default function ToursPage() {
 							Rechercher
 						</Button>
 					</form>
+					{!isLoading && tours.length > 0 && filterQuery.trim() ? (
+						<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+							{filteredTours.length} parcours affiché(s) sur {tours.length}
+						</p>
+					) : null}
 				</div>
 
 				<DndContext
@@ -1158,7 +1172,9 @@ export default function ToursPage() {
 						<CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
 							<Icons.search className="h-8 w-8 text-slate-400 dark:text-slate-300" />
 							<h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">Aucun parcours ne correspond au filtre</h3>
-							<p className="text-sm text-slate-600 dark:text-slate-400">Essayez une autre URL cible.</p>
+							<p className="text-sm text-slate-600 dark:text-slate-400">
+								Essayez un autre mot-clé (nom, URL, description…).
+							</p>
 							<Button
 								variant="outline"
 								onClick={() => {

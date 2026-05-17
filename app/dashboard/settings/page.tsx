@@ -11,7 +11,6 @@ import { Icons } from '@/components/ui/icons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { authService, userService, getErrorMessage } from '@/lib/api';
 import { User } from '@/lib/types';
-import Link from 'next/link';
 
 const profileSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -146,21 +145,9 @@ export default function SettingsPage() {
         </video>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(249,115,22,0.14),transparent_40%),linear-gradient(160deg,rgba(255,255,255,0.82),rgba(255,255,255,0.72)_55%,rgba(248,250,252,0.86))] dark:bg-[radial-gradient(circle_at_18%_20%,rgba(249,115,22,0.2),transparent_40%),linear-gradient(160deg,rgba(15,23,42,0.84),rgba(15,23,42,0.78)_55%,rgba(2,6,23,0.9))]" />
         <div className="relative z-10 p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Paramètres</h1>
             <p className="mt-1 text-sm text-slate-900 dark:text-slate-300">Gérez votre profil, vos préférences et la sécurité de votre compte.</p>
-          </div>
-          <Button
-            variant="outline"
-            className="h-10 w-full rounded-xl border-slate-300 bg-white/90 text-slate-700 transition-transform hover:scale-105 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.99] dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100 dark:hover:bg-slate-900 dark:hover:text-white sm:w-auto"
-            asChild
-          >
-            <Link href="/dashboard">
-              <Icons.chevronLeft className="mr-2 h-4 w-4" />
-              Retour
-            </Link>
-          </Button>
           </div>
         </div>
       </div>
