@@ -5,6 +5,7 @@ import type {
 	SuggestedTourDraft,
 } from '@sdk/types/sdk';
 import type { GuidedTour } from '@/lib/types';
+import { scopeLocalStorageKey } from '@/lib/session-user';
 
 const STORAGE_PREFIX = '__trustdev_sdk_lab_run_v1:';
 
@@ -22,7 +23,14 @@ export interface SdkLabRunSnapshot {
 }
 
 function storageKey(labKey: string): string {
-	return `${STORAGE_PREFIX}${labKey}`;
+	return scopeLocalStorageKey(`${STORAGE_PREFIX}${labKey}`);
+}
+
+export function filterSdkLabToursForOwner(tours: GuidedTour[], ownerUserId?: string): GuidedTour[] {
+	if (!ownerUserId) {
+		return tours;
+	}
+	return tours.filter((tour) => !tour.createdBy || tour.createdBy === ownerUserId);
 }
 
 export function normalizeLabTargetPath(url: string): string {
@@ -66,7 +74,14 @@ export function clearSdkLabRunSnapshot(labKey: string): void {
 	}
 }
 
-function tourMatchesLabRun(tour: GuidedTour, snapshot: SdkLabRunSnapshot): boolean {
+function tourMatchesLabRun(
+	tour: GuidedTour,
+	snapshot: SdkLabRunSnapshot,
+	ownerUserId?: string,
+): boolean {
+	if (ownerUserId && tour.createdBy && tour.createdBy !== ownerUserId) {
+		return false;
+	}
 	const engine = tour.triggerConditions?.contextualEngine;
 	if (!engine?.flowSignature) return false;
 	if (engine.scenario !== snapshot.publishScenario) return false;
@@ -74,28 +89,35 @@ function tourMatchesLabRun(tour: GuidedTour, snapshot: SdkLabRunSnapshot): boole
 }
 
 /** Garde le snapshot tant qu’au moins un parcours lié au run existe encore en base. */
-export function shouldKeepSdkLabRunSnapshot(tours: GuidedTour[], snapshot: SdkLabRunSnapshot): boolean {
-	const idSet = new Set(tours.map((tour) => tour.id).filter((id): id is string => Boolean(id)));
+export function shouldKeepSdkLabRunSnapshot(
+	tours: GuidedTour[],
+	snapshot: SdkLabRunSnapshot,
+	ownerUserId?: string,
+): boolean {
+	const scopedTours = filterSdkLabToursForOwner(tours, ownerUserId);
+	const idSet = new Set(scopedTours.map((tour) => tour.id).filter((id): id is string => Boolean(id)));
 
 	if (snapshot.linkedTourIds.length > 0) {
 		return snapshot.linkedTourIds.some((id) => idSet.has(id));
 	}
 
-	return tours.some((tour) => tourMatchesLabRun(tour, snapshot));
+	return scopedTours.some((tour) => tourMatchesLabRun(tour, snapshot, ownerUserId));
 }
 
-export function reconcileAllSdkLabRunSnapshots(tours: GuidedTour[]): void {
+export function reconcileAllSdkLabRunSnapshots(tours: GuidedTour[], ownerUserId?: string): void {
 	if (typeof window === 'undefined') return;
+
+	const scopedPrefix = scopeLocalStorageKey(STORAGE_PREFIX);
 
 	for (let index = 0; index < window.sessionStorage.length; index += 1) {
 		const key = window.sessionStorage.key(index);
-		if (!key?.startsWith(STORAGE_PREFIX)) continue;
+		if (!key?.startsWith(scopedPrefix)) continue;
 
-		const labKey = key.slice(STORAGE_PREFIX.length);
+		const labKey = key.slice(scopedPrefix.length);
 		const snapshot = readSdkLabRunSnapshot(labKey);
 		if (!snapshot) continue;
 
-		if (!shouldKeepSdkLabRunSnapshot(tours, snapshot)) {
+		if (!shouldKeepSdkLabRunSnapshot(tours, snapshot, ownerUserId)) {
 			clearSdkLabRunSnapshot(labKey);
 		}
 	}

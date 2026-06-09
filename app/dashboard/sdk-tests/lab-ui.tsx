@@ -27,6 +27,8 @@ import type { GuidedTour } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { SdkLabInsightsZone, SdkLabSdkZone } from './lab-layout';
 import {
+	LAB_ORANGE_CALLOUT_CLASS,
+	LAB_ORANGE_CALLOUT_LABEL_CLASS,
 	LAB_PROGRESS_RANGE_CLASS,
 	LAB_RUNTIME_CAPABILITIES_NOTE,
 	LAB_SELECT_CONTENT_CLASS,
@@ -74,16 +76,8 @@ export function SdkLabPublisherOverlay({
 /** Rappel visible : génération lab ≠ runtime TourViewer (preview TourSimulator). */
 export function SdkLabRuntimeCapabilitiesNote({ className }: { className?: string }) {
 	return (
-		<p
-			className={cn(
-				'rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] p-3 text-xs leading-relaxed text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50',
-				className,
-			)}
-			role="note"
-		>
-			<strong className="bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold text-transparent dark:from-orange-200 dark:to-pink-300">
-				Runtime :
-			</strong>{' '}
+		<p className={cn(LAB_ORANGE_CALLOUT_CLASS, 'p-3', className)} role="note">
+			<strong className={LAB_ORANGE_CALLOUT_LABEL_CLASS}>Runtime :</strong>{' '}
 			{LAB_RUNTIME_CAPABILITIES_NOTE}
 		</p>
 	);
@@ -539,7 +533,7 @@ export function SdkLabPhase1Banner({ validationPhase, backendImplementation }: S
 	}
 
 	return (
-		<div className="rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] px-4 py-3 text-sm text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50">
+		<div className={cn(LAB_ORANGE_CALLOUT_CLASS, 'px-4 py-3 text-sm')}>
 			<p className="bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold uppercase tracking-wide text-transparent dark:from-orange-200 dark:to-pink-300">
 				Moteur local &amp; fusion (règles)
 			</p>
@@ -937,10 +931,8 @@ export function SdkLabSemanticEnhancementCard({
 					</p>
 				) : null}
 				{backendImpl?.disclaimer ? (
-					<p className="rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] p-3 text-xs leading-relaxed text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50">
-						<strong className="bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold text-transparent dark:from-orange-200 dark:to-pink-300">
-							Backend :
-						</strong>{' '}
+					<p className={cn(LAB_ORANGE_CALLOUT_CLASS, 'p-3')}>
+						<strong className={LAB_ORANGE_CALLOUT_LABEL_CLASS}>Backend :</strong>{' '}
 						{backendImpl.disclaimer}
 					</p>
 				) : null}

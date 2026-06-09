@@ -25,6 +25,7 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  editLock?: TourEditLockInfo;
 }
 
 // Types utilisateurs
@@ -78,6 +79,7 @@ export interface Organization {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  editLock?: TourEditLockInfo;
 }
 
 export interface CreateOrganizationDto {
@@ -111,6 +113,15 @@ export interface OrganizationResponse {
 }
 
 // Types tours
+
+export type TourAccessMode = 'view' | 'collaborate';
+
+export interface TourAccessGrant {
+  id?: string;
+  userId: string;
+  accessMode: TourAccessMode;
+  user?: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'role'>;
+}
 
 export interface Step {
   id: string;
@@ -161,19 +172,57 @@ export interface SimulationContext {
   elements: SimulationElementSnapshot[];
 }
 
+export interface TourEditLockInfo {
+  required: boolean;
+  heldByUserId?: string;
+  heldByDisplayName?: string;
+  lockedAt?: string;
+  expiresAt?: string;
+  isHeldByMe: boolean;
+}
+
 export interface GuidedTour {
   id?: string;
   name: string;
   description?: string;
   targetUrl: string;
   isActive?: boolean;
+  isSandboxTestActive?: boolean;
+  /** Renseigné côté serveur (toggle test sandbox), jamais envoyé à l’API de sauvegarde. */
+  sandboxTestStartedBy?: string | null;
   priority?: number;
   replayPolicy?: 'never' | 'after_period' | 'always_on_new_version';
   replayAfterDays?: number;
   currentResetVersion?: number;
   triggerConditions?: Record<string, any>;
   simulationContext?: SimulationContext;
-  steps: Step[];
+  steps?: Step[];
+  stepCount?: number;
+  environment?: 'sandbox' | 'production';
+  sandboxStatus?: 'pending' | 'approved' | 'rejected' | 'returned' | null;
+  sandboxRejectionReason?: string | null;
+  sandboxRejectedAt?: string | null;
+  sandboxRejectedBy?: string | null;
+  developerSubmissionMessage?: string | null;
+  developerViewShareMessage?: string | null;
+  developerViewShareMessageAt?: string | null;
+  developerCollaborateShareMessage?: string | null;
+  developerCollaborateShareMessageAt?: string | null;
+  developerPrivate?: boolean;
+  assignedAdminIds?: string[];
+  /** Admin gestionnaire unique en production (parcours admin). */
+  productionManagedByAdminId?: string | null;
+  assignedToAdminsAt?: string | null;
+  inCollaboration?: boolean;
+  sharingHasView?: boolean;
+  sharingHasCollaborate?: boolean;
+  accessGrants?: TourAccessGrant[];
+  /** Verrou d’édition (collaboration) — renseigné par l’API, non envoyé à la sauvegarde. */
+  editLock?: TourEditLockInfo;
+  editLockedBy?: string | null;
+  editLockedAt?: string | null;
+  editLockExpiresAt?: string | null;
+  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -195,7 +244,24 @@ export type StepSavePayload = Omit<Step, 'id' | 'orderIndex'>;
 
 export type GuidedTourSavePayload = Omit<GuidedTour, 'id' | 'createdAt' | 'updatedAt' | 'steps'> & {
   steps: StepSavePayload[];
+  /** Sources pour duplication / concaténation (validation backend). */
+  forkedFromTourIds?: string[];
 };
+
+/** JSON d’export sécurisé (sans métadonnées org / utilisateurs). */
+export interface TourExportPayload {
+  exportVersion: number;
+  exportedAt: string;
+  name: string;
+  description?: string;
+  targetUrl: string;
+  priority: number;
+  replayPolicy?: GuidedTour['replayPolicy'];
+  replayAfterDays: number;
+  triggerConditions: Record<string, unknown>;
+  simulationContext?: Record<string, unknown>;
+  steps: Array<Record<string, unknown>>;
+}
 
 export interface GuidedTourResponse {
   success: boolean;
@@ -203,6 +269,7 @@ export interface GuidedTourResponse {
   tour?: GuidedTour;
   tours?: GuidedTour[];
   count?: number;
+  export?: TourExportPayload;
 }
 
 export type PositionType =

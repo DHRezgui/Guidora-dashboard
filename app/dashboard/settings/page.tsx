@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { authService, userService, getErrorMessage } from '@/lib/api';
+import { authService, organizationService, userService, getErrorMessage } from '@/lib/api';
 import { User } from '@/lib/types';
+import { SdkIntegrationTokensSection } from '@/components/settings/SdkIntegrationTokensSection';
 
 const profileSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -36,6 +37,8 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canManageSdkTokens, setCanManageSdkTokens] = useState(false);
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
 
   const {
     register,
@@ -58,6 +61,20 @@ export default function SettingsPage() {
           setUser(userData);
           const storedUser = authService.getUser();
           setIsAdmin(storedUser?.role === 'ADMIN');
+          setCanManageSdkTokens(
+            (storedUser?.role === 'ADMIN' || storedUser?.role === 'DEVELOPER') &&
+              Boolean(userData.organizationId),
+          );
+          if (userData.organizationId) {
+            try {
+              const orgResponse = await organizationService.getById(userData.organizationId);
+              setOrganizationName(orgResponse.organization?.name || null);
+            } catch {
+              setOrganizationName(null);
+            }
+          } else {
+            setOrganizationName(null);
+          }
           reset({
             email: userData.email,
             firstName: userData.firstName || '',
@@ -305,10 +322,23 @@ export default function SettingsPage() {
                 <span className="text-muted-foreground">Membre depuis</span>
                 <span className="text-[13px]">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
+              <div className="flex justify-between items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
+                <span className="shrink-0 text-muted-foreground">Organisation</span>
+                <span
+                  className="truncate text-right font-medium text-[13px] text-slate-800 dark:text-slate-100"
+                  title={organizationName || undefined}
+                >
+                  {organizationName || '—'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {canManageSdkTokens ? (
+        <SdkIntegrationTokensSection isAdmin={isAdmin} canManage={canManageSdkTokens} />
+      ) : null}
     </div>
   );
 }

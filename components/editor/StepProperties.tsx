@@ -21,9 +21,16 @@ import { Step, PositionType, ActionType } from '@/lib/types';
 interface StepPropertiesProps {
   step: Step | null;
   onUpdate: (step: Step) => void;
+  lockStepTargetUrl?: boolean;
+  readOnly?: boolean;
 }
 
-export default function StepProperties({ step, onUpdate }: StepPropertiesProps) {
+export default function StepProperties({
+  step,
+  onUpdate,
+  lockStepTargetUrl = false,
+  readOnly = false,
+}: StepPropertiesProps) {
   const [formData, setFormData] = useState<Partial<Step>>(step || {});
 
   useEffect(() => {
@@ -31,6 +38,9 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
   }, [step]);
 
   const handleInputChange = (field: keyof Step, value: any) => {
+    if (readOnly) {
+      return;
+    }
     const updatedData = { ...formData, [field]: value };
     setFormData(updatedData);
     onUpdate(updatedData as Step);
@@ -126,10 +136,15 @@ export default function StepProperties({ step, onUpdate }: StepPropertiesProps) 
               id="stepTargetUrl"
               value={formData.stepTargetUrl || ''}
               onChange={(e) => handleInputChange('stepTargetUrl', e.target.value)}
-              placeholder="/dashboard/billing"
+              placeholder="/dashboard/sdk-tests/simple"
+              disabled={lockStepTargetUrl}
+              readOnly={lockStepTargetUrl}
+              className={lockStepTargetUrl ? 'cursor-not-allowed bg-muted/60' : undefined}
             />
             <p className="text-xs text-muted-foreground">
-              Renseignez cette valeur pour un parcours multi-page.
+              {lockStepTargetUrl
+                ? 'Route figée pour les parcours publiés depuis le lab SDK.'
+                : 'Renseignez cette valeur pour un parcours multi-page.'}
             </p>
           </div>
 

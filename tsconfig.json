@@ -21,7 +21,7 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@sdk/*": ["../sdks/react/src/*"]
+      "@sdk/*": ["./sdks/react/src/*"]
     }
   },
   "include": [

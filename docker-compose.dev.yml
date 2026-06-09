@@ -7,9 +7,9 @@ services:
     volumes:
       - ./:/app
       - ../sdks/react:/sdks/react
+      - ../sdks/react:/app/sdks/react
       - /app/node_modules
-      - /app/.next
-    command: npm run dev
+    command: node scripts/dev-server.mjs
     ports:
       - '3003:3000'
     networks:

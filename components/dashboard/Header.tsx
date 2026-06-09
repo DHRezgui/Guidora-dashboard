@@ -22,6 +22,8 @@ export default function Header() {
     create: 'Nouveau',
     settings: 'Parametres',
     'sdk-tests': 'SDK Tests',
+    blueprints: 'Blueprints',
+    analytics: 'Analytics',
     simple: 'Simple',
     medium: 'Medium',
     dynamic: 'Dynamic',
@@ -39,7 +41,10 @@ export default function Header() {
     const isEditModeCreateRoute =
       segment === 'create' &&
       Boolean(searchParams.get('id')) &&
-      (parentSegment === 'tours' || parentSegment === 'users' || parentSegment === 'organizations');
+      (parentSegment === 'tours' ||
+        parentSegment === 'users' ||
+        parentSegment === 'organizations' ||
+        parentSegment === 'blueprints');
     const prettyLabel =
       isEditModeCreateRoute ? 'Modifier' :
       segmentLabels[segment] ||

@@ -6,6 +6,7 @@ import { authService, userService } from '@/lib/api';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
 import EmailVerificationBanner from '@/components/dashboard/EmailVerificationBanner';
+import { SidebarProvider } from '@/components/dashboard/sidebar-context';
 
 export default function DashboardLayout({
   children,
@@ -15,10 +16,9 @@ export default function DashboardLayout({
   const router = useRouter();
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [userEmail, setUserEmail] = useState('');
-  const [isMounted, setIsMounted] = useState(false);
+  const [authState, setAuthState] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
 
   useEffect(() => {
-    setIsMounted(true);
     const token = authService.getToken();
 
     // Keep cookie auth in sync for middleware/server navigation checks.
@@ -26,26 +26,28 @@ export default function DashboardLayout({
       document.cookie = `auth_token=${token}; path=/; max-age=3600; SameSite=Lax`;
     }
 
-    // Vérifier l'authentification au chargement
     if (!token) {
-      router.push('/login');
+      setAuthState('unauthenticated');
+      router.replace('/login');
       return;
     }
 
-    // Check email verification status
-    userService.getCurrentUser()
-      .then((res: any) => {
+    setAuthState('authenticated');
+
+    // Check email verification status (non-blocking for shell render)
+    userService
+      .getCurrentUser()
+      .then((res: { user?: { emailVerified?: boolean; email?: string }; emailVerified?: boolean; email?: string }) => {
         const user = res.user || res;
         setEmailVerified(user.emailVerified ?? true);
         setUserEmail(user.email || '');
       })
       .catch(() => {
-        // If the call fails, don't show the banner
         setEmailVerified(true);
       });
   }, [router]);
 
-  if (!isMounted || !authService.isAuthenticated()) {
+  if (authState === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -56,28 +58,27 @@ export default function DashboardLayout({
     );
   }
 
+  if (authState === 'unauthenticated') {
+    return null;
+  }
+
   return (
-    <div className="phoenix-bg flex h-screen overflow-hidden text-slate-900 dark:text-slate-100">
-      {/* Sidebar */}
-      <Sidebar />
+    <SidebarProvider>
+      <div className="phoenix-bg flex h-screen overflow-hidden text-slate-900 dark:text-slate-100">
+        <Sidebar />
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <Header />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <Header />
 
-        {/* Email verification banner */}
-        {emailVerified === false && (
-          <EmailVerificationBanner userEmail={userEmail} />
-        )}
+          {emailVerified === false && (
+            <EmailVerificationBanner userEmail={userEmail} />
+          )}
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-5 py-5 md:px-6">
-          <div className="animate-fade-in">
-            {children}
-          </div>
-        </main>
+          <main className="flex-1 overflow-y-auto px-5 py-5 md:px-6">
+            <div className="animate-fade-in">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

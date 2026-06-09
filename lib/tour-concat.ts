@@ -97,6 +97,16 @@ export function normalizeConcatStepsForRuntime(steps: Step[], tourTargetUrl: str
   });
 }
 
+export function buildConcatDraftDescription(tours: GuidedTour[]): string {
+  if (tours.length === 0) {
+    return '';
+  }
+
+  const names = tours.map((tour) => tour.name?.trim()).filter(Boolean);
+  const base = `Parcours concaténé (${tours.length} source${tours.length > 1 ? 's' : ''})`;
+  return names.length > 0 ? `${base} : ${names.join(' → ')}` : base;
+}
+
 export function buildUniqueConcatName(tours: GuidedTour[], existingNames: string[]): string {
   const rawBase = tours
     .map((tour) => tour.name?.trim())
@@ -166,7 +176,7 @@ export function concatenateToursFifo(
     name: buildUniqueConcatName(tours, options.existingNames),
     description: `Parcours concaténé (${tours.length} source${tours.length > 1 ? 's' : ''})`,
     targetUrl,
-    isActive: true,
+    isActive: false,
     priority: Math.max(...tours.map((tour) => Number(tour.priority || 0)), 0),
     replayPolicy: 'never',
     replayAfterDays: 0,

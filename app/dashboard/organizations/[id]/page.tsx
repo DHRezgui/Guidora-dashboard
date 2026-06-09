@@ -10,9 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { organizationService, getErrorMessage } from '@/lib/api';
+import { authService, organizationService, getErrorMessage } from '@/lib/api';
+import { canManageOrganizations, getDashboardRole } from '@/lib/dashboard-roles';
 import { Organization } from '@/lib/types';
 import Link from 'next/link';
+import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
+import { TourEditLockScreen } from '@/components/tours/TourEditLockScreen';
+import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
+import { useOrganizationEditLock } from '@/lib/use-organization-edit-lock';
 
 const editOrgSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
@@ -29,6 +34,8 @@ type EditOrgForm = z.infer<typeof editOrgSchema>;
 export default function EditOrganizationPage() {
   const params = useParams();
   const router = useRouter();
+  const organizationId = params.id as string;
+  const canEdit = canManageOrganizations(getDashboardRole(authService.getUser()));
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,6 +55,16 @@ export default function EditOrganizationPage() {
   });
   const planValue = watch('plan');
   const isActiveValue = watch('isActive');
+
+  const { editLock, lockBlocked, lockMessage, isAcquiring, retryAcquire, ensureLockHeld } =
+    useOrganizationEditLock({
+      organizationId,
+      organization,
+      enabled: canEdit && Boolean(organization),
+    });
+
+  const readOnly = !canEdit || lockBlocked;
+  const deleteBlocked = canEdit && isAdminResourceBeingEdited(organization?.editLock ?? editLock ?? undefined);
 
   const normalizeMaxUsers = (value: string): number => {
     const parsed = Number(value);
@@ -97,6 +114,13 @@ export default function EditOrganizationPage() {
       setSaving(true);
       setError('');
       setSuccess('');
+      if (canEdit) {
+        const lockOk = await ensureLockHeld();
+        if (!lockOk) {
+          setError('Votre verrou d’édition a expiré. Rouvrez la page pour reprendre la main.');
+          return;
+        }
+      }
       const payload = { ...data };
       payload.maxUsers = normalizeMaxUsers(String(payload.maxUsers));
       payload.maxTours = normalizeMaxTours(String(payload.maxTours));
@@ -113,17 +137,25 @@ export default function EditOrganizationPage() {
     }
   };
 
-  if (loading) {
-    return (
+  const showInitialLoader = loading || (canEdit && isAcquiring);
+
+  return (
+    <RoleRouteGuard access="organizations">
+      {showInitialLoader ? (
       <div className="flex items-center justify-center py-24">
         <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
         <span className="ml-3 text-sm text-muted-foreground">Chargement...</span>
       </div>
-    );
-  }
-
-  if (!organization) {
-    return (
+      ) : canEdit && lockBlocked && lockMessage ? (
+      <TourEditLockScreen
+        tourName={organization?.name}
+        message={lockMessage}
+        heldByDisplayName={editLock?.heldByDisplayName ?? organization?.editLock?.heldByDisplayName}
+        onBack={() => router.push('/dashboard/organizations')}
+        onRetry={() => void retryAcquire()}
+        isRetrying={isAcquiring}
+      />
+      ) : !organization ? (
       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
         <div className="rounded-2xl bg-muted/50 p-4 mb-4">
           <Icons.warning className="h-8 w-8 opacity-40" />
@@ -133,10 +165,7 @@ export default function EditOrganizationPage() {
           <Link href="/dashboard/organizations">Retour à la liste</Link>
         </Button>
       </div>
-    );
-  }
-
-  return (
+      ) : (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-lg" asChild>
@@ -145,7 +174,9 @@ export default function EditOrganizationPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Modifier l&apos;organisation</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {canEdit ? 'Modifier l\'organisation' : 'Organisation'}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{organization.name}</p>
         </div>
       </div>
@@ -159,6 +190,12 @@ export default function EditOrganizationPage() {
           </div>
           <div className="p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {!canEdit ? (
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-300">
+                  Consultation seule — seuls les administrateurs peuvent modifier une organisation.
+                </p>
+              ) : null}
+              <fieldset disabled={readOnly} className="m-0 min-w-0 space-y-4 border-0 p-0">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-[13px]">Nom</Label>
                 <Input id="name" {...register('name')} className="rounded-xl" />
@@ -307,18 +344,21 @@ export default function EditOrganizationPage() {
                 </div>
               )}
 
+              </fieldset>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" className="rounded-xl" asChild>
-                  <Link href="/dashboard/organizations">Annuler</Link>
+                  <Link href="/dashboard/organizations">Retour</Link>
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl shadow-soft transition-transform hover:scale-105 active:scale-[0.99]"
-                >
-                  {saving && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-                  Enregistrer
-                </Button>
+                {canEdit ? (
+                  <Button
+                    type="submit"
+                    disabled={saving || lockBlocked}
+                    className="rounded-xl shadow-soft transition-transform hover:scale-105 active:scale-[0.99]"
+                  >
+                    {saving && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
+                    Enregistrer
+                  </Button>
+                ) : null}
               </div>
             </form>
           </div>
@@ -364,14 +404,27 @@ export default function EditOrganizationPage() {
                 <span className="text-[13px]">{organization.updatedAt ? new Date(organization.updatedAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
             </div>
+            {canEdit ? (
             <div className="border-t border-border/60 pt-5">
               <Button
                 variant="destructive"
                 className="w-full rounded-xl transition-transform hover:scale-[1.01] active:scale-[0.99]"
                 size="sm"
+                disabled={deleteBlocked}
+                title={
+                  deleteBlocked
+                    ? 'Suppression impossible pendant une session de modification'
+                    : undefined
+                }
                 onClick={() => {
+                  if (deleteBlocked) return;
                   if (confirm('Supprimer cette organisation ?')) {
-                    organizationService.delete(organization.id).then(() => router.push('/dashboard/organizations'));
+                    organizationService
+                      .delete(organization.id)
+                      .then(() => router.push('/dashboard/organizations'))
+                      .catch((err: unknown) =>
+                        setError(getErrorMessage(err, 'Erreur lors de la suppression')),
+                      );
                   }
                 }}
               >
@@ -379,9 +432,12 @@ export default function EditOrganizationPage() {
                 Supprimer
               </Button>
             </div>
+            ) : null}
           </div>
         </div>
       </div>
     </div>
+      )}
+    </RoleRouteGuard>
   );
 }

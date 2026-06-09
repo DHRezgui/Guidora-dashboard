@@ -12,6 +12,8 @@ interface TourSimulatorProps {
   onExitPreview: () => void;
   initialIsPlaying?: boolean;
   onPlayStateChange?: (isPlaying: boolean) => void;
+  /** Précharge les iframes des étapes adjacentes (désactivé en liste parcours pour accélérer l'ouverture). */
+  prefetchAdjacentIframes?: boolean;
 }
 
 type NormalizedRect = {
@@ -648,6 +650,7 @@ export default function TourSimulator({
   onExitPreview,
   initialIsPlaying = false,
   onPlayStateChange,
+  prefetchAdjacentIframes = true,
 }: TourSimulatorProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(initialIsPlaying);
@@ -1427,7 +1430,7 @@ export default function TourSimulator({
             onError={() => setIframeState('blocked')}
           />
 
-          {useLiveIframe && iframePrevStepPageUrl && iframePrevStepPageUrl !== iframePageUrl ? (
+          {prefetchAdjacentIframes && useLiveIframe && iframePrevStepPageUrl && iframePrevStepPageUrl !== iframePageUrl ? (
             <iframe
               src={iframePrevStepPageUrl}
               title={`${tourName || 'Tour preview'} prev-step-prefetch`}
@@ -1438,7 +1441,7 @@ export default function TourSimulator({
             />
           ) : null}
 
-          {useLiveIframe && iframeNextStepPageUrl && iframeNextStepPageUrl !== iframePageUrl && iframeNextStepPageUrl !== iframePrevStepPageUrl ? (
+          {prefetchAdjacentIframes && useLiveIframe && iframeNextStepPageUrl && iframeNextStepPageUrl !== iframePageUrl && iframeNextStepPageUrl !== iframePrevStepPageUrl ? (
             <iframe
               src={iframeNextStepPageUrl}
               title={`${tourName || 'Tour preview'} next-step-prefetch`}

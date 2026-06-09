@@ -26,6 +26,18 @@ export const LAB_SELECT_TRIGGER_CLASS =
 export const LAB_SELECT_CONTENT_CLASS =
 	'rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]';
 
+/** Encadré orange–rose du lab (Backend, Runtime, bandeaux console SDK). */
+export const LAB_ORANGE_CALLOUT_CLASS =
+	'rounded-2xl border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] text-xs leading-relaxed text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50';
+
+/** Libellé accent (ex. « Backend : ») dans un encadré lab. */
+export const LAB_ORANGE_CALLOUT_LABEL_CLASS =
+	'bg-gradient-to-r from-orange-700 to-pink-600 bg-clip-text font-semibold text-transparent dark:from-orange-200 dark:to-pink-300';
+
+/** Token inline — même palette que LAB_ORANGE_CALLOUT_CLASS. */
+export const LAB_INLINE_CODE_HIGHLIGHT_CLASS =
+	'rounded-md border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/[0.12] via-card to-pink-500/[0.08] px-1.5 py-0.5 font-mono text-xs font-medium text-orange-950 shadow-card dark:border-orange-400/35 dark:from-orange-500/[0.14] dark:via-card dark:to-pink-500/[0.1] dark:text-orange-50';
+
 /** Range progression session — accent Phoenix (aligné bouton primary). */
 export const LAB_PROGRESS_RANGE_CLASS =
 	'phoenix-range h-2 w-full cursor-pointer rounded-full';
@@ -188,6 +200,8 @@ export function labContextualDefaults(
 		semanticBackendTimeoutMs: LAB_SEMANTIC_BACKEND_TIMEOUT_MS,
 		/** Required: `/tours/contextual/semantic-hints` is behind JwtAuthGuard (same token as publish). */
 		semanticBackendAccessToken: getLabAccessToken,
+		journeyBlueprintsRemoteEnabled: true,
+		journeyBlueprintsAccessToken: getLabAccessToken,
 		semanticRoleWeights: { role: 0.6, order: 0.4, copy: 0.5 },
 		/** Fix: aligné sur debounce MutationObserver (300 ms). */
 		semanticSnapshotMinDomAgeMs: LAB_SEMANTIC_DOM_SETTLE_MS,

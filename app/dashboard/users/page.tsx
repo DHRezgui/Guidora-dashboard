@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import CreateUserModal from '@/components/dashboard/CreateUserModal';
 import DeleteUserModal from '@/components/dashboard/DeleteUserModal';
+import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
+import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
 
 const roleBadgeStyles: Record<string, string> = {
   ADMIN: 'border border-rose-300/50 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/12 dark:text-rose-200',
@@ -105,6 +107,7 @@ export default function UsersPage() {
   };
 
   return (
+    <RoleRouteGuard access="users">
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
@@ -270,6 +273,12 @@ export default function UsersPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={isAdminResourceBeingEdited(user.editLock)}
+                          title={
+                            isAdminResourceBeingEdited(user.editLock)
+                              ? 'En cours de modification par un autre admin'
+                              : 'Supprimer'
+                          }
                           onClick={() => setDeleteUser(user)}
                         >
                           <Icons.trash className="h-3.5 w-3.5" />
@@ -331,5 +340,6 @@ export default function UsersPage() {
         />
       )}
     </div>
+    </RoleRouteGuard>
   );
 }

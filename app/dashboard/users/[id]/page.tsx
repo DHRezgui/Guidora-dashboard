@@ -10,9 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { userService, organizationService, getErrorMessage } from '@/lib/api';
+import { authService, userService, organizationService, getErrorMessage } from '@/lib/api';
 import { User, Organization } from '@/lib/types';
 import Link from 'next/link';
+import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
+import { TourEditLockScreen } from '@/components/tours/TourEditLockScreen';
+import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
+import { useUserEditLock } from '@/lib/use-user-edit-lock';
 
 const editUserSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -27,6 +31,9 @@ type EditUserForm = z.infer<typeof editUserSchema>;
 export default function EditUserPage() {
   const params = useParams();
   const router = useRouter();
+  const userId = params.id as string;
+  const currentUser = authService.getUser();
+  const lockEnabled = Boolean(userId && currentUser?.id && currentUser.id !== userId);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +56,16 @@ export default function EditUserPage() {
   });
   const roleValue = watch('role');
   const isActiveValue = watch('isActive');
+
+  const { editLock, lockBlocked, lockMessage, isAcquiring, retryAcquire, ensureLockHeld } =
+    useUserEditLock({
+      userId,
+      user,
+      enabled: lockEnabled && Boolean(user),
+    });
+
+  const readOnly = lockBlocked;
+  const deleteBlocked = isAdminResourceBeingEdited(user?.editLock ?? editLock ?? undefined);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -93,6 +110,13 @@ export default function EditUserPage() {
       setSaving(true);
       setError('');
       setSuccess('');
+      if (lockEnabled) {
+        const lockOk = await ensureLockHeld();
+        if (!lockOk) {
+          setError('Votre verrou d’édition a expiré. Rouvrez la page pour reprendre la main.');
+          return;
+        }
+      }
       const response = await userService.update(params.id as string, data);
       if (response.user) {
         setUser(response.user);
@@ -110,6 +134,13 @@ export default function EditUserPage() {
     try {
       setAssigning(true);
       setError('');
+      if (lockEnabled) {
+        const lockOk = await ensureLockHeld();
+        if (!lockOk) {
+          setError('Votre verrou d’édition a expiré. Rouvrez la page pour reprendre la main.');
+          return;
+        }
+      }
       const response = await userService.assignOrganization(params.id as string, selectedOrgName);
       if (response.user) {
         setUser(response.user);
@@ -128,6 +159,13 @@ export default function EditUserPage() {
     try {
       setAssigning(true);
       setError('');
+      if (lockEnabled) {
+        const lockOk = await ensureLockHeld();
+        if (!lockOk) {
+          setError('Votre verrou d’édition a expiré. Rouvrez la page pour reprendre la main.');
+          return;
+        }
+      }
       const response = await userService.removeOrganization(params.id as string);
       if (response.user) {
         setUser(response.user);
@@ -141,17 +179,25 @@ export default function EditUserPage() {
     }
   };
 
-  if (loading) {
-    return (
+  const showInitialLoader = loading || (lockEnabled && isAcquiring);
+
+  return (
+    <RoleRouteGuard access="users">
+      {showInitialLoader ? (
       <div className="flex items-center justify-center py-24">
         <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
         <span className="ml-3 text-sm text-muted-foreground">Chargement...</span>
       </div>
-    );
-  }
-
-  if (!user) {
-    return (
+      ) : lockEnabled && lockBlocked && lockMessage ? (
+      <TourEditLockScreen
+        tourName={user?.email}
+        message={lockMessage}
+        heldByDisplayName={editLock?.heldByDisplayName ?? user?.editLock?.heldByDisplayName}
+        onBack={() => router.push('/dashboard/users')}
+        onRetry={() => void retryAcquire()}
+        isRetrying={isAcquiring}
+      />
+      ) : !user ? (
       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
         <div className="rounded-2xl bg-muted/50 p-4 mb-4">
           <Icons.warning className="h-8 w-8 opacity-40" />
@@ -161,10 +207,7 @@ export default function EditUserPage() {
           <Link href="/dashboard/users">Retour à la liste</Link>
         </Button>
       </div>
-    );
-  }
-
-  return (
+      ) : (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-lg" asChild>
@@ -187,6 +230,7 @@ export default function EditUserPage() {
           </div>
           <div className="p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <fieldset disabled={readOnly} className="space-y-4 disabled:opacity-60">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName" className="text-[13px]">Prénom</Label>
@@ -278,13 +322,15 @@ export default function EditUserPage() {
                 </div>
               )}
 
+              </fieldset>
+
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" className="rounded-xl" asChild>
                   <Link href="/dashboard/users">Annuler</Link>
                 </Button>
                 <Button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || readOnly}
                   className="rounded-xl shadow-soft transition-transform hover:scale-105 active:scale-[0.99]"
                 >
                   {saving && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
@@ -382,9 +428,21 @@ export default function EditUserPage() {
                 variant="destructive"
                 className="w-full rounded-xl transition-transform hover:scale-[1.01] active:scale-[0.99]"
                 size="sm"
+                disabled={deleteBlocked}
+                title={
+                  deleteBlocked
+                    ? 'Suppression impossible pendant une session de modification'
+                    : undefined
+                }
                 onClick={() => {
+                  if (deleteBlocked) return;
                   if (confirm('Supprimer cet utilisateur ?')) {
-                    userService.delete(user.id).then(() => router.push('/dashboard/users'));
+                    userService
+                      .delete(user.id)
+                      .then(() => router.push('/dashboard/users'))
+                      .catch((err: unknown) =>
+                        setError(getErrorMessage(err, 'Erreur lors de la suppression')),
+                      );
                   }
                 }}
               >
@@ -396,5 +454,7 @@ export default function EditUserPage() {
         </div>
       </div>
     </div>
+      )}
+    </RoleRouteGuard>
   );
 }

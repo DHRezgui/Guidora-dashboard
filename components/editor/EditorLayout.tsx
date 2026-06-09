@@ -8,12 +8,19 @@ import StepProperties from './StepProperties';
 import TourSimulator from './TourSimulator';
 import { Icons } from '@/components/ui/icons';
 import { GuidedTour, Step } from '@/lib/types';
+import { authService } from '@/lib/api';
+import { getDashboardRole } from '@/lib/dashboard-roles';
+import { isDeveloperLabEditMode, isDeveloperOwnedTestTour } from '@/lib/tour-lab';
 
 interface EditorLayoutProps {
   tour?: GuidedTour;
   onSave?: (tour: GuidedTour) => void;
   onBack?: () => void;
   initialSelectedStepIndex?: number | null;
+  showEnvironmentSelector?: boolean;
+  developerSandboxMode?: boolean;
+  developerSandboxTestMode?: boolean;
+  viewOnlyMode?: boolean;
 }
 
 const TEXT_EDIT_GROUP_WINDOW_MS = 900;
@@ -92,7 +99,16 @@ function isGroupedTextEditChange(previous: EditorSnapshot, next: EditorSnapshot)
   return { isTextEdit: true, key: `step:${before.id}` };
 }
 
-export default function EditorLayout({ tour, onSave, onBack, initialSelectedStepIndex }: EditorLayoutProps) {
+export default function EditorLayout({
+  tour,
+  onSave,
+  onBack,
+  initialSelectedStepIndex,
+  showEnvironmentSelector = false,
+  developerSandboxMode = false,
+  developerSandboxTestMode = false,
+  viewOnlyMode = false,
+}: EditorLayoutProps) {
   const [steps, setSteps] = useState<Step[]>(tour?.steps ?? []);
   const initialTourMeta: Partial<GuidedTour> = {
     name: tour?.name,
@@ -259,6 +275,12 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
     [tour, tourMeta, steps]
   );
 
+  const developerLabEditMode = useMemo(() => {
+    const role = getDashboardRole(authService.getUser());
+    const userId = authService.getUser()?.id;
+    return isDeveloperLabEditMode(composedTour, role, userId);
+  }, [composedTour]);
+
   const hasUnsavedChanges = useMemo(() => {
     const currentSnapshot = JSON.stringify({ steps, tourMeta });
     return currentSnapshot !== baselineSnapshotRef.current;
@@ -280,6 +302,24 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
   }, [onBack]);
 
   const handleTourChange = (changes: Partial<GuidedTour>) => {
+    if (viewOnlyMode) {
+      return;
+    }
+    if (developerLabEditMode) {
+      const forbiddenKeys: Array<keyof GuidedTour> = [
+        'targetUrl',
+        'isActive',
+        'priority',
+        'triggerConditions',
+        'simulationContext',
+        'replayPolicy',
+        'replayAfterDays',
+      ];
+      if (forbiddenKeys.some((key) => changes[key] !== undefined)) {
+        return;
+      }
+    }
+
     setTourMeta((prev) => {
       const nextTourMeta = { ...prev, ...changes };
       commitToHistory({ steps, tourMeta: nextTourMeta });
@@ -292,6 +332,9 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
   };
 
   const handleUpdateStep = (updatedStep: Step) => {
+    if (viewOnlyMode) {
+      return;
+    }
     setSteps((prev) => {
       const nextSteps = prev.map((step) =>
         step.id === updatedStep.id
@@ -308,6 +351,9 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
   };
 
   const handleStepsChange = (nextSteps: Step[]) => {
+    if (viewOnlyMode) {
+      return;
+    }
     setSteps(nextSteps);
     commitToHistory({ steps: nextSteps, tourMeta });
 
@@ -320,6 +366,9 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
   };
 
   const handleAddStepFromPalette = (template: Partial<Step>) => {
+    if (viewOnlyMode) {
+      return;
+    }
     const nextStep: Step = {
       id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       orderIndex: 0,
@@ -341,6 +390,9 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
   };
 
   const handleAddMultipleStepsFromPalette = (templates: Partial<Step>[]) => {
+    if (viewOnlyMode) {
+      return;
+    }
     const newSteps = templates.map((template, index) => ({
       id: `step-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 9)}`,
       orderIndex: 0,
@@ -378,15 +430,20 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
         onRedo={handleRedo}
         canUndo={history.index > 0}
         canRedo={history.index < history.stack.length - 1}
+        developerLabEditMode={developerLabEditMode || viewOnlyMode}
+        viewOnlyMode={viewOnlyMode}
+        showEnvironmentSelector={showEnvironmentSelector}
+        developerSandboxMode={developerSandboxMode}
+        developerSandboxTestMode={developerSandboxTestMode}
       />
 
       {/* Main content */}
       <div className="relative flex flex-1 flex-col overflow-hidden bg-muted lg:flex-row">
         {/* Left sidebar - Step Palette */}
-        {!isPreviewMode && (
+        {!isPreviewMode && !viewOnlyMode && (
           <div className="w-full border-b bg-background lg:w-72 lg:border-b-0 lg:border-r">
-            <StepPalette 
-              onAddStep={handleAddStepFromPalette} 
+            <StepPalette
+              onAddStep={handleAddStepFromPalette}
               onAddMultipleSteps={handleAddMultipleStepsFromPalette}
             />
           </div>
@@ -422,6 +479,8 @@ export default function EditorLayout({ tour, onSave, onBack, initialSelectedStep
             <StepProperties
               step={selectedStep}
               onUpdate={handleUpdateStep}
+              lockStepTargetUrl={developerLabEditMode || viewOnlyMode}
+              readOnly={viewOnlyMode}
             />
           </div>
         )}

@@ -10,6 +10,9 @@ import { Organization } from '@/lib/types';
 import Link from 'next/link';
 import CreateOrganizationModal from '@/components/dashboard/CreateOrganizationModal';
 import DeleteOrganizationModal from '@/components/dashboard/DeleteOrganizationModal';
+import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
+import { canManageOrganizations, getDashboardRole } from '@/lib/dashboard-roles';
+import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
 
 const planBadgeStyles: Record<string, string> = {
   FREE: 'border border-slate-300/60 bg-slate-100 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/12 dark:text-slate-200',
@@ -30,7 +33,7 @@ export default function OrganizationsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
   const [error, setError] = useState('');
-  const isAdmin = authService.getUser()?.role === 'ADMIN';
+  const canManage = canManageOrganizations(getDashboardRole(authService.getUser()));
 
   const fetchOrganizations = useCallback(async () => {
     try {
@@ -98,14 +101,19 @@ export default function OrganizationsPage() {
   };
 
   return (
+    <RoleRouteGuard access="organizations">
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Organisations</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Gérez les organisations clientes et leurs abonnements</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {canManage
+              ? 'Gérez les organisations clientes et leurs abonnements'
+              : 'Consultez votre organisation et son abonnement'}
+          </p>
         </div>
-        {isAdmin && (
+        {canManage && (
           <Button
             className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto"
             onClick={() => setShowCreateModal(true)}
@@ -121,8 +129,8 @@ export default function OrganizationsPage() {
         {[
           { title: 'Total', value: organizations.length, icon: Icons.building, tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70' },
           { title: 'Actives', value: organizations.filter((o) => o.isActive).length, icon: Icons.active, tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70' },
-          { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.admin, tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70' },
-          { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.admin, tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70' },
+          { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.planPro, tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70' },
+          { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.planEnterprise, tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70' },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -221,7 +229,7 @@ export default function OrganizationsPage() {
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Limites</th>
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Créée le</th>
-                  {isAdmin && <th className="px-5 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>}
+                  {canManage && <th className="px-5 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -256,7 +264,7 @@ export default function OrganizationsPage() {
                     <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
                       {org.createdAt ? new Date(org.createdAt).toLocaleDateString('fr-FR') : '-'}
                     </td>
-                    {isAdmin && (
+                    {canManage && (
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" asChild>
@@ -268,6 +276,12 @@ export default function OrganizationsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={isAdminResourceBeingEdited(org.editLock)}
+                          title={
+                            isAdminResourceBeingEdited(org.editLock)
+                              ? 'En cours de modification par un autre admin'
+                              : 'Supprimer'
+                          }
                           onClick={() => setDeleteOrg(org)}
                         >
                           <Icons.trash className="h-3.5 w-3.5" />
@@ -330,5 +344,6 @@ export default function OrganizationsPage() {
         />
       )}
     </div>
+    </RoleRouteGuard>
   );
 }

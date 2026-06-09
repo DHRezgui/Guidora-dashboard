@@ -20,6 +20,9 @@
 # production
 /build
 
+# Lien local vers ../sdks/react (scripts/ensure-sdk-link.mjs)
+/sdks/
+
 # misc
 .DS_Store
 *.pem

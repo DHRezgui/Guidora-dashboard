@@ -12,8 +12,9 @@ import {
 	restoreLastContextualGenerationDebugReport,
 } from '@sdk/utils/tour-suggestion-generator';
 import { waitForLabSubjectReady } from './lab-shared';
-import { reconcileAutoPublishedSessionWithTours } from '@sdk/utils/auto-publish-session-dedupe';
+import { reconcileAutoPublishedSessionWithTours } from '@/lib/auto-publish-session-dedupe';
 import { tourService } from '@/lib/api';
+import { readSessionUser } from '@/lib/session-user';
 import {
 	clearSdkLabRunSnapshot,
 	extractLinkedTourIdsFromPublishReport,
@@ -57,12 +58,13 @@ export function useSdkLabPage(
 			.getAll()
 			.then((response) => {
 				if (cancelled) return;
+				const ownerUserId = readSessionUser()?.id;
 				const tours = response.tours ?? [];
-				reconcileAutoPublishedSessionWithTours(tours);
-				reconcileAllSdkLabRunSnapshots(tours);
+				reconcileAutoPublishedSessionWithTours(tours, ownerUserId);
+				reconcileAllSdkLabRunSnapshots(tours, ownerUserId);
 
 				const snapshot = readSdkLabRunSnapshot(meta.labKey);
-				if (snapshot && shouldKeepSdkLabRunSnapshot(tours, snapshot)) {
+				if (snapshot && shouldKeepSdkLabRunSnapshot(tours, snapshot, ownerUserId)) {
 					setRestoredSnapshot(snapshot);
 					setLastRunAt(snapshot.lastRunAt);
 					if (snapshot.debugReport) {
@@ -207,3 +209,4 @@ export function useSdkLabPage(
 		suggestionsApi,
 	};
 }
+

@@ -8,7 +8,7 @@ import {
   OrganizationResponse,
   CreateOrganizationDto,
   UpdateOrganizationDto,
-  GuidedTour,
+  User,
   GuidedTourResponse,
   GuidedTourSavePayload,
   TourAudienceResetResponse,
@@ -20,6 +20,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1
 // Créer une instance axios configurée
 const apiClient = axios.create({
   baseURL: API_URL,
+  timeout: 20_000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -59,9 +60,9 @@ apiClient.interceptors.response.use(
 // Extraire un message d'erreur lisible depuis une erreur Axios ou générique
 export function getErrorMessage(err: unknown, fallback = 'Une erreur est survenue'): string {
   if (axios.isAxiosError(err)) {
-    const data = err.response?.data;
+    const data = err.response?.data as { message?: string | string[] } | undefined;
     if (data?.message) {
-      return Array.isArray(data.message) ? data.message.join(', ') : data.message;
+      return Array.isArray(data.message) ? data.message.join(', ') : String(data.message);
     }
   }
   if (err instanceof Error && err.message) {
@@ -109,7 +110,7 @@ export const authService = {
     return localStorage.getItem('auth_token');
   },
 
-  getUser(): any | null {
+  getUser(): User | null {
     if (typeof window === 'undefined') return null;
     const userStr = localStorage.getItem('auth_user');
     return userStr ? JSON.parse(userStr) : null;
@@ -166,6 +167,29 @@ export const userService = {
     const response = await apiClient.post(`/user/${userId}/remove-organization`);
     return response.data;
   },
+
+  async acquireEditLock(id: string): Promise<{
+    success: boolean;
+    user: import('./types').User;
+    editLock?: import('./types').TourEditLockInfo;
+  }> {
+    const response = await apiClient.post(`/user/${id}/edit-lock/acquire`);
+    return response.data;
+  },
+
+  async renewEditLock(id: string): Promise<{
+    success: boolean;
+    user: import('./types').User;
+    editLock?: import('./types').TourEditLockInfo;
+  }> {
+    const response = await apiClient.post(`/user/${id}/edit-lock/renew`);
+    return response.data;
+  },
+
+  async releaseEditLock(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete(`/user/${id}/edit-lock`);
+    return response.data;
+  },
 };
 
 // Service organisations
@@ -199,18 +223,56 @@ export const organizationService = {
     const response = await apiClient.get(`/organization/${id}/users/count`);
     return response.data;
   },
+
+  async acquireEditLock(id: string): Promise<{
+    success: boolean;
+    organization: import('./types').Organization;
+    editLock?: import('./types').TourEditLockInfo;
+  }> {
+    const response = await apiClient.post(`/organization/${id}/edit-lock/acquire`);
+    return response.data;
+  },
+
+  async renewEditLock(id: string): Promise<{
+    success: boolean;
+    organization: import('./types').Organization;
+    editLock?: import('./types').TourEditLockInfo;
+  }> {
+    const response = await apiClient.post(`/organization/${id}/edit-lock/renew`);
+    return response.data;
+  },
+
+  async releaseEditLock(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete(`/organization/${id}/edit-lock`);
+    return response.data;
+  },
 };
 
 // Service parcours guides
 export const tourService = {
-  async getAll(isActive?: boolean): Promise<GuidedTourResponse> {
-    const query = typeof isActive === 'boolean' ? `?isActive=${isActive}` : '';
-    const response = await apiClient.get(`/tours${query}`);
+  async getAll(
+    isActive?: boolean,
+    options?: { includeSteps?: boolean },
+  ): Promise<GuidedTourResponse> {
+    const params = new URLSearchParams();
+    if (typeof isActive === 'boolean') {
+      params.set('isActive', String(isActive));
+    }
+    if (options?.includeSteps === false) {
+      params.set('includeSteps', 'false');
+    }
+    const query = params.toString();
+    const response = await apiClient.get(`/tours${query ? `?${query}` : ''}`);
     return response.data;
   },
 
   async getById(id: string): Promise<GuidedTourResponse> {
     const response = await apiClient.get(`/tours/${id}`);
+    return response.data;
+  },
+
+  async exportById(id: string): Promise<GuidedTourResponse> {
+    const response = await apiClient.get(`/tours/${id}/export`);
     return response.data;
   },
 
@@ -224,13 +286,130 @@ export const tourService = {
     return response.data;
   },
 
+  async acquireEditLock(
+    id: string,
+  ): Promise<GuidedTourResponse & { editLock?: import('./types').TourEditLockInfo }> {
+    const response = await apiClient.post(`/tours/${id}/edit-lock/acquire`);
+    return response.data;
+  },
+
+  async renewEditLock(
+    id: string,
+  ): Promise<GuidedTourResponse & { editLock?: import('./types').TourEditLockInfo }> {
+    const response = await apiClient.post(`/tours/${id}/edit-lock/renew`);
+    return response.data;
+  },
+
+  async releaseEditLock(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete(`/tours/${id}/edit-lock`);
+    return response.data;
+  },
+
   async remove(id: string): Promise<GuidedTourResponse> {
     const response = await apiClient.delete(`/tours/${id}`);
     return response.data;
   },
 
-  async toggleActive(id: string, isActive: boolean): Promise<GuidedTourResponse> {
-    const response = await apiClient.put(`/tours/${id}/activate`, { isActive });
+  async toggleActive(
+    id: string,
+    isActive: boolean,
+    audience?: 'sandbox' | 'production',
+  ): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/activate`, { isActive, audience });
+    return response.data;
+  },
+
+  async getOrganizationAdmins(): Promise<{ success: boolean; count: number; users: User[] }> {
+    const response = await apiClient.get('/tours/organization-admins');
+    return response.data;
+  },
+
+  async assignAdmins(
+    id: string,
+    adminIds: string[],
+    message?: string,
+  ): Promise<GuidedTourResponse> {
+    const payload: { adminIds: string[]; message?: string } = { adminIds };
+    const trimmed = message?.trim();
+    if (trimmed) {
+      payload.message = trimmed;
+    }
+    const response = await apiClient.put(`/tours/${id}/assign-admins`, payload);
+    return response.data;
+  },
+
+  async getOrganizationMembers(): Promise<{ success: boolean; count: number; users: User[] }> {
+    const response = await apiClient.get('/tours/organization-members');
+    return response.data;
+  },
+
+  async setAccessGrants(
+    id: string,
+    grants: { userId: string; accessMode: 'view' | 'collaborate' }[],
+    replace = true,
+    options?: {
+      messageForMode?: 'view' | 'collaborate';
+      message?: string;
+    },
+  ): Promise<GuidedTourResponse> {
+    const payload = grants.map((grant) => ({
+      userId: grant.userId,
+      accessMode: grant.accessMode,
+    }));
+    const body: {
+      grants: typeof payload;
+      replace: boolean;
+      messageForMode?: 'view' | 'collaborate';
+      message?: string;
+    } = { grants: payload, replace };
+    if (options?.messageForMode) {
+      body.messageForMode = options.messageForMode;
+      const trimmed = options.message?.trim();
+      if (trimmed) {
+        body.message = trimmed;
+      } else if (options.message !== undefined) {
+        body.message = '';
+      }
+    }
+    const response = await apiClient.put(`/tours/${id}/access-grants`, body);
+    return response.data;
+  },
+
+  async approve(id: string): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/approve`);
+    return response.data;
+  },
+
+  async reopenToDeveloper(id: string, payload: { reason: string }): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/reopen-to-developer`, payload);
+    return response.data;
+  },
+
+  async reassignAdmins(id: string, adminIds: string[]): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/reassign-admins`, { adminIds });
+    return response.data;
+  },
+
+  async transferDeveloper(
+    id: string,
+    payload: { developerId: string; reason: string },
+  ): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/transfer-developer`, payload);
+    return response.data;
+  },
+
+  async transferProductionManagement(
+    id: string,
+    adminId: string,
+  ): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/transfer-production-management`, {
+      adminId,
+    });
+    return response.data;
+  },
+
+  async reject(id: string, payload: { reason: string }): Promise<GuidedTourResponse> {
+    const response = await apiClient.put(`/tours/${id}/reject`, payload);
     return response.data;
   },
 
@@ -259,6 +438,187 @@ export const tourService = {
 
   async runReplayJob(): Promise<{ success: boolean; message?: string; updatedStates?: number }> {
     const response = await apiClient.post('/tours/jobs/replay/run');
+    return response.data;
+  },
+};
+
+export interface OrganizationJourneyBlueprintRow {
+  id: string;
+  organizationId: string;
+  blueprintId: string;
+  vertical: string;
+  isPublished: boolean;
+  payload: Record<string, unknown>;
+  createdBy?: string | null;
+  accessGrants?: Array<{
+    id?: string;
+    userId: string;
+    accessMode: 'modify' | 'publish';
+    user?: {
+      id: string;
+      email?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: string;
+    };
+  }>;
+  sharingHasModify?: boolean;
+  sharingHasPublish?: boolean;
+  editLock?: {
+    required: boolean;
+    heldByUserId?: string;
+    heldByDisplayName?: string;
+    lockedAt?: string;
+    expiresAt?: string;
+    isHeldByMe: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JourneyBlueprintCatalog {
+  verticals: string[];
+  intents: string[];
+  semanticRoles: string[];
+}
+
+export const journeyBlueprintService = {
+  async getCatalog(): Promise<{ success: boolean; catalog: JourneyBlueprintCatalog }> {
+    const response = await apiClient.get('/tours/contextual/blueprints/catalog');
+    return response.data;
+  },
+
+  async listManage(): Promise<{
+    success: boolean;
+    count: number;
+    blueprints: OrganizationJourneyBlueprintRow[];
+  }> {
+    const response = await apiClient.get('/tours/contextual/blueprints/manage');
+    return response.data;
+  },
+
+  async getManage(rowId: string): Promise<{
+    success: boolean;
+    blueprint: OrganizationJourneyBlueprintRow;
+  }> {
+    const response = await apiClient.get(`/tours/contextual/blueprints/${rowId}/manage`);
+    return response.data;
+  },
+
+  async setAccessGrants(
+    rowId: string,
+    grants: Array<{ userId: string; accessMode: 'modify' | 'publish' }>,
+    replace = true,
+  ): Promise<{ success: boolean; blueprint: OrganizationJourneyBlueprintRow }> {
+    const response = await apiClient.put(`/tours/contextual/blueprints/${rowId}/access-grants`, {
+      grants,
+      replace,
+    });
+    return response.data;
+  },
+
+  async create(payload: {
+    blueprint: Record<string, unknown>;
+    isPublished?: boolean;
+  }): Promise<{ success: boolean; blueprint: OrganizationJourneyBlueprintRow }> {
+    const response = await apiClient.post('/tours/contextual/blueprints', payload);
+    return response.data;
+  },
+
+  async update(
+    rowId: string,
+    payload: { blueprint: Record<string, unknown>; isPublished?: boolean },
+  ): Promise<{ success: boolean; blueprint: OrganizationJourneyBlueprintRow }> {
+    const response = await apiClient.put(`/tours/contextual/blueprints/${rowId}`, payload);
+    return response.data;
+  },
+
+  async setPublished(
+    rowId: string,
+    isPublished: boolean,
+  ): Promise<{ success: boolean; blueprint: OrganizationJourneyBlueprintRow }> {
+    const response = await apiClient.put(`/tours/contextual/blueprints/${rowId}/publish`, {
+      isPublished,
+    });
+    return response.data;
+  },
+
+  async remove(rowId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/tours/contextual/blueprints/${rowId}`);
+    return response.data;
+  },
+
+  async acquireEditLock(rowId: string): Promise<{
+    success: boolean;
+    blueprint: OrganizationJourneyBlueprintRow;
+    editLock: OrganizationJourneyBlueprintRow['editLock'];
+  }> {
+    const response = await apiClient.post(
+      `/tours/contextual/blueprints/${rowId}/edit-lock/acquire`,
+    );
+    return response.data;
+  },
+
+  async renewEditLock(rowId: string): Promise<{
+    success: boolean;
+    blueprint: OrganizationJourneyBlueprintRow;
+    editLock: OrganizationJourneyBlueprintRow['editLock'];
+  }> {
+    const response = await apiClient.post(
+      `/tours/contextual/blueprints/${rowId}/edit-lock/renew`,
+    );
+    return response.data;
+  },
+
+  async releaseEditLock(rowId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(
+      `/tours/contextual/blueprints/${rowId}/edit-lock`,
+    );
+    return response.data;
+  },
+};
+
+export const sdkTokenService = {
+  async getCatalog(): Promise<{
+    success: boolean;
+    catalog: { scopes: string[]; adminOnly: string[] };
+  }> {
+    const response = await apiClient.get('/auth/sdk-tokens/catalog');
+    return response.data;
+  },
+
+  async list(): Promise<{
+    success: boolean;
+    count: number;
+    tokens: Array<{
+      id: string;
+      name: string;
+      tokenSuffix: string;
+      scopes: string[];
+      createdAt: string;
+      lastUsedAt: string | null;
+      revokedAt: string | null;
+    }>;
+  }> {
+    const response = await apiClient.get('/auth/sdk-tokens');
+    return response.data;
+  },
+
+  async create(payload: {
+    name: string;
+    scopes?: string[];
+  }): Promise<{
+    success: boolean;
+    message: string;
+    token: string;
+    tokenRecord: { id: string; name: string; tokenSuffix: string; scopes: string[] };
+  }> {
+    const response = await apiClient.post('/auth/sdk-tokens', payload);
+    return response.data;
+  },
+
+  async revoke(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.delete(`/auth/sdk-tokens/${id}`);
     return response.data;
   },
 };

@@ -4,11 +4,16 @@ import { useState, useEffect } from 'react';
 import { Icons } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
 import { authService, userService, organizationService } from '@/lib/api';
+import { canAccessOrganizations, canAccessSdkLab, canCreateTours, getDashboardRole } from '@/lib/dashboard-roles';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const user = authService.getUser();
-  const isAdmin = user?.role === 'ADMIN';
+  const role = getDashboardRole(user);
+  const isAdmin = role === 'ADMIN';
+  const showTourCreate = canCreateTours(role);
+  const showSdkLab = canAccessSdkLab(role);
+  const showOrgStats = canAccessOrganizations(role);
 
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -23,7 +28,7 @@ export default function DashboardPage() {
       try {
         const [usersRes, orgsRes] = await Promise.all([
           isAdmin ? userService.getAll(1, 10000) : Promise.resolve(null),
-          isAdmin || user?.role === 'DEVELOPER' ? organizationService.getAll() : Promise.resolve(null),
+          showOrgStats ? organizationService.getAll() : Promise.resolve(null),
         ]);
 
         const users = usersRes?.users || [];
@@ -42,7 +47,7 @@ export default function DashboardPage() {
       }
     };
     fetchStats();
-  }, [isAdmin, user?.role]);
+  }, [isAdmin, showOrgStats]);
 
   const statCards = [
     {
@@ -79,7 +84,7 @@ export default function DashboardPage() {
       delta: '+8.0%',
       icon: Icons.building,
       tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70',
-      visible: isAdmin || user?.role === 'DEVELOPER',
+      visible: showOrgStats,
     },
   ].filter((card) => card.visible);
 
@@ -151,41 +156,45 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="group rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-400/35 hover:bg-white hover:shadow-elevated dark:border-white/10 dark:bg-slate-900/50 dark:hover:bg-slate-900/65">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-pink-500/10 p-2.5 text-pink-400 transition-colors group-hover:bg-pink-500/20">
-                <Icons.tours className="h-5 w-5" />
+          {showTourCreate ? (
+            <div className="group rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-400/35 hover:bg-white hover:shadow-elevated dark:border-white/10 dark:bg-slate-900/50 dark:hover:bg-slate-900/65">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-pink-500/10 p-2.5 text-pink-400 transition-colors group-hover:bg-pink-500/20">
+                  <Icons.tours className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">Creer un parcours</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Concevez des parcours guides interactifs pour vos utilisateurs.</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-slate-800 dark:text-slate-100">Creer un parcours</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Concevez des parcours guides interactifs pour vos utilisateurs.</p>
-              </div>
+              <Button className="mt-4 rounded-xl" asChild>
+                <Link href="/dashboard/tours/create" prefetch={false}>
+                  <Icons.plus className="mr-2 h-4 w-4" />
+                  Nouveau parcours
+                </Link>
+              </Button>
             </div>
-            <Button className="mt-4 rounded-xl" asChild>
-              <Link href="/dashboard/tours/create">
-                <Icons.plus className="mr-2 h-4 w-4" />
-                Nouveau parcours
-              </Link>
-            </Button>
-          </div>
+          ) : null}
 
-          <div className="group rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:bg-white hover:shadow-elevated dark:border-white/10 dark:bg-slate-900/50 dark:hover:bg-slate-900/65">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-400 transition-colors group-hover:bg-emerald-500/20">
-                <Icons.analytics className="h-5 w-5" />
+          {showSdkLab ? (
+            <div className="group rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:bg-white hover:shadow-elevated dark:border-white/10 dark:bg-slate-900/50 dark:hover:bg-slate-900/65">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-400 transition-colors group-hover:bg-emerald-500/20">
+                  <Icons.sdkLab className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">SDK Test Lab</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Ouvrez les interfaces de test pour valider le moteur contextuel.</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-slate-800 dark:text-slate-100">SDK Test Lab</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Ouvrez les interfaces de test pour valider le moteur contextuel.</p>
-              </div>
+              <Button className="mt-4 rounded-xl" asChild>
+                <Link href="/dashboard/sdk-tests">
+                  <Icons.play className="mr-2 h-4 w-4" />
+                  Ouvrir le lab
+                </Link>
+              </Button>
             </div>
-            <Button className="mt-4 rounded-xl" asChild>
-              <Link href="/dashboard/sdk-tests">
-                <Icons.eye className="mr-2 h-4 w-4" />
-                Ouvrir le lab
-              </Link>
-            </Button>
-          </div>
+          ) : null}
         </div>
       </section>
     </div>
