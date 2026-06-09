@@ -42,3 +42,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Accidental HTML page dumps at project root (routes live under app/dashboard/)
+/organizations
+/settings
