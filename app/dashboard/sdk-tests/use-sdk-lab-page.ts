@@ -44,6 +44,7 @@ export function useSdkLabPage(
 	const [lastRunAt, setLastRunAt] = useState<string | null>(null);
 	const [hydrated, setHydrated] = useState(false);
 	const pendingPersistRunAtRef = useRef<string | null>(null);
+	const ownerUserId = readSessionUser()?.id;
 
 	const clearLabRunState = useCallback(() => {
 		clearSdkLabRunSnapshot(meta.labKey);
@@ -52,31 +53,33 @@ export function useSdkLabPage(
 		clearLastContextualGenerationDebugReport();
 	}, [meta.labKey]);
 
+	const syncTourCatalog = useCallback(async () => {
+		const response = await tourService.getAll();
+		const tours = response.tours ?? [];
+		reconcileAutoPublishedSessionWithTours(tours, ownerUserId);
+		reconcileAllSdkLabRunSnapshots(tours, ownerUserId);
+
+		const snapshot = readSdkLabRunSnapshot(meta.labKey);
+		if (snapshot && shouldKeepSdkLabRunSnapshot(tours, snapshot, ownerUserId)) {
+			setRestoredSnapshot(snapshot);
+			setLastRunAt(snapshot.lastRunAt);
+			if (snapshot.debugReport) {
+				restoreLastContextualGenerationDebugReport(snapshot.debugReport);
+			}
+		} else {
+			if (snapshot) clearSdkLabRunSnapshot(meta.labKey);
+			setRestoredSnapshot(null);
+			setLastRunAt(null);
+			clearLastContextualGenerationDebugReport();
+		}
+		return tours;
+	}, [meta.labKey, ownerUserId]);
+
 	useEffect(() => {
 		let cancelled = false;
-		void tourService
-			.getAll()
-			.then((response) => {
-				if (cancelled) return;
-				const ownerUserId = readSessionUser()?.id;
-				const tours = response.tours ?? [];
-				reconcileAutoPublishedSessionWithTours(tours, ownerUserId);
-				reconcileAllSdkLabRunSnapshots(tours, ownerUserId);
-
-				const snapshot = readSdkLabRunSnapshot(meta.labKey);
-				if (snapshot && shouldKeepSdkLabRunSnapshot(tours, snapshot, ownerUserId)) {
-					setRestoredSnapshot(snapshot);
-					setLastRunAt(snapshot.lastRunAt);
-					if (snapshot.debugReport) {
-						restoreLastContextualGenerationDebugReport(snapshot.debugReport);
-					}
-				} else {
-					if (snapshot) clearSdkLabRunSnapshot(meta.labKey);
-					setRestoredSnapshot(null);
-					setLastRunAt(null);
-					clearLastContextualGenerationDebugReport();
-				}
-				setHydrated(true);
+		void syncTourCatalog()
+			.then(() => {
+				if (!cancelled) setHydrated(true);
 			})
 			.catch(() => {
 				if (!cancelled) setHydrated(true);
@@ -84,7 +87,25 @@ export function useSdkLabPage(
 		return () => {
 			cancelled = true;
 		};
-	}, [meta.labKey]);
+	}, [syncTourCatalog]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+
+		const refreshCatalog = () => {
+			void syncTourCatalog();
+		};
+
+		const intervalId = window.setInterval(refreshCatalog, 15000);
+		window.addEventListener('focus', refreshCatalog);
+		document.addEventListener('visibilitychange', refreshCatalog);
+
+		return () => {
+			window.clearInterval(intervalId);
+			window.removeEventListener('focus', refreshCatalog);
+			document.removeEventListener('visibilitychange', refreshCatalog);
+		};
+	}, [syncTourCatalog]);
 
 	useEffect(() => {
 		invalidateContextualCandidateScanState();

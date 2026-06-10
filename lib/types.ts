@@ -18,7 +18,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
-  role: 'ADMIN' | 'DEVELOPER' | 'USER';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'DEVELOPER' | 'USER';
   isActive: boolean;
   emailVerified?: boolean;
   organizationId?: string;
@@ -88,7 +88,6 @@ export interface CreateOrganizationDto {
   plan?: PlanType;
   domain?: string;
   settings?: Record<string, any>;
-  maxTours?: number;
   maxUsers?: number;
   isActive?: boolean;
 }
@@ -99,7 +98,6 @@ export interface UpdateOrganizationDto {
   plan?: PlanType;
   domain?: string;
   settings?: Record<string, any>;
-  maxTours?: number;
   maxUsers?: number;
   isActive?: boolean;
 }

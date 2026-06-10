@@ -227,7 +227,7 @@ export default function OrganizationsPage() {
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Organisation</th>
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Plan</th>
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Statut</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Limites</th>
+                  <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Utilisateurs max</th>
                   <th className="px-5 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Créée le</th>
                   {canManage && <th className="px-5 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>}
                 </tr>
@@ -258,8 +258,7 @@ export default function OrganizationsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
-                      <div>{org.maxUsers} utilisateurs</div>
-                      <div>{org.maxTours} parcours</div>
+                      {org.maxUsers} utilisateurs
                     </td>
                     <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
                       {org.createdAt ? new Date(org.createdAt).toLocaleDateString('fr-FR') : '-'}

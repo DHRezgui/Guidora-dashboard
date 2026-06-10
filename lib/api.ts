@@ -138,8 +138,8 @@ export const userService = {
     return response.data;
   },
 
-  async create(data: CreateUserDto): Promise<AuthResponse> {
-    const response = await apiClient.post('/auth/register', data);
+  async create(data: CreateUserDto): Promise<{ success: boolean; message: string; user: User }> {
+    const response = await apiClient.post('/user', data);
     return response.data;
   },
 

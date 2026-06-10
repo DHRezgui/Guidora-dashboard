@@ -131,7 +131,10 @@ export function extractLinkedTourIdsFromPublishReport(
 		.filter(
 			(detail) =>
 				detail.tourId &&
-				(detail.outcome === 'created' || detail.outcome === 'activated'),
+				(detail.outcome === 'created' ||
+					detail.outcome === 'activated' ||
+					detail.outcome === 'refreshed' ||
+					detail.outcome === 'taken_over'),
 		)
 		.map((detail) => detail.tourId as string);
 }

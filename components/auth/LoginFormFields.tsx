@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
 import { authService } from '@/lib/api';
+import { getDashboardHomeHref, getDashboardRole } from '@/lib/dashboard-roles';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -49,7 +50,7 @@ export function LoginFormFields() {
         const maxAge = response.expires_in > 0 ? response.expires_in : 3600;
         document.cookie = `auth_token=${response.access_token}; path=/; max-age=${maxAge}; SameSite=Lax`;
         // Navigation complète : évite ChunkLoadError Turbopack après changement de layout.
-        window.location.assign('/dashboard');
+        window.location.assign(getDashboardHomeHref(getDashboardRole(response.user)));
         return;
       }
 

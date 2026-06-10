@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/ui/icons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { authService, organizationService, getErrorMessage } from '@/lib/api';
-import { canManageOrganizations, getDashboardRole } from '@/lib/dashboard-roles';
+import { canManagePlatformOrganizations, getDashboardRole } from '@/lib/dashboard-roles';
 import { Organization } from '@/lib/types';
 import Link from 'next/link';
 import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
@@ -34,7 +34,7 @@ export default function EditOrganizationPage() {
   const params = useParams();
   const router = useRouter();
   const organizationId = params.id as string;
-  const canEdit = canManageOrganizations(getDashboardRole(authService.getUser()));
+  const canEdit = canManagePlatformOrganizations(getDashboardRole(authService.getUser()));
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -131,7 +131,7 @@ export default function EditOrganizationPage() {
   const showInitialLoader = loading || (canEdit && isAcquiring);
 
   return (
-    <RoleRouteGuard access="organizations">
+    <RoleRouteGuard access="platform">
       {showInitialLoader ? (
       <div className="flex items-center justify-center py-24">
         <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
@@ -142,7 +142,7 @@ export default function EditOrganizationPage() {
         tourName={organization?.name}
         message={lockMessage}
         heldByDisplayName={editLock?.heldByDisplayName ?? organization?.editLock?.heldByDisplayName}
-        onBack={() => router.push('/dashboard/organizations')}
+        onBack={() => router.push('/dashboard/platform/organizations')}
         onRetry={() => void retryAcquire()}
         isRetrying={isAcquiring}
       />
@@ -153,14 +153,14 @@ export default function EditOrganizationPage() {
         </div>
         <p className="font-medium">Organisation introuvable</p>
         <Button variant="outline" className="mt-4 rounded-xl" asChild>
-          <Link href="/dashboard/organizations">Retour à la liste</Link>
+          <Link href="/dashboard/platform/organizations">Retour à la liste</Link>
         </Button>
       </div>
       ) : (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-lg" asChild>
-          <Link href="/dashboard/organizations">
+          <Link href="/dashboard/platform/organizations">
             <Icons.chevronLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -308,7 +308,7 @@ export default function EditOrganizationPage() {
               </fieldset>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" className="rounded-xl" asChild>
-                  <Link href="/dashboard/organizations">Retour</Link>
+                  <Link href="/dashboard/platform/organizations">Retour</Link>
                 </Button>
                 {canEdit ? (
                   <Button
@@ -382,7 +382,7 @@ export default function EditOrganizationPage() {
                   if (confirm('Supprimer cette organisation ?')) {
                     organizationService
                       .delete(organization.id)
-                      .then(() => router.push('/dashboard/organizations'))
+                      .then(() => router.push('/dashboard/platform/organizations'))
                       .catch((err: unknown) =>
                         setError(getErrorMessage(err, 'Erreur lors de la suppression')),
                       );

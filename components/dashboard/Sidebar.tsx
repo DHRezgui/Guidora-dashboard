@@ -14,15 +14,23 @@ export default function Sidebar() {
 	const user = authService.getUser();
 	const { collapsed, toggle } = useSidebar();
 
-	const isActive = (path: string) =>
-		path === '/dashboard' ? pathname === path : pathname.startsWith(path);
+	const isActive = (path: string) => {
+		if (path === '/dashboard') {
+			return pathname === path;
+		}
+		if (path === '/dashboard/platform') {
+			return pathname === path || pathname === '/dashboard';
+		}
+		return pathname.startsWith(path);
+	};
 
 	const role = user?.role as string | undefined;
 
 	const navigation = [
 		{ name: 'Tableau de bord', href: '/dashboard', icon: Icons.dashboard, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
-		{ name: 'Utilisateurs', href: '/dashboard/users', icon: Icons.users, roles: ['ADMIN'] },
-		{ name: 'Organisations', href: '/dashboard/organizations', icon: Icons.building, roles: ['ADMIN', 'DEVELOPER'] },
+		{ name: 'Console plateforme', href: '/dashboard/platform', icon: Icons.admin, roles: ['SUPER_ADMIN'] },
+		{ name: 'Équipe', href: '/dashboard/users', icon: Icons.users, roles: ['ADMIN'] },
+		{ name: 'Mon organisation', href: '/dashboard/organizations', icon: Icons.building, roles: ['DEVELOPER'] },
 		{ name: 'Parcours', href: '/dashboard/tours', icon: Icons.tours, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
 		{ name: 'SDK Tests', href: '/dashboard/sdk-tests', icon: Icons.sdkTests, roles: ['ADMIN', 'DEVELOPER'] },
 		{ name: 'Blueprints', href: '/dashboard/blueprints', icon: Icons.blueprints, roles: ['ADMIN', 'DEVELOPER'] },

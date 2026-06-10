@@ -17,7 +17,6 @@ const createOrgSchema = z.object({
   apiKey: z.string().min(1, 'La clé API est requise'),
   plan: z.enum(['FREE', 'STARTER', 'PRO', 'ENTERPRISE']),
   domain: z.string().optional().or(z.literal('')),
-  maxTours: z.number().min(1).max(1000).optional(),
   maxUsers: z.number().min(1).max(10000).optional(),
 });
 
@@ -51,7 +50,6 @@ export default function CreateOrganizationModal({ onClose, onCreated }: CreateOr
       setError('');
       const payload = { ...data };
       if (typeof payload.maxUsers === 'number') payload.maxUsers = normalizeMaxUsers(String(payload.maxUsers));
-      if (typeof payload.maxTours === 'number') payload.maxTours = normalizeMaxTours(String(payload.maxTours));
       if (!payload.domain) delete payload.domain;
       await organizationService.create(payload);
       onCreated();
@@ -68,14 +66,6 @@ export default function CreateOrganizationModal({ onClose, onCreated }: CreateOr
     const parsed = Number(trimmed);
     if (Number.isNaN(parsed)) return 1;
     return Math.max(1, Math.min(10000, parsed));
-  };
-
-  const normalizeMaxTours = (value: string): number => {
-    const trimmed = value.trim();
-    if (!trimmed) return 1;
-    const parsed = Number(trimmed);
-    if (Number.isNaN(parsed)) return 1;
-    return Math.max(1, Math.min(1000, parsed));
   };
 
   const planValue = watch('plan');
@@ -157,55 +147,29 @@ export default function CreateOrganizationModal({ onClose, onCreated }: CreateOr
                   <Input id="domain" {...register('domain')} placeholder="trustdev.com" className="rounded-xl" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="maxUsers" className="text-[13px]">
-                      Max utilisateurs <span className="text-[11px] font-normal text-muted-foreground">(1 a 10000)</span>
-                    </Label>
-                    <Input
-                      id="maxUsers"
-                      type="number"
-                      min={1}
-                      max={10000}
-                      {...register('maxUsers', {
-                        valueAsNumber: true,
-                        onChange: (e) => {
-                          const normalized = normalizeMaxUsers(e.target.value);
-                          setValue('maxUsers', normalized, { shouldValidate: true, shouldDirty: true });
-                        },
-                        onBlur: (e) => {
-                          const normalized = normalizeMaxUsers(e.target.value);
-                          setValue('maxUsers', normalized, { shouldValidate: true, shouldDirty: true });
-                        },
-                      })}
-                      placeholder="100"
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxTours" className="text-[13px]">
-                      Max parcours <span className="text-[11px] font-normal text-muted-foreground">(1 a 1000)</span>
-                    </Label>
-                    <Input
-                      id="maxTours"
-                      type="number"
-                      min={1}
-                      max={1000}
-                      {...register('maxTours', {
-                        valueAsNumber: true,
-                        onChange: (e) => {
-                          const normalized = normalizeMaxTours(e.target.value);
-                          setValue('maxTours', normalized, { shouldValidate: true, shouldDirty: true });
-                        },
-                        onBlur: (e) => {
-                          const normalized = normalizeMaxTours(e.target.value);
-                          setValue('maxTours', normalized, { shouldValidate: true, shouldDirty: true });
-                        },
-                      })}
-                      placeholder="10"
-                      className="rounded-xl"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxUsers" className="text-[13px]">
+                    Max utilisateurs <span className="text-[11px] font-normal text-muted-foreground">(1 a 10000)</span>
+                  </Label>
+                  <Input
+                    id="maxUsers"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    {...register('maxUsers', {
+                      valueAsNumber: true,
+                      onChange: (e) => {
+                        const normalized = normalizeMaxUsers(e.target.value);
+                        setValue('maxUsers', normalized, { shouldValidate: true, shouldDirty: true });
+                      },
+                      onBlur: (e) => {
+                        const normalized = normalizeMaxUsers(e.target.value);
+                        setValue('maxUsers', normalized, { shouldValidate: true, shouldDirty: true });
+                      },
+                    })}
+                    placeholder="100"
+                    className="rounded-xl"
+                  />
                 </div>
 
                 {error && (

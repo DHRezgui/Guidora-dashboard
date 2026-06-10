@@ -334,7 +334,7 @@ export function SdkLabDraftResultsCard({
 						);
 					})
 				)}
-				{suggestions.lastPublishReport && suggestions.lastPublishReport.created > 0 ? (
+				{suggestions.lastPublishReport && (suggestions.lastPublishReport.created ?? 0) > 0 ? (
 					<Button variant="outline" className="w-full rounded-xl" asChild>
 						<Link href="/dashboard/tours">Voir les parcours publiés sur le dashboard</Link>
 					</Button>
@@ -1127,14 +1127,14 @@ export function SdkLabPublishMetrics({
 	} else if (created === 0 && skipped > 0) {
 		hint = 'Aucun nouveau parcours : doublon déjà présent en base (même URL + intent + signature).';
 	} else if (created > 0) {
-		hint = 'Parcours enregistrés (inactifs par défaut en lab — activez-les dans Parcours).';
+		hint = 'Parcours lab créés (privés, inactifs par défaut — supprimez ou exportez depuis Parcours).';
 	}
 
 	return (
 		<div className="space-y-3 border-t border-border/60 pt-3">
 			<div className="grid gap-3 sm:grid-cols-3">
 				<div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-					<p className="text-xs uppercase tracking-wide text-muted-foreground">Publiés (créés)</p>
+					<p className="text-xs uppercase tracking-wide text-muted-foreground">Créés</p>
 					<p className="mt-1 text-lg font-semibold">{created}</p>
 				</div>
 				<div className="rounded-2xl border border-border/60 bg-muted/20 p-3">

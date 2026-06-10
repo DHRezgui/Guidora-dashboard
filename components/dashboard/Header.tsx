@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { authService } from '@/lib/api';
+import { getDashboardHomeHref, getDashboardRole } from '@/lib/dashboard-roles';
 import { Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -10,6 +11,9 @@ import { useTheme } from 'next-themes';
 
 export default function Header() {
   const user = authService.getUser();
+  const role = getDashboardRole(user);
+  const homeHref = getDashboardHomeHref(role);
+  const homeLabel = role === 'SUPER_ADMIN' ? 'Console plateforme' : 'Tableau de bord';
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { resolvedTheme, setTheme } = useTheme();
@@ -23,6 +27,8 @@ export default function Header() {
     settings: 'Parametres',
     'sdk-tests': 'SDK Tests',
     blueprints: 'Blueprints',
+    platform: 'Console plateforme',
+    admins: 'Administrateurs clients',
     analytics: 'Analytics',
     simple: 'Simple',
     medium: 'Medium',
@@ -32,7 +38,9 @@ export default function Header() {
 
   const pathSegments = pathname.split('/').filter(Boolean);
   const dashboardIndex = pathSegments.indexOf('dashboard');
-  const breadcrumbSegments = dashboardIndex >= 0 ? pathSegments.slice(dashboardIndex + 1) : [];
+  const breadcrumbSegments = (dashboardIndex >= 0 ? pathSegments.slice(dashboardIndex + 1) : [])
+    // Le lien racine couvre déjà la console plateforme — évite « Console plateforme > Console plateforme »
+    .filter((segment) => !(role === 'SUPER_ADMIN' && segment === 'platform'));
 
   const crumbs = breadcrumbSegments.map((segment, index) => {
     const href = `/${pathSegments.slice(0, dashboardIndex + 2 + index).join('/')}`;
@@ -57,8 +65,8 @@ export default function Header() {
     <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/75 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
       <div className="flex h-14 items-center justify-between px-6">
         <div className="flex min-w-0 items-center gap-1.5 text-xs md:text-sm">
-          <Link href="/dashboard" className="font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
-            Tableau de bord
+          <Link href={homeHref} className="font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
+            {homeLabel}
           </Link>
           {crumbs.map((crumb) => (
             <div key={crumb.href} className="flex min-w-0 items-center gap-1.5">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,22 +17,37 @@ import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
 import { TourEditLockScreen } from '@/components/tours/TourEditLockScreen';
 import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
 import { useUserEditLock } from '@/lib/use-user-edit-lock';
+import { getDashboardRole, isSuperAdmin } from '@/lib/dashboard-roles';
 
-const editUserSchema = z.object({
+const teamEditUserSchema = z.object({
   email: z.string().email('Email invalide'),
   firstName: z.string().min(1, 'Le prénom est requis'),
   lastName: z.string().min(1, 'Le nom est requis'),
-  role: z.enum(['ADMIN', 'DEVELOPER', 'USER']),
+  role: z.enum(['DEVELOPER', 'USER']),
   isActive: z.boolean(),
 });
 
-type EditUserForm = z.infer<typeof editUserSchema>;
+const platformAdminEditSchema = z.object({
+  email: z.string().email('Email invalide'),
+  firstName: z.string().min(1, 'Le prénom est requis'),
+  lastName: z.string().min(1, 'Le nom est requis'),
+  role: z.literal('ADMIN'),
+  isActive: z.boolean(),
+});
+
+type TeamEditUserForm = z.infer<typeof teamEditUserSchema>;
+type PlatformAdminEditForm = z.infer<typeof platformAdminEditSchema>;
 
 export default function EditUserPage() {
   const params = useParams();
+  const pathname = usePathname();
   const router = useRouter();
   const userId = params.id as string;
+  const isPlatformAdminContext = pathname.includes('/dashboard/platform/admins/');
+  const listHref = isPlatformAdminContext ? '/dashboard/platform/admins' : '/dashboard/users';
+  const guardAccess = isPlatformAdminContext ? 'platformAdmins' : 'users';
   const currentUser = authService.getUser();
+  const canReassignOrganization = isPlatformAdminContext && isSuperAdmin(getDashboardRole(currentUser));
   const lockEnabled = Boolean(userId && currentUser?.id && currentUser.id !== userId);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +66,8 @@ export default function EditUserPage() {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<EditUserForm>({
-    resolver: zodResolver(editUserSchema),
+  } = useForm<TeamEditUserForm | PlatformAdminEditForm>({
+    resolver: zodResolver(isPlatformAdminContext ? platformAdminEditSchema : teamEditUserSchema),
   });
   const roleValue = watch('role');
   const isActiveValue = watch('isActive');
@@ -105,7 +120,7 @@ export default function EditUserPage() {
     fetchUser();
   }, [params.id, reset]);
 
-  const onSubmit = async (data: EditUserForm) => {
+  const onSubmit = async (data: TeamEditUserForm | PlatformAdminEditForm) => {
     try {
       setSaving(true);
       setError('');
@@ -182,7 +197,7 @@ export default function EditUserPage() {
   const showInitialLoader = loading || (lockEnabled && isAcquiring);
 
   return (
-    <RoleRouteGuard access="users">
+    <RoleRouteGuard access={guardAccess}>
       {showInitialLoader ? (
       <div className="flex items-center justify-center py-24">
         <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
@@ -193,7 +208,7 @@ export default function EditUserPage() {
         tourName={user?.email}
         message={lockMessage}
         heldByDisplayName={editLock?.heldByDisplayName ?? user?.editLock?.heldByDisplayName}
-        onBack={() => router.push('/dashboard/users')}
+        onBack={() => router.push(listHref)}
         onRetry={() => void retryAcquire()}
         isRetrying={isAcquiring}
       />
@@ -204,19 +219,21 @@ export default function EditUserPage() {
         </div>
         <p className="font-medium">Utilisateur introuvable</p>
         <Button variant="outline" className="mt-4 rounded-xl" asChild>
-          <Link href="/dashboard/users">Retour à la liste</Link>
+          <Link href={listHref}>Retour à la liste</Link>
         </Button>
       </div>
       ) : (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-lg" asChild>
-          <Link href="/dashboard/users">
+          <Link href={listHref}>
             <Icons.chevronLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Modifier l&apos;utilisateur</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isPlatformAdminContext ? 'Modifier l’administrateur client' : 'Modifier le membre d’équipe'}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{user.email}</p>
         </div>
       </div>
@@ -256,31 +273,37 @@ export default function EditUserPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-[13px]">Rôle</Label>
-                <input type="hidden" {...register('role')} />
-                <Select
-                  value={roleValue}
-                  onValueChange={(value) => setValue('role', value as EditUserForm['role'], { shouldValidate: true, shouldDirty: true })}
-                >
-                  <SelectTrigger
-                    id="role"
-                    className="h-9 w-full rounded-xl border-slate-300 bg-white/90 px-3 text-sm text-slate-700 hover:border-orange-400/40 focus-visible:ring-orange-400/40 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-950/55 dark:text-slate-100"
+              {isPlatformAdminContext ? (
+                <div className="space-y-2">
+                  <Label className="text-[13px]">Rôle</Label>
+                  <input type="hidden" {...register('role')} value="ADMIN" />
+                  <p className="rounded-xl bg-muted/40 px-3 py-2 text-[13px] font-medium">
+                    Administrateur organisation
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="role" className="text-[13px]">Rôle</Label>
+                  <input type="hidden" {...register('role')} />
+                  <Select
+                    value={roleValue}
+                    onValueChange={(value) =>
+                      setValue('role', value as TeamEditUserForm['role'], {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      })
+                    }
                   >
-                    <SelectValue placeholder="Choisir un rôle" />
-                  </SelectTrigger>
-                  <SelectContent
-                    alignItemWithTrigger={false}
-                    side="bottom"
-                    sideOffset={8}
-                    className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
-                  >
-                    <SelectItem value="USER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Utilisateur</SelectItem>
-                    <SelectItem value="DEVELOPER" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Développeur</SelectItem>
-                    <SelectItem value="ADMIN" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Administrateur</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                    <SelectTrigger id="role" className="h-9 w-full rounded-xl">
+                      <SelectValue placeholder="Choisir un rôle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USER">Utilisateur</SelectItem>
+                      <SelectItem value="DEVELOPER">Développeur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="isActive" {...register('isActive')} className="sr-only" />
@@ -326,7 +349,7 @@ export default function EditUserPage() {
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" className="rounded-xl" asChild>
-                  <Link href="/dashboard/users">Annuler</Link>
+                  <Link href={listHref}>Annuler</Link>
                 </Button>
                 <Button
                   type="submit"
@@ -377,6 +400,7 @@ export default function EditUserPage() {
                 <span className="text-[13px]">{user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('fr-FR') : '-'}</span>
               </div>
             </div>
+            {canReassignOrganization ? (
             <div className="border-t border-border/60 pt-5">
               <h4 className="text-sm font-semibold mb-3">Organisation</h4>
               {user.organizationId && orgName ? (
@@ -423,6 +447,12 @@ export default function EditUserPage() {
                 </div>
               )}
             </div>
+            ) : orgName ? (
+              <div className="border-t border-border/60 pt-5">
+                <h4 className="text-sm font-semibold mb-3">Organisation</h4>
+                <p className="text-[13px] font-medium">{orgName}</p>
+              </div>
+            ) : null}
             <div className="border-t border-border/60 pt-5">
               <Button
                 variant="destructive"
@@ -439,7 +469,7 @@ export default function EditUserPage() {
                   if (confirm('Supprimer cet utilisateur ?')) {
                     userService
                       .delete(user.id)
-                      .then(() => router.push('/dashboard/users'))
+                      .then(() => router.push(listHref))
                       .catch((err: unknown) =>
                         setError(getErrorMessage(err, 'Erreur lors de la suppression')),
                       );
