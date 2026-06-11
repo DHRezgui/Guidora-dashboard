@@ -133,6 +133,21 @@ export const userService = {
     return response.data;
   },
 
+  async getOrganizationAdminPeers(): Promise<UserResponse> {
+    const response = await apiClient.get('/user/organization-admin-peers');
+    return response.data;
+  },
+
+  async getOrganizationTeamDirectory(): Promise<{
+    success: boolean;
+    admins: User[];
+    developers: User[];
+    count?: { admins: number; developers: number };
+  }> {
+    const response = await apiClient.get('/user/organization-team-directory');
+    return response.data;
+  },
+
   async getById(id: string): Promise<UserResponse> {
     const response = await apiClient.get(`/user/${id}`);
     return response.data;

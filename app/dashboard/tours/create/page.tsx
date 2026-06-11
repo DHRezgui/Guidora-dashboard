@@ -24,8 +24,10 @@ import { readSessionUser } from '@/lib/session-user';
 import { useTourEditLock } from '@/lib/use-tour-edit-lock';
 import { isTourEditLockHeldByMe, tourRequiresEditLock } from '@/lib/tour-edit-lock';
 import { TourEditLockScreen } from '@/components/tours/TourEditLockScreen';
-
-const CONCAT_PREFILL_STORAGE_KEY = 'tours.concatPrefill.v1';
+import {
+  clearConcatWorkspaceSession,
+  CONCAT_PREFILL_STORAGE_KEY,
+} from '@/lib/tour-concat';
 
 function toCopyName(baseName: string, existingNames: Set<string>): string {
   const normalizedBase = (baseName || 'Parcours').trim();
@@ -379,6 +381,9 @@ function CreateTourPageContent() {
         }
         const res = await tourService.create(payload);
         const createdId = res.tour?.id;
+        if (forkSourceIdsRef.current.length > 0) {
+          clearConcatWorkspaceSession();
+        }
         toast.success('Parcours créé en sandbox', {
           description:
             'Le parcours est en test. Utilisez le sélecteur Sandbox / Prod sur la carte pour le promouvoir quand il est prêt.',

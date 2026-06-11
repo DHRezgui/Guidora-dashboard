@@ -184,3 +184,40 @@ export function concatenateToursFifo(
     steps,
   };
 }
+
+export const CONCAT_DRAFT_STORAGE_KEY = 'tours.concatDraft.v1';
+export const CONCAT_PREFILL_STORAGE_KEY = 'tours.concatPrefill.v1';
+
+export type ConcatDraftFields = {
+  name: string;
+  targetUrl: string;
+  priority: number;
+  isActive: boolean;
+  description: string;
+  replayPolicy: 'never' | 'after_period' | 'always_on_new_version';
+  replayAfterDays: number;
+  dedupeSteps: boolean;
+};
+
+export function createDefaultConcatDraft(): ConcatDraftFields {
+  return {
+    name: '',
+    targetUrl: '/',
+    priority: 0,
+    isActive: false,
+    description: '',
+    replayPolicy: 'never',
+    replayAfterDays: 0,
+    dedupeSteps: true,
+  };
+}
+
+/** Vide la file FIFO et le brouillon persistés en session (après concaténation réussie ou reset manuel). */
+export function clearConcatWorkspaceSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(CONCAT_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage errors (private mode / quota).
+  }
+}

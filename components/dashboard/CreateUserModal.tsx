@@ -313,7 +313,11 @@ function SubmitRow({ loading, onClose }: { loading: boolean; onClose: () => void
       <Button type="button" variant="outline" onClick={onClose} className="rounded-xl">
         Annuler
       </Button>
-      <Button type="submit" disabled={loading} className="rounded-xl shadow-soft">
+      <Button
+        type="submit"
+        disabled={loading}
+        className="rounded-xl shadow-soft transition-transform hover:scale-105 hover:from-orange-400 hover:to-pink-500 active:scale-[0.99] disabled:hover:scale-100"
+      >
         {loading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
         Créer
       </Button>

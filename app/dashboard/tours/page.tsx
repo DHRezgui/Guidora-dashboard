@@ -17,7 +17,12 @@ import { GuidedTour, User } from '@/lib/types';
 import {
 	buildConcatDraftDescription,
 	buildUniqueConcatName,
+	clearConcatWorkspaceSession,
 	concatenateToursFifo,
+	CONCAT_DRAFT_STORAGE_KEY,
+	CONCAT_PREFILL_STORAGE_KEY,
+	createDefaultConcatDraft,
+	type ConcatDraftFields,
 } from '@/lib/tour-concat';
 import { getDashboardRole, canCreateTours, canManageTours } from '@/lib/dashboard-roles';
 import { canManageTour, isSdkLabTemplateTour } from '@/lib/tour-lab';
@@ -67,9 +72,7 @@ import { SandboxHintCollapsible } from '@/components/editor/SandboxHintCollapsib
 
 const PREVIEW_STORAGE_KEY = 'tours.previewTour.v1';
 const PREVIEW_STORAGE_TTL_MS = 2 * 60 * 1000;
-const CONCAT_PREFILL_STORAGE_KEY = 'tours.concatPrefill.v1';
 const CONCAT_DROP_ZONE_ID = 'concat-drop-zone';
-const CONCAT_DRAFT_STORAGE_KEY = 'tours.concatDraft.v1';
 
 /** Nombre de cartes parcours affichées par page dans la grille. */
 const TOURS_PAGE_SIZE = 6;
@@ -294,16 +297,7 @@ export default function ToursPage() {
 	const [toursListPage, setToursListPage] = useState(1);
 	const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
 	const [concatQueue, setConcatQueue] = useState<string[]>([]);
-	const [concatDraft, setConcatDraft] = useState({
-		name: '',
-		targetUrl: '/',
-		priority: 0,
-		isActive: false,
-		description: '',
-		replayPolicy: 'never' as 'never' | 'after_period' | 'always_on_new_version',
-		replayAfterDays: 0,
-		dedupeSteps: true,
-	});
+	const [concatDraft, setConcatDraft] = useState<ConcatDraftFields>(createDefaultConcatDraft);
 	const hiddenTourIdsRef = useRef<Set<string>>(new Set());
 	const loadSeqRef = useRef(0);
 	const actionsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -433,6 +427,9 @@ export default function ToursPage() {
 		const fromQuery = searchParams.get('new');
 		if (!fromQuery) return;
 		setHighlightNewTourId((prev) => prev ?? fromQuery);
+		clearConcatWorkspaceSession();
+		setConcatQueue([]);
+		setConcatDraft(createDefaultConcatDraft());
 		router.replace('/dashboard/tours', { scroll: false });
 	}, [searchParams, router]);
 
@@ -804,17 +801,9 @@ export default function ToursPage() {
 	};
 
 	const handleResetConcatWorkspace = () => {
+		clearConcatWorkspaceSession();
 		setConcatQueue([]);
-		setConcatDraft({
-			name: '',
-			targetUrl: '/',
-			priority: 0,
-			isActive: false,
-			description: '',
-			replayPolicy: 'never',
-			replayAfterDays: 0,
-			dedupeSteps: true,
-		});
+		setConcatDraft(createDefaultConcatDraft());
 	};
 
 	const handleGenerateConcatenatedTour = async () => {

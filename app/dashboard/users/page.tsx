@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import CreateUserModal from '@/components/dashboard/CreateUserModal';
 import DeleteUserModal from '@/components/dashboard/DeleteUserModal';
+import OrganizationAdminPeersPanel from '@/components/dashboard/OrganizationAdminPeersPanel';
+import DashboardStatGrid from '@/components/dashboard/DashboardStatGrid';
 import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
 import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
 
@@ -106,6 +108,30 @@ export default function UsersPage() {
     fetchUsers();
   };
 
+  const teamMemberStats = useMemo(
+    () => [
+      {
+        title: 'Membres',
+        value: users.length,
+        icon: Icons.users,
+        tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70',
+      },
+      {
+        title: 'Développeurs',
+        value: users.filter((u) => u.role === 'DEVELOPER').length,
+        icon: Icons.sdkTests,
+        tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70',
+      },
+      {
+        title: 'Actifs',
+        value: users.filter((u) => u.isActive).length,
+        icon: Icons.active,
+        tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70',
+      },
+    ],
+    [users],
+  );
+
   return (
     <RoleRouteGuard access="users">
     <div className="space-y-6">
@@ -116,7 +142,7 @@ export default function UsersPage() {
           <p className="text-sm text-muted-foreground mt-0.5">Gérez les développeurs et utilisateurs de votre organisation</p>
         </div>
         <Button
-          className="w-full shadow-sm hover:scale-105 transition-transform md:w-auto"
+          className="w-full rounded-xl shadow-soft transition-transform hover:scale-105 hover:from-orange-400 hover:to-pink-500 active:scale-[0.99] md:w-auto"
           onClick={() => setShowCreateModal(true)}
         >
           <Icons.plus className="mr-2 h-4 w-4" />
@@ -124,34 +150,16 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-3 md:grid-cols-3">
-        {[
-          { title: 'Total', value: users.length, icon: Icons.users, tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70' },
-          { title: 'Développeurs', value: users.filter((u) => u.role === 'DEVELOPER').length, icon: Icons.admin, tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70' },
-          { title: 'Actifs', value: users.filter((u) => u.isActive).length, icon: Icons.active, tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70' },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.title}
-              className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${stat.tone} p-4 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm min-h-[96px] dark:border-white/10 dark:shadow-[0_10px_30px_rgba(2,6,23,0.35)]`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{stat.title}</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stat.value}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white/80 p-2.5 text-orange-500 dark:border-white/10 dark:bg-slate-950/65 dark:text-orange-300">
-                  <Icon className="h-4 w-4" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Développeurs et utilisateurs</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Membres de l&apos;équipe que vous pouvez gérer</p>
+        </div>
+
+        <DashboardStatGrid stats={teamMemberStats} />
       </div>
 
-      {/* Filters */}
+      {/* Team members filters */}
       <div className="rounded-2xl bg-card border border-border/60 p-4 shadow-card">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
@@ -323,6 +331,8 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      <OrganizationAdminPeersPanel />
 
       {/* Modals */}
       {showCreateModal && (

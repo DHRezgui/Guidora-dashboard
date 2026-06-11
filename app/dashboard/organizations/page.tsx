@@ -13,6 +13,8 @@ import DeleteOrganizationModal from '@/components/dashboard/DeleteOrganizationMo
 import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
 import { canManageOrganizations, getDashboardRole } from '@/lib/dashboard-roles';
 import { isAdminResourceBeingEdited } from '@/lib/admin-resource-edit-lock';
+import DashboardStatGrid from '@/components/dashboard/DashboardStatGrid';
+import OrganizationTeamDirectoryPanel from '@/components/dashboard/OrganizationTeamDirectoryPanel';
 
 const planBadgeStyles: Record<string, string> = {
   FREE: 'border border-slate-300/60 bg-slate-100 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/12 dark:text-slate-200',
@@ -33,7 +35,10 @@ export default function OrganizationsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
   const [error, setError] = useState('');
-  const canManage = canManageOrganizations(getDashboardRole(authService.getUser()));
+  const dashboardRole = getDashboardRole(authService.getUser());
+  const canManage = canManageOrganizations(dashboardRole);
+  const isDeveloperView = dashboardRole === 'DEVELOPER';
+  const primaryOrganization = organizations[0];
 
   const fetchOrganizations = useCallback(async () => {
     try {
@@ -100,17 +105,43 @@ export default function OrganizationsPage() {
     fetchOrganizations();
   };
 
+  const developerOrgStats = useMemo(
+    () => [
+      {
+        title: 'Plan',
+        value: primaryOrganization?.plan ?? '—',
+        icon: Icons.planPro,
+        tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70',
+      },
+      {
+        title: 'Statut',
+        value: primaryOrganization?.isActive ? 'Active' : 'Inactive',
+        icon: Icons.active,
+        tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70',
+      },
+      {
+        title: 'Plafond utilisateurs',
+        value: primaryOrganization?.maxUsers ?? 0,
+        icon: Icons.users,
+        tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70',
+      },
+    ],
+    [primaryOrganization],
+  );
+
   return (
     <RoleRouteGuard access="organizations">
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Organisations</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isDeveloperView ? 'Mon organisation' : 'Organisations'}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {canManage
               ? 'Gérez les organisations clientes et leurs abonnements'
-              : 'Consultez votre organisation et son abonnement'}
+              : 'Consultez votre organisation, votre abonnement et les contacts de votre équipe'}
           </p>
         </div>
         {canManage && (
@@ -124,35 +155,44 @@ export default function OrganizationsPage() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-3 md:grid-cols-4">
-        {[
-          { title: 'Total', value: organizations.length, icon: Icons.building, tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70' },
-          { title: 'Actives', value: organizations.filter((o) => o.isActive).length, icon: Icons.active, tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70' },
-          { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.planPro, tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70' },
-          { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.planEnterprise, tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70' },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.title}
-              className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${stat.tone} p-4 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm min-h-[96px] dark:border-white/10 dark:shadow-[0_10px_30px_rgba(2,6,23,0.35)]`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{stat.title}</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stat.value}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white/80 p-2.5 text-orange-500 dark:border-white/10 dark:bg-slate-950/65 dark:text-orange-300">
-                  <Icon className="h-4 w-4" />
+      {isDeveloperView ? (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Abonnement &amp; organisation</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Détails de votre organisation cliente</p>
+          </div>
+          <DashboardStatGrid stats={developerOrgStats} />
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-4">
+          {[
+            { title: 'Total', value: organizations.length, icon: Icons.building, tone: 'from-slate-100 to-white dark:from-slate-800/90 dark:to-slate-900/70' },
+            { title: 'Actives', value: organizations.filter((o) => o.isActive).length, icon: Icons.active, tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70' },
+            { title: 'Pro', value: organizations.filter((o) => o.plan === 'PRO').length, icon: Icons.planPro, tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70' },
+            { title: 'Enterprise', value: organizations.filter((o) => o.plan === 'ENTERPRISE').length, icon: Icons.planEnterprise, tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70' },
+          ].map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.title}
+                className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${stat.tone} p-4 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm min-h-[96px] dark:border-white/10 dark:shadow-[0_10px_30px_rgba(2,6,23,0.35)]`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{stat.title}</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{stat.value}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/80 p-2.5 text-orange-500 dark:border-white/10 dark:bg-slate-950/65 dark:text-orange-300">
+                    <Icon className="h-4 w-4" />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Filters */}
+      {!isDeveloperView && (
       <div className="rounded-2xl bg-card border border-border/60 p-4 shadow-card">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
@@ -196,6 +236,7 @@ export default function OrganizationsPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -326,6 +367,8 @@ export default function OrganizationsPage() {
           </div>
         )}
       </div>
+
+      {isDeveloperView ? <OrganizationTeamDirectoryPanel /> : null}
 
       {/* Modals */}
       {showCreateModal && (
