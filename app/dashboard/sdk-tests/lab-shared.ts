@@ -78,18 +78,79 @@ export async function waitForLabSubjectReady(maxWaitMs = 5000): Promise<boolean>
 	return false;
 }
 
-/** JWT used by lab API calls (publish + semantic-hints). */
-export function getLabAccessToken(): string | null {
-	if (typeof window === 'undefined') return null;
-	return localStorage.getItem('auth_token');
+/**
+ * Integration PAT for lab SDK API calls (publish, semantic-hints, blueprints).
+ * Local/dev: `NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN` (synced by refresh-sdk-token.ps1).
+ */
+export function getLabSdkToken(): string | null {
+  const token = process.env.NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN?.trim();
+  if (!token) return null;
+  return token.startsWith('td_sdk_') ? token : null;
+}
+
+let cachedBffSession: { token: string; expiresAtMs: number } | null = null;
+
+/**
+ * Production pattern: fetch short-lived `td_sess_...` from Next.js BFF route.
+ * Requires server env `TRUSTDEV_SDK_TOKEN` (PAT) — never expose PAT in NEXT_PUBLIC.
+ */
+export async function fetchBffSdkSessionToken(): Promise<string | null> {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const now = Date.now();
+  if (cachedBffSession && cachedBffSession.expiresAtMs - 60_000 > now) {
+    return cachedBffSession.token;
+  }
+  try {
+    const response = await fetch('/api/trustdev/sdk-session', { cache: 'no-store' });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = (await response.json()) as { sessionToken?: string; expiresAt?: string };
+    if (!payload.sessionToken?.startsWith('td_sess_')) {
+      return null;
+    }
+    cachedBffSession = {
+      token: payload.sessionToken,
+      expiresAtMs: payload.expiresAt ? new Date(payload.expiresAt).getTime() : now + 14 * 60_000,
+    };
+    return payload.sessionToken;
+  } catch {
+    return null;
+  }
 }
 
 export function getLabPublishConfig(): Partial<SDKConfig> {
-	return {
-		apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
-		apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1',
-		getAccessToken: getLabAccessToken,
-	};
+  const sdkToken = getLabSdkToken();
+  const config: Partial<SDKConfig> = {
+    apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3020/api/v1',
+    sdkToken: sdkToken ?? undefined,
+    organizationId: process.env.NEXT_PUBLIC_TRUSTDEV_ORGANIZATION_ID,
+    debug: true,
+  };
+
+  // BFF opt-in uniquement (prod). Lab / soutenance / e2e : NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN suffit.
+  if (
+    !sdkToken &&
+    process.env.NEXT_PUBLIC_TRUSTDEV_USE_BFF_SDK_SESSION === 'true'
+  ) {
+    config.getSdkToken = fetchBffSdkSessionToken;
+  }
+
+  return config;
+}
+
+/** Config prod : PAT serveur via BFF (sans NEXT_PUBLIC). */
+export function getBffSdkPublishConfig(): Partial<SDKConfig> {
+  return {
+    apiKey: process.env.NEXT_PUBLIC_SDK_API_KEY || 'trustdev-sdk-tests',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3020/api/v1',
+    getSdkToken: fetchBffSdkSessionToken,
+    organizationId: process.env.NEXT_PUBLIC_TRUSTDEV_ORGANIZATION_ID,
+    debug: false,
+  };
 }
 
 /**
@@ -149,7 +210,7 @@ export const LAB_SINGLE_PAGE_TOUR_DEFAULTS = {
 function resolveSemanticBackendUrl(): string | undefined {
 	if (!LAB_SEMANTIC_BACKEND_PATH) return undefined;
 	if (LAB_SEMANTIC_ENGINE_MODE === 'local') return undefined;
-	const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
+	const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3020/api/v1';
 	return `${base.replace(/\/$/, '')}${LAB_SEMANTIC_BACKEND_PATH}`;
 }
 
@@ -198,10 +259,9 @@ export function labContextualDefaults(
 		/** Fix: endpoint Phase 2 sentence-transformers + fallback local. */
 		semanticBackendUrl: resolveSemanticBackendUrl(),
 		semanticBackendTimeoutMs: LAB_SEMANTIC_BACKEND_TIMEOUT_MS,
-		/** Required: `/tours/contextual/semantic-hints` is behind JwtAuthGuard (same token as publish). */
-		semanticBackendAccessToken: getLabAccessToken,
+		semanticBackendAccessToken: getLabSdkToken,
 		journeyBlueprintsRemoteEnabled: true,
-		journeyBlueprintsAccessToken: getLabAccessToken,
+		journeyBlueprintsAccessToken: getLabSdkToken,
 		semanticRoleWeights: { role: 0.6, order: 0.4, copy: 0.5 },
 		/** Fix: aligné sur debounce MutationObserver (300 ms). */
 		semanticSnapshotMinDomAgeMs: LAB_SEMANTIC_DOM_SETTLE_MS,

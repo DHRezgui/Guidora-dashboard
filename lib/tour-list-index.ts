@@ -37,6 +37,7 @@ import {
 	isDeveloperOwnedAwaitingAdminDecision,
 	isDeveloperSubmittedPendingSandbox,
 	isDeveloperModerationApprovedSandbox,
+	isDeveloperOriginatedTour,
 	isTourProductionActive,
 	isTourSandboxTestActive,
 	type TourCreatorRoleLookup,
@@ -120,6 +121,8 @@ export type TourListEntryMeta = {
 	/** Gestion prod déléguée à un autre admin que le créateur. */
 	showProductionDelegatedBadge: boolean;
 	productionManagerUserId: string | null;
+	/** Parcours développeur approuvé puis promu en prod — reste visible dans le filtre sandbox développeur. */
+	isDeveloperOwnedApprovedProduction: boolean;
 	sandboxTestActive: boolean;
 	productionActive: boolean;
 	isActiveTestLabel: boolean;
@@ -276,6 +279,12 @@ export function buildTourListIndex(
 			isAdminProdTour &&
 			Boolean(productionManagerUserId) &&
 			productionManagerUserId !== tour.createdBy;
+		const isDeveloperOwnedApprovedProduction =
+			isDeveloper &&
+			isOwner &&
+			tour.environment === 'production' &&
+			tour.sandboxStatus === 'approved' &&
+			isDeveloperOriginatedTour(tour, creatorRoleByUserId);
 		const isViewOnlyCard = isTourCardViewOnly(tour, role, userId);
 		const isCollaborationPeerCard = isTourCollaborationPeerCard(tour, role, userId);
 		const canCollaborationPeerEdit = isCollaborationPeerCard && canEditTourWithGrants(tour, role, userId);
@@ -362,6 +371,7 @@ export function buildTourListIndex(
 					!isCollaborationPeerCard &&
 					tour.environment === 'production' &&
 					canManageProductionDeployment,
+				isDeveloperOwnedApprovedProduction,
 				sandboxTestActive: isTourSandboxTestActive(tour),
 				productionActive: isTourProductionActive(tour),
 				isActiveTestLabel:
@@ -402,6 +412,7 @@ export function matchesTourMetaEnvironmentFilter(
 		| 'isDeveloperModerationPending'
 		| 'showSharingLectureBadge'
 		| 'showSharingCollabBadge'
+		| 'isDeveloperOwnedApprovedProduction'
 	>,
 	filter: TourListEnvironmentFilter,
 ): boolean {
@@ -409,7 +420,7 @@ export function matchesTourMetaEnvironmentFilter(
 		case 'production':
 			return !meta.isSandbox;
 		case 'sandbox':
-			return meta.isSandbox || meta.isDevOnlyAutogen;
+			return meta.isSandbox || meta.isDevOnlyAutogen || meta.isDeveloperOwnedApprovedProduction;
 		case 'pending':
 			return meta.isDeveloperModerationPending;
 		case 'lecture':

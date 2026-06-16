@@ -28,3 +28,23 @@ export const PHOENIX_DESTRUCTIVE_BUTTON_CLASS =
 /** Alerte erreur dans une modale Phoenix. */
 export const PHOENIX_MODAL_ERROR_CLASS =
 	'rounded-xl border border-rose-300/50 bg-rose-50/80 px-3 py-2.5 text-sm text-rose-800 backdrop-blur-sm dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-100';
+
+/** Panneau alerte warning Phoenix (glass orange/ambre). */
+export const PHOENIX_ALERT_WARNING_PANEL_CLASS =
+	'rounded-2xl border border-orange-400/35 bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(255,251,235,0.95)_58%,rgba(248,250,252,0.96))] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.10)] backdrop-blur-sm dark:border-orange-400/25 dark:bg-[linear-gradient(165deg,rgba(20,28,42,0.95),rgba(40,32,10,0.94)_58%,rgba(5,10,20,0.98))] dark:shadow-[0_14px_34px_rgba(2,6,23,0.32)]';
+
+/** Icône warning dans un panneau alerte Phoenix. */
+export const PHOENIX_ALERT_WARNING_ICON_WRAP_CLASS =
+	'mt-0.5 shrink-0 rounded-xl border border-orange-400/35 bg-orange-500/15 p-2.5 dark:border-amber-400/35 dark:bg-amber-500/15';
+
+/** Badge compteur / délai Phoenix. */
+export const PHOENIX_ALERT_TIMER_BADGE_CLASS =
+	'shrink-0 rounded-full border border-orange-400/40 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-900 shadow-sm dark:border-orange-400/30 dark:bg-orange-500/15 dark:text-orange-100';
+
+/** Panneau succès Phoenix (glass émeraude). */
+export const PHOENIX_ALERT_SUCCESS_PANEL_CLASS =
+	'rounded-xl border border-emerald-400/35 bg-[linear-gradient(165deg,rgba(255,255,255,0.96),rgba(236,253,245,0.95)_58%,rgba(248,250,252,0.96))] p-3 text-sm text-emerald-800 backdrop-blur-sm dark:border-emerald-400/25 dark:bg-[linear-gradient(165deg,rgba(20,28,42,0.95),rgba(10,40,28,0.94)_58%,rgba(5,10,20,0.98))] dark:text-emerald-300';
+
+/** Bloc code secret (token, clé API) — clair : fond blanc opaque ; sombre : terminal. */
+export const PHOENIX_SECRET_CODE_BLOCK_CLASS =
+	'overflow-x-auto rounded-xl border border-orange-200/90 bg-white p-3 font-mono text-xs text-teal-800 shadow-[inset_0_1px_2px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-slate-950 dark:text-emerald-300 dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)]';

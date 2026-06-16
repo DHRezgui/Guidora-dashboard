@@ -613,6 +613,7 @@ export const sdkTokenService = {
       createdAt: string;
       lastUsedAt: string | null;
       revokedAt: string | null;
+      expiresAt: string | null;
     }>;
   }> {
     const response = await apiClient.get('/auth/sdk-tokens');
@@ -622,11 +623,18 @@ export const sdkTokenService = {
   async create(payload: {
     name: string;
     scopes?: string[];
+    expiresInDays?: number;
   }): Promise<{
     success: boolean;
     message: string;
     token: string;
-    tokenRecord: { id: string; name: string; tokenSuffix: string; scopes: string[] };
+    tokenRecord: {
+      id: string;
+      name: string;
+      tokenSuffix: string;
+      scopes: string[];
+      expiresAt: string | null;
+    };
   }> {
     const response = await apiClient.post('/auth/sdk-tokens', payload);
     return response.data;
@@ -634,6 +642,40 @@ export const sdkTokenService = {
 
   async revoke(id: string): Promise<{ success: boolean; message: string }> {
     const response = await apiClient.delete(`/auth/sdk-tokens/${id}`);
+    return response.data;
+  },
+
+  async removeRevokedFromHistory(
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.delete(`/auth/sdk-tokens/${id}/permanent`);
+    return response.data;
+  },
+
+  async purgeRevokedHistory(): Promise<{
+    success: boolean;
+    message: string;
+    deletedCount: number;
+  }> {
+    const response = await apiClient.delete('/auth/sdk-tokens/revoked-history');
+    return response.data;
+  },
+
+  async listAudit(limit = 50): Promise<{
+    success: boolean;
+    count: number;
+    events: Array<{
+      id: string;
+      eventType: string;
+      tokenId: string | null;
+      sessionTokenId: string | null;
+      actorUserId: string | null;
+      ip: string | null;
+      metadata: Record<string, unknown>;
+      createdAt: string;
+    }>;
+  }> {
+    const response = await apiClient.get('/auth/sdk-tokens/audit', { params: { limit } });
     return response.data;
   },
 };
