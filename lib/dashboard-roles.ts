@@ -16,6 +16,8 @@ export type DashboardAccessPolicy =
 
 	| 'blueprints'
 
+	| 'faq'
+
 	| 'tours'
 
 	| 'sdkLab'
@@ -111,6 +113,22 @@ export function canAccessBlueprints(role: DashboardRole | null): boolean {
 
 
 export function canManageBlueprints(role: DashboardRole | null): boolean {
+
+	return role === 'ADMIN';
+
+}
+
+
+
+export function canAccessFaq(role: DashboardRole | null): boolean {
+
+	return role === 'ADMIN' || role === 'DEVELOPER';
+
+}
+
+
+
+export function canManageFaq(role: DashboardRole | null): boolean {
 
 	return role === 'ADMIN';
 
@@ -240,6 +258,10 @@ export function hasDashboardAccess(
 		case 'blueprints':
 
 			return canAccessBlueprints(role);
+
+		case 'faq':
+
+			return canAccessFaq(role);
 
 		case 'tours':
 

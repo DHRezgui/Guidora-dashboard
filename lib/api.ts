@@ -680,4 +680,151 @@ export const sdkTokenService = {
   },
 };
 
+export interface FaqEntryRow {
+  id: string;
+  organizationId: string;
+  question: string;
+  answer: string;
+  category: string | null;
+  tags: string[];
+  isActive: boolean;
+  viewCount: number;
+  helpfulCount: number;
+  notHelpfulCount: number;
+  createdAt: string;
+  updatedAt: string;
+  editLock?: {
+    required: boolean;
+    heldByUserId?: string;
+    heldByDisplayName?: string;
+    lockedAt?: string;
+    expiresAt?: string;
+    isHeldByMe: boolean;
+  };
+}
+
+export const faqService = {
+  async listManage(): Promise<{ success: boolean; count: number; items: FaqEntryRow[] }> {
+    const response = await apiClient.get('/faq/manage');
+    return response.data;
+  },
+
+  async create(payload: {
+    question: string;
+    answer: string;
+    category?: string;
+    tags?: string[];
+    isActive?: boolean;
+  }): Promise<{ success: boolean; item: FaqEntryRow }> {
+    const response = await apiClient.post('/faq/entries', payload);
+    return response.data;
+  },
+
+  async update(
+    id: string,
+    payload: {
+      question?: string;
+      answer?: string;
+      category?: string;
+      tags?: string[];
+      isActive?: boolean;
+    },
+  ): Promise<{ success: boolean; item: FaqEntryRow }> {
+    const response = await apiClient.put(`/faq/entries/${id}`, payload);
+    return response.data;
+  },
+
+  async setActive(id: string, isActive: boolean): Promise<{ success: boolean; item: FaqEntryRow }> {
+    const response = await apiClient.put(`/faq/entries/${id}/publish`, { isActive });
+    return response.data;
+  },
+
+  async remove(id: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/faq/entries/${id}`);
+    return response.data;
+  },
+
+  async removeAll(): Promise<{ success: boolean; message: string; deleted: number }> {
+    const response = await apiClient.delete('/faq/manage/all');
+    return response.data;
+  },
+
+  async acquireEditLock(id: string): Promise<{
+    success: boolean;
+    item: FaqEntryRow;
+    editLock?: FaqEntryRow['editLock'];
+  }> {
+    const response = await apiClient.post(`/faq/entries/${id}/edit-lock/acquire`);
+    return response.data;
+  },
+
+  async renewEditLock(id: string): Promise<{
+    success: boolean;
+    item: FaqEntryRow;
+    editLock?: FaqEntryRow['editLock'];
+  }> {
+    const response = await apiClient.post(`/faq/entries/${id}/edit-lock/renew`);
+    return response.data;
+  },
+
+  async releaseEditLock(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete(`/faq/entries/${id}/edit-lock`);
+    return response.data;
+  },
+
+  async reindex(): Promise<{
+    success: boolean;
+    message: string;
+    embeddedCount?: number;
+    embeddingsPath?: string;
+  }> {
+    const response = await apiClient.post('/faq/reindex');
+    return response.data;
+  },
+
+  async importGlobal(payload?: {
+    skipDuplicates?: boolean;
+    replaceExisting?: boolean;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    imported: number;
+    skipped: number;
+    totalInCatalog: number;
+  }> {
+    const response = await apiClient.post('/faq/import-global', payload ?? {});
+    return response.data;
+  },
+
+  async getIndexStatus(): Promise<{
+    success: boolean;
+    activeCount: number;
+    embeddingsReady: boolean;
+    needsReindex: boolean;
+    lastIndexedAt: string | null;
+  }> {
+    const response = await apiClient.get('/faq/index-status');
+    return response.data;
+  },
+
+  async semanticSearch(
+    question: string,
+    topK = 3,
+  ): Promise<{
+    success: boolean;
+    query: string;
+    total: number;
+    results: Array<{
+      id: string;
+      question: string;
+      answer: string;
+      category: string;
+      score: number;
+    }>;
+  }> {
+    const response = await apiClient.post('/faq/semantic-search', { question, topK });
+    return response.data;
+  },
+};
+
 export default apiClient;

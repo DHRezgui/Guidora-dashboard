@@ -34,6 +34,7 @@ export default function Sidebar() {
 		{ name: 'Parcours', href: '/dashboard/tours', icon: Icons.tours, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
 		{ name: 'SDK Tests', href: '/dashboard/sdk-tests', icon: Icons.sdkTests, roles: ['ADMIN', 'DEVELOPER'] },
 		{ name: 'Blueprints', href: '/dashboard/blueprints', icon: Icons.blueprints, roles: ['ADMIN', 'DEVELOPER'] },
+		{ name: 'FAQ', href: '/dashboard/faq', icon: Icons.faq, roles: ['ADMIN', 'DEVELOPER'] },
 	].filter((item) => !role || item.roles.includes(role));
 
 	const navLinkClass = (active: boolean) =>

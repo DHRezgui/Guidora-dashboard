@@ -85,6 +85,7 @@ export const Icons = {
   users: Users,
   tours: Route,
   blueprints: Layers,
+  faq: HelpCircle,
   sdkTests: Code,
   sdkLab: FlaskConical,
   sandbox: FlaskConical,

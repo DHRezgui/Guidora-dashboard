@@ -27,6 +27,7 @@ export default function Header() {
     settings: 'Parametres',
     'sdk-tests': 'SDK Tests',
     blueprints: 'Blueprints',
+    faq: 'FAQ',
     platform: 'Console plateforme',
     admins: 'Administrateurs clients',
     analytics: 'Analytics',

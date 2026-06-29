@@ -59,6 +59,7 @@ const SCOPE_LABELS: Record<string, string> = {
   'feedback:read': 'Lire agrégats feedback',
   'feedback:write': 'Envoyer feedback',
   'semantic:invoke': 'Inférence sémantique',
+  'faq:search': 'Recherche FAQ sémantique',
   'tours:publish': 'Soumettre des brouillons SDK (sandbox)',
 };
 
