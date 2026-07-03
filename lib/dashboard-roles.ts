@@ -18,6 +18,8 @@ export type DashboardAccessPolicy =
 
 	| 'faq'
 
+	| 'projects'
+
 	| 'tours'
 
 	| 'sdkLab'
@@ -128,10 +130,23 @@ export function canAccessFaq(role: DashboardRole | null): boolean {
 
 
 
+export function canAccessProjects(role: DashboardRole | null): boolean {
+
+	return role === 'ADMIN' || role === 'DEVELOPER';
+
+}
+
+
+
 export function canManageFaq(role: DashboardRole | null): boolean {
 
 	return role === 'ADMIN';
 
+}
+
+/** Suppression complète du scope SDK (FAQ + parcours + blueprints). */
+export function canManageProjectScope(role: DashboardRole | null): boolean {
+	return role === 'ADMIN';
 }
 
 
@@ -262,6 +277,10 @@ export function hasDashboardAccess(
 		case 'faq':
 
 			return canAccessFaq(role);
+
+		case 'projects':
+
+			return canAccessProjects(role);
 
 		case 'tours':
 

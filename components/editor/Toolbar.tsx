@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { GuidedTour } from '@/lib/types';
 import { isTourSandboxTestActive, patchTourSandboxTestActive } from '@/lib/tour-sandbox';
 import { cn } from '@/lib/utils';
 import { SandboxHintInline } from '@/components/editor/SandboxHintCollapsible';
+import { projectHubHref } from '@/lib/project';
 
 interface ToolbarProps {
   tour?: GuidedTour;
@@ -31,6 +33,10 @@ interface ToolbarProps {
   /** Édition sandbox : permet d'activer le parcours pour test SDK. */
   developerSandboxTestMode?: boolean;
   viewOnlyMode?: boolean;
+  /** Clé projet SDK (flowVersion) — badge inline à côté du titre. */
+  projectScopeKey?: string;
+  /** Scope issu d'une duplication / concat (libellé « Projet hérité »). */
+  projectScopeInherited?: boolean;
 }
 
 export default function Toolbar({
@@ -49,6 +55,8 @@ export default function Toolbar({
   developerSandboxMode = false,
   developerSandboxTestMode = false,
   viewOnlyMode = false,
+  projectScopeKey,
+  projectScopeInherited = false,
 }: ToolbarProps) {
   const readOnlyInputClass =
     'h-9 border-slate-300 bg-slate-100/90 text-slate-500 cursor-not-allowed dark:border-white/10 dark:bg-slate-900/35 dark:text-slate-400';
@@ -104,6 +112,32 @@ export default function Toolbar({
                     <SandboxHintInline title="Test sandbox" tone="cyan" storageKey="editor-test-sandbox">
                       Vous pouvez activer ce parcours pour le voir dans votre application de test. Les clients en production ne
                       le verront pas.
+                    </SandboxHintInline>
+                  ) : null}
+                  {projectScopeKey ? (
+                    <SandboxHintInline
+                      title={projectScopeInherited ? 'Projet hérité' : 'Hub projet'}
+                      tone="sky"
+                      storageKey={`editor-project-scope-${projectScopeKey}`}
+                    >
+                      {projectScopeInherited ? (
+                        <>
+                          Ce parcours reprend le scope SDK{' '}
+                          <strong className="font-mono">{projectScopeKey}</strong> depuis la source dupliquée ou
+                          concaténée.
+                        </>
+                      ) : (
+                        <>
+                          Rattaché au projet SDK <strong className="font-mono">{projectScopeKey}</strong> via{' '}
+                          <code className="rounded bg-sky-100 px-1 font-mono text-[10px] dark:bg-sky-950">flowVersion</code>.
+                        </>
+                      )}
+                      <Link
+                        href={projectHubHref(projectScopeKey)}
+                        className="mt-2 inline-flex font-medium text-sky-700 underline-offset-2 hover:underline dark:text-sky-200"
+                      >
+                        Ouvrir le hub projet
+                      </Link>
                     </SandboxHintInline>
                   ) : null}
                 </div>

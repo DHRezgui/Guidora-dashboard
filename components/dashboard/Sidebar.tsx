@@ -31,6 +31,7 @@ export default function Sidebar() {
 		{ name: 'Console plateforme', href: '/dashboard/platform', icon: Icons.admin, roles: ['SUPER_ADMIN'] },
 		{ name: 'Équipe', href: '/dashboard/users', icon: Icons.users, roles: ['ADMIN'] },
 		{ name: 'Mon organisation', href: '/dashboard/organizations', icon: Icons.building, roles: ['DEVELOPER'] },
+		{ name: 'Projets', href: '/dashboard/projects', icon: Icons.grid, roles: ['ADMIN', 'DEVELOPER'] },
 		{ name: 'Parcours', href: '/dashboard/tours', icon: Icons.tours, roles: ['ADMIN', 'DEVELOPER', 'USER'] },
 		{ name: 'SDK Tests', href: '/dashboard/sdk-tests', icon: Icons.sdkTests, roles: ['ADMIN', 'DEVELOPER'] },
 		{ name: 'Blueprints', href: '/dashboard/blueprints', icon: Icons.blueprints, roles: ['ADMIN', 'DEVELOPER'] },

@@ -28,6 +28,14 @@ import {
   clearConcatWorkspaceSession,
   CONCAT_PREFILL_STORAGE_KEY,
 } from '@/lib/tour-concat';
+import { DEFAULT_FAQ_PROJECT_KEY } from '@/lib/faq-project';
+import { toursListReturnHref } from '@/lib/project';
+import {
+  applyTourProjectScope,
+  ensureTourSaveProjectScope,
+  isGenericProjectFlowVersion,
+  readTourFlowVersion,
+} from '@/lib/tour-project-scope';
 
 function toCopyName(baseName: string, existingNames: Set<string>): string {
   const normalizedBase = (baseName || 'Parcours').trim();
@@ -57,10 +65,17 @@ function CreateTourPageContent() {
   const accessParam = searchParams.get('access');
   const duplicateId = searchParams.get('duplicateId');
   const prefillMode = searchParams.get('prefill');
+  const createProjectScope = searchParams.get('flowVersion')?.trim() || '';
   const stepQuery = searchParams.get('step');
   const initialSelectedStepIndex = stepQuery ? parseInt(stepQuery, 10) : null;
   const isEditMode = useMemo(() => Boolean(tourId), [tourId]);
   const isDuplicateMode = useMemo(() => Boolean(!tourId && duplicateId), [tourId, duplicateId]);
+
+  const resolveToursListHref = (newTourId?: string) => {
+    const scope =
+      createProjectScope || readTourFlowVersion(tour.triggerConditions) || undefined;
+    return toursListReturnHref(scope, newTourId);
+  };
 
   const [isLoading, setIsLoading] = useState(isEditMode || isDuplicateMode || prefillMode === 'concat');
   const [isSaving, setIsSaving] = useState(false);
@@ -111,6 +126,42 @@ function CreateTourPageContent() {
     (Boolean(editLock?.required) && isTourEditLockHeldByMe(editLock ?? undefined));
   const showEditLockGate = editLockRequired && !holdsEditLock;
 
+  const { projectScopeKey, projectScopeInherited } = useMemo(() => {
+    const scopedFromQuery = isGenericProjectFlowVersion(createProjectScope)
+      ? undefined
+      : createProjectScope;
+    const scopedFromTour = readTourFlowVersion(tour.triggerConditions);
+    const tourScope =
+      scopedFromTour && !isGenericProjectFlowVersion(scopedFromTour) ? scopedFromTour : undefined;
+    const key = scopedFromQuery ?? tourScope;
+
+    if (!key) {
+      return { projectScopeKey: undefined, projectScopeInherited: false };
+    }
+
+    const inherited =
+      !scopedFromQuery &&
+      Boolean(tourScope) &&
+      (Boolean(duplicateId) ||
+        prefillMode === 'concat' ||
+        (!tourId && isGenericProjectFlowVersion(createProjectScope)));
+
+    return { projectScopeKey: key, projectScopeInherited: inherited };
+  }, [createProjectScope, tour.triggerConditions, duplicateId, prefillMode, tourId]);
+
+  useEffect(() => {
+    if (tourId || duplicateId || prefillMode === 'concat') {
+      return;
+    }
+    if (isGenericProjectFlowVersion(createProjectScope)) {
+      return;
+    }
+    setTour((prev) => ({
+      ...prev,
+      triggerConditions: applyTourProjectScope(prev, createProjectScope),
+    }));
+  }, [tourId, duplicateId, prefillMode, createProjectScope]);
+
   useEffect(() => {
     if (tourId || (!isDeveloperCreator && !isAdminCreator)) return;
     setTour((prev) => ({
@@ -147,7 +198,7 @@ function CreateTourPageContent() {
                       ? 'Vous n’avez pas d’accès collaboration à ce parcours.'
                       : 'Vous ne pouvez pas ouvrir ce parcours.',
               });
-              router.push('/dashboard/tours');
+              router.push(resolveToursListHref());
               return;
             }
             setViewOnlyMode(isTourEditorReadOnly(response.tour, role, user.id, accessParam));
@@ -178,7 +229,7 @@ function CreateTourPageContent() {
             toast.error('Duplication impossible', {
               description: 'Ce parcours est en lecture seule.',
             });
-            router.push('/dashboard/tours');
+            router.push(resolveToursListHref());
             return;
           }
           forkSourceIdsRef.current = [sourceId];
@@ -239,7 +290,7 @@ function CreateTourPageContent() {
               toast.error('Concaténation impossible', {
                 description: 'Un ou plusieurs parcours sources sont en lecture seule.',
               });
-              router.push('/dashboard/tours');
+              router.push(resolveToursListHref());
               return;
             }
             forkSourceIdsRef.current = sourceIds;
@@ -258,7 +309,7 @@ function CreateTourPageContent() {
         toast.error('Impossible de charger le parcours', {
           description: getErrorMessage(error, 'Une erreur est survenue au chargement.'),
         });
-        router.push('/dashboard/tours');
+        router.push(resolveToursListHref());
       } finally {
         setIsLoading(false);
       }
@@ -311,6 +362,10 @@ function CreateTourPageContent() {
       const currentUserId = authService.getUser()?.id;
       const developerLabSave = isDeveloperLabEditMode(tourData, role, currentUserId);
       let enrichedTourData: GuidedTour = tourData;
+
+      if (!tourId && !isGenericProjectFlowVersion(createProjectScope)) {
+        enrichedTourData = ensureTourSaveProjectScope(enrichedTourData, createProjectScope);
+      }
 
       if (!developerLabSave) {
         // For manually edited tours, capture a fresh simulation context at save time.
@@ -371,7 +426,7 @@ function CreateTourPageContent() {
               : 'Modifications enregistrées. Test sandbox désactivé.'
             : 'Vos modifications ont ete enregistrees avec succes.',
         });
-        router.push('/dashboard/tours');
+        router.push(resolveToursListHref());
       } else {
         if (forkSourceIdsRef.current.length > 0) {
           payload = {
@@ -388,7 +443,12 @@ function CreateTourPageContent() {
           description:
             'Le parcours est en test. Utilisez le sélecteur Sandbox / Prod sur la carte pour le promouvoir quand il est prêt.',
         });
-        router.push(createdId ? `/dashboard/tours?new=${encodeURIComponent(createdId)}` : '/dashboard/tours');
+        const savedScope =
+          createProjectScope ||
+          readTourFlowVersion(payload.triggerConditions) ||
+          readTourFlowVersion(tour.triggerConditions) ||
+          undefined;
+        router.push(toursListReturnHref(savedScope, createdId));
       }
     } catch (error) {
       const message = getErrorMessage(error, 'Impossible de sauvegarder le parcours.');
@@ -420,7 +480,7 @@ function CreateTourPageContent() {
               'Ce parcours est en cours d’édition par un autre collaborateur. Réessayez lorsque l’éditeur aura quitté la page.'
             }
             heldByDisplayName={editLock?.heldByDisplayName}
-            onBack={() => router.push('/dashboard/tours')}
+            onBack={() => router.push(resolveToursListHref())}
             onRetry={() => void retryEditLockAcquire()}
             isRetrying={isAcquiringEditLock}
           />
@@ -448,12 +508,14 @@ function CreateTourPageContent() {
           <EditorLayout
             tour={tour}
             onSave={editorReadOnly ? undefined : handleSave}
-            onBack={() => router.push('/dashboard/tours')}
+            onBack={() => router.push(resolveToursListHref())}
             initialSelectedStepIndex={initialSelectedStepIndex}
             showEnvironmentSelector={false}
             developerSandboxMode={isDeveloperCreator && !tourId}
             developerSandboxTestMode={isDeveloperSandboxTestMode}
             viewOnlyMode={editorReadOnly}
+            projectScopeKey={projectScopeKey}
+            projectScopeInherited={projectScopeInherited}
           />
         </div>
       )}

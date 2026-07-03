@@ -1,134 +1,72 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Icons } from '@/components/ui/icons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import DashboardStatGrid from '@/components/dashboard/DashboardStatGrid';
-import { PhoenixConfirmModal } from '@/components/dashboard/PhoenixConfirmModal';
 import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
+import { PhoenixConfirmModal } from '@/components/dashboard/PhoenixConfirmModal';
+import { PhoenixCollapsibleCard } from '@/app/dashboard/blueprints/_components/phoenix-collapsible';
 import {
   PHOENIX_FIELD_CLASS,
+  PHOENIX_INSET_PANEL_CLASS,
   PHOENIX_LABEL_CLASS,
+  PHOENIX_PANEL_CLASS,
 } from '@/app/dashboard/blueprints/blueprint-shared';
 import { LAB_INLINE_CODE_HIGHLIGHT_CLASS } from '@/app/dashboard/sdk-tests/lab-shared';
 import { authService, faqService, getErrorMessage, type FaqEntryRow } from '@/lib/api';
 import { canManageFaq, getDashboardRole } from '@/lib/dashboard-roles';
 import {
-  getFaqEditLockBlockedMessage,
-  hasActiveFaqEditLock,
-  isFaqListActionBlocked,
-  isFaqLockedByOther,
-} from '@/lib/faq-edit-lock';
-import { useFaqEditLock } from '@/lib/use-faq-edit-lock';
-import {
-  PHOENIX_CHECKBOX_CLASS,
-  PHOENIX_DESTRUCTIVE_BUTTON_CLASS,
-  PHOENIX_MODAL_CANCEL_BUTTON_CLASS,
-  PHOENIX_MODAL_OVERLAY_CLASS,
-  PHOENIX_MODAL_PANEL_CLASS,
-  PHOENIX_PRIMARY_BUTTON_CLASS,
-} from '@/lib/phoenix-ui';
+  DEFAULT_FAQ_PROJECT_KEY,
+  faqProjectHref,
+  formatFaqProjectTitle,
+} from '@/lib/faq-project';
+import { PHOENIX_PRIMARY_BUTTON_CLASS } from '@/lib/phoenix-ui';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { FaqProjectCard } from './_components/faq-project-card';
+import { FaqProjectQuestionsModal } from './_components/faq-project-questions-modal';
 
-type FaqFormState = {
-  question: string;
-  answer: string;
-  category: string;
-  tags: string;
-  isActive: boolean;
-};
-
-const EMPTY_FORM: FaqFormState = {
-  question: '',
-  answer: '',
-  category: '',
-  tags: '',
-  isActive: true,
-};
-
-const PHOENIX_CARD_BTN_BASE =
-  'h-9 gap-1.5 rounded-lg border text-sm font-medium shadow-sm backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-400/25 dark:bg-slate-900/45';
-
-const FAQ_PAGE_SIZE = 5;
-
-function toFormState(row: FaqEntryRow): FaqFormState {
-  return {
-    question: row.question,
-    answer: row.answer,
-    category: row.category ?? '',
-    tags: row.tags.join(', '),
-    isActive: row.isActive,
-  };
+function groupItemsByProject(items: FaqEntryRow[]): Record<string, FaqEntryRow[]> {
+  const grouped: Record<string, FaqEntryRow[]> = {};
+  for (const item of items) {
+    const key = item.projectKey || DEFAULT_FAQ_PROJECT_KEY;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(item);
+  }
+  return grouped;
 }
 
-export default function FaqPage() {
-  const user = authService.getUser();
-  const role = getDashboardRole(user);
-  const canManage = canManageFaq(role);
-
-  const [items, setItems] = useState<FaqEntryRow[]>([]);
+export default function FaqProjectsPage() {
+  const router = useRouter();
+  const canManage = canManageFaq(getDashboardRole(authService.getUser()));
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<FaqEntryRow | null>(null);
-  const [form, setForm] = useState<FaqFormState>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [reindexing, setReindexing] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [deleteTarget, setDeleteTarget] = useState<FaqEntryRow | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
-  const [clearAllConfirmOpen, setClearAllConfirmOpen] = useState(false);
-  const [clearAllLoading, setClearAllLoading] = useState(false);
-  const [indexStatus, setIndexStatus] = useState<{
-    activeCount: number;
-    embeddingsReady: boolean;
-    needsReindex: boolean;
-    lastIndexedAt: string | null;
-  } | null>(null);
-  const [previewQuery, setPreviewQuery] = useState('');
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewResults, setPreviewResults] = useState<
-    Array<{ id: string; question: string; answer: string; category: string; score: number }>
-  >([]);
-  const [lastImportSummary, setLastImportSummary] = useState<string | null>(null);
-  const previewSearchTokenRef = useRef(0);
-
-  const {
-    lockBlocked: editLockBlocked,
-    lockMessage: editLockMessage,
-    isAcquiring: isAcquiringEditLock,
-    retryAcquire: retryEditLockAcquire,
-    releaseIfHeld,
-  } = useFaqEditLock({
-    entryId: editing?.id ?? null,
-    entry: editing,
-    enabled: modalOpen && editing != null,
-  });
+  const [projectKeys, setProjectKeys] = useState<string[]>([DEFAULT_FAQ_PROJECT_KEY]);
+  const [projectKeyCounts, setProjectKeyCounts] = useState<Record<string, number>>({});
+  const [projectKeyTourCounts, setProjectKeyTourCounts] = useState<Record<string, number>>({});
+  const [itemsByProject, setItemsByProject] = useState<Record<string, FaqEntryRow[]>>({});
+  const [newProjectKey, setNewProjectKey] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [tipsOpen, setTipsOpen] = useState(false);
+  const [sdkInfoOpen, setSdkInfoOpen] = useState(false);
+  const [questionsProjectKey, setQuestionsProjectKey] = useState<string | null>(null);
+  const [deleteProjectKey, setDeleteProjectKey] = useState<string | null>(null);
+  const [deleteProjectLoading, setDeleteProjectLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [listResponse, statusResponse] = await Promise.all([
-        faqService.listManage(),
-        faqService.getIndexStatus().catch(() => null),
-      ]);
-      setItems(listResponse.items);
-      if (statusResponse) {
-        setIndexStatus({
-          activeCount: statusResponse.activeCount,
-          embeddingsReady: statusResponse.embeddingsReady,
-          needsReindex: statusResponse.needsReindex,
-          lastIndexedAt: statusResponse.lastIndexedAt,
-        });
-      }
+      const response = await faqService.listManage();
+      const keys = response.projectKeys?.length ? response.projectKeys : [DEFAULT_FAQ_PROJECT_KEY];
+      setProjectKeys(keys);
+      setProjectKeyCounts(response.projectKeyCounts ?? {});
+      setProjectKeyTourCounts(response.projectKeyTourCounts ?? {});
+      setItemsByProject(groupItemsByProject(response.items ?? []));
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Impossible de charger la FAQ'));
+      toast.error(getErrorMessage(err, 'Impossible de charger les projets FAQ'));
     } finally {
       setLoading(false);
     }
@@ -138,286 +76,56 @@ export default function FaqPage() {
     void load();
   }, [load]);
 
-  const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return items;
-    return items.filter((item) =>
-      [item.question, item.answer, item.category ?? '', item.tags.join(' ')]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [items, search]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, items.length]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / FAQ_PAGE_SIZE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-
-  const paginatedItems = useMemo(() => {
-    const start = (safeCurrentPage - 1) * FAQ_PAGE_SIZE;
-    return filteredItems.slice(start, start + FAQ_PAGE_SIZE);
-  }, [filteredItems, safeCurrentPage]);
-
-  const paginatedRangeLabel = useMemo(() => {
-    if (filteredItems.length === 0) return '';
-    const start = (safeCurrentPage - 1) * FAQ_PAGE_SIZE + 1;
-    const end = Math.min(safeCurrentPage * FAQ_PAGE_SIZE, filteredItems.length);
-    return `${start}–${end} sur ${filteredItems.length}`;
-  }, [filteredItems.length, safeCurrentPage]);
-
-  const stats = useMemo(() => {
-    const published = items.filter((item) => item.isActive).length;
-    const categories = new Set(items.map((item) => item.category).filter(Boolean));
-    const views = items.reduce((sum, item) => sum + item.viewCount, 0);
-    return { total: items.length, published, categories: categories.size, views };
-  }, [items]);
-
-  const statCards = useMemo(
-    () => [
-      {
-        title: 'Total',
-        value: stats.total,
-        icon: Icons.faq,
-        tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70',
-      },
-      {
-        title: 'Publiées',
-        value: stats.published,
-        icon: Icons.checkCircle,
-        tone: 'from-emerald-100 to-white dark:from-emerald-600/20 dark:to-slate-900/70',
-      },
-      {
-        title: 'Catégories',
-        value: stats.categories,
-        icon: Icons.filter,
-        tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70',
-      },
-      {
-        title: 'Vues SDK',
-        value: stats.views,
-        icon: Icons.eye,
-        tone: 'from-sky-100 to-white dark:from-sky-600/20 dark:to-slate-900/70',
-      },
-    ],
-    [stats],
+  const totalQuestions = useMemo(
+    () => Object.values(projectKeyCounts).reduce((sum, count) => sum + count, 0),
+    [projectKeyCounts],
   );
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setModalOpen(true);
-  };
+  const sdkPackCount = useMemo(
+    () => projectKeys.filter((key) => key !== DEFAULT_FAQ_PROJECT_KEY).length,
+    [projectKeys],
+  );
 
-  const openEdit = (row: FaqEntryRow) => {
-    setEditing(row);
-    setForm(toFormState(row));
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    const wasEditing = editing != null;
-    void releaseIfHeld().finally(() => {
-      if (wasEditing) {
-        void load();
-      }
-    });
-    setModalOpen(false);
-    setEditing(null);
-    setForm(EMPTY_FORM);
-  };
-
-  const handleSave = async () => {
-    if (!canManage) return;
-    if (editing && (editLockBlocked || isAcquiringEditLock)) {
-      toast.error(editLockMessage ?? getFaqEditLockBlockedMessage(editing.editLock));
-      return;
-    }
-    if (!form.question.trim() || !form.answer.trim()) {
-      toast.error('Question et réponse sont requises');
-      return;
-    }
-
-    const payload = {
-      question: form.question.trim(),
-      answer: form.answer.trim(),
-      category: form.category.trim() || undefined,
-      tags: form.tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      isActive: form.isActive,
-    };
-
-    setSaving(true);
+  const createProject = async () => {
+    const key = newProjectKey.trim();
+    if (!key || creatingProject) return;
+    setCreatingProject(true);
     try {
-      if (editing) {
-        await faqService.update(editing.id, payload);
-        toast.success('Entrée FAQ mise à jour');
-        await releaseIfHeld();
-      } else {
-        await faqService.create(payload);
-        toast.success('Entrée FAQ créée');
-      }
-      closeModal();
+      await faqService.registerProject(key);
+      setNewProjectKey('');
       await load();
+      toast.success(`Projet ${key} créé`);
+      router.push(faqProjectHref(key));
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(getErrorMessage(err, 'Impossible de créer le projet FAQ'));
     } finally {
-      setSaving(false);
+      setCreatingProject(false);
     }
   };
 
-  const handleTogglePublish = async (row: FaqEntryRow) => {
-    if (!canManage) return;
-    if (isFaqListActionBlocked(row.editLock)) {
-      toast.error(
-        isFaqLockedByOther(row.editLock)
-          ? `Publication indisponible : entrée en édition par ${row.editLock?.heldByDisplayName?.trim() || 'un autre administrateur'}.`
-          : 'Publication indisponible pendant votre session d’édition. Enregistrez ou fermez l’éditeur.',
-      );
-      return;
-    }
+  const confirmDeleteProject = async () => {
+    if (!deleteProjectKey || !canManage) return;
+    setDeleteProjectLoading(true);
     try {
-      await faqService.setActive(row.id, !row.isActive);
-      toast.success(row.isActive ? 'Entrée dépubliée' : 'Entrée publiée');
-      await load();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    }
-  };
-
-  const handleDelete = (row: FaqEntryRow) => {
-    if (!canManage) return;
-    if (isFaqListActionBlocked(row.editLock)) {
-      toast.error(
-        isFaqLockedByOther(row.editLock)
-          ? `Suppression impossible : entrée en édition par ${row.editLock?.heldByDisplayName?.trim() || 'un autre administrateur'}.`
-          : 'Suppression impossible pendant votre session d’édition. Fermez l’éditeur d’abord.',
-      );
-      return;
-    }
-    setDeleteTarget(row);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteTarget || !canManage) return;
-    setDeleteLoading(true);
-    try {
-      await faqService.remove(deleteTarget.id);
-      toast.success('Entrée supprimée');
-      setDeleteTarget(null);
-      await load();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  const handleReindex = async () => {
-    if (!canManage) return;
-    setReindexing(true);
-    try {
-      const result = await faqService.reindex();
-      toast.success(
-        result.embeddedCount != null
-          ? `Index régénéré (${result.embeddedCount} entrée(s) publiée(s))`
-          : result.message,
-      );
-      await load();
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Échec de la régénération des embeddings'));
-    } finally {
-      setReindexing(false);
-    }
-  };
-
-  const handlePreviewQueryChange = (value: string) => {
-    setPreviewQuery(value);
-    if (!value.trim()) {
-      previewSearchTokenRef.current += 1;
-      setPreviewResults([]);
-      setPreviewLoading(false);
-    }
-  };
-
-  const handlePreviewSearch = async () => {
-    const question = previewQuery.trim();
-    if (!question) return;
-    const token = previewSearchTokenRef.current + 1;
-    previewSearchTokenRef.current = token;
-    setPreviewLoading(true);
-    try {
-      const result = await faqService.semanticSearch(question, 3);
-      if (token !== previewSearchTokenRef.current) return;
-      setPreviewResults(result.results ?? []);
-      if (!result.results?.length) {
-        toast.message('Aucun résultat pertinent pour cette question de test.');
-      }
-    } catch (err) {
-      if (token !== previewSearchTokenRef.current) return;
-      toast.error(getErrorMessage(err, 'Échec du test de recherche sémantique'));
-      setPreviewResults([]);
-    } finally {
-      if (token === previewSearchTokenRef.current) {
-        setPreviewLoading(false);
-      }
-    }
-  };
-
-  const handleImportGlobal = () => {
-    if (!canManage) return;
-    setImportConfirmOpen(true);
-  };
-
-  const confirmImportGlobal = async () => {
-    if (!canManage) return;
-    setImporting(true);
-    try {
-      const result = await faqService.importGlobal({
-        skipDuplicates: true,
-        replaceExisting: false,
-      });
-      toast.success(
-        `${result.imported} importée(s) · ${result.skipped} ignorée(s) / ${result.totalInCatalog} au catalogue`,
-      );
-      setLastImportSummary(
-        `Dernier import TrustDev : ${result.imported} ajoutée(s), ${result.skipped} ignorée(s), ${result.totalInCatalog} au catalogue.`,
-      );
-      setImportConfirmOpen(false);
-      await load();
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Échec de l’import FAQ TrustDev'));
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const confirmClearAll = async () => {
-    if (!canManage) return;
-    setClearAllLoading(true);
-    try {
-      const result = await faqService.removeAll();
+      const result = await faqService.deleteProject(deleteProjectKey);
       toast.success(
         result.deleted > 0
-          ? `${result.deleted} entrée(s) supprimée(s)`
-          : 'Aucune entrée FAQ à supprimer',
+          ? `Corpus FAQ supprimé — ${result.deleted} question${result.deleted > 1 ? 's' : ''} retirée${result.deleted > 1 ? 's' : ''}`
+          : 'Corpus FAQ supprimé',
       );
-      setClearAllConfirmOpen(false);
-      setLastImportSummary(null);
-      setDeleteTarget(null);
-      setModalOpen(false);
-      setEditing(null);
+      setDeleteProjectKey(null);
+      if (questionsProjectKey === deleteProjectKey) {
+        setQuestionsProjectKey(null);
+      }
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Échec de la suppression de la FAQ'));
+      toast.error(getErrorMessage(err, 'Impossible de supprimer le projet'));
     } finally {
-      setClearAllLoading(false);
+      setDeleteProjectLoading(false);
     }
   };
+
+  const questionsModalItems = questionsProjectKey ? itemsByProject[questionsProjectKey] ?? [] : [];
 
   return (
     <RoleRouteGuard access="faq">
@@ -429,549 +137,281 @@ export default function FaqPage() {
 
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              FAQ organisation
-            </h1>
-            <p className="mt-1 text-sm whitespace-nowrap text-slate-600 dark:text-slate-400">
-              Gérez la base d&apos;aide de votre organisation. Les entrées publiées alimentent la recherche sémantique du SDK (scope{' '}
-              <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>faq:search</code>).
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">FAQ</h1>
+            <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-400">
+              {canManage
+                ? 'Organisez l’aide par projet ou application SDK. Chaque paquet regroupe ses propres questions et son index sémantique.'
+                : 'Consultez les corpus d’aide par projet (lecture seule).'}
             </p>
           </div>
-          {canManage ? (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
-                disabled={importing || reindexing}
-                onClick={() => void handleImportGlobal()}
-              >
-                {importing ? (
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Icons.download className="mr-2 h-4 w-4" />
-                )}
-                Importer FAQ TrustDev
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
-                disabled={reindexing}
-                onClick={() => void handleReindex()}
-              >
-                {reindexing ? (
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Icons.refresh className="mr-2 h-4 w-4" />
-                )}
-                Régénérer l&apos;index
-              </Button>
-              <Button type="button" className={PHOENIX_PRIMARY_BUTTON_CLASS} onClick={openCreate}>
-                <Icons.plus className="mr-2 h-4 w-4" />
-                Nouvelle entrée
-              </Button>
-            </div>
-          ) : null}
         </div>
 
-        <DashboardStatGrid stats={statCards} />
-
-        {indexStatus ? (
-          <div
-            className={cn(
-              'rounded-xl border px-4 py-3 text-sm',
-              indexStatus.needsReindex
-                ? 'border-amber-300/70 bg-amber-50/90 text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-amber-100'
-                : 'border-emerald-300/60 bg-emerald-50/80 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-950/20 dark:text-emerald-100',
-            )}
-          >
-            <p className="font-medium">
-              {indexStatus.needsReindex
-                ? 'Index sémantique à jour requis'
-                : 'Index sémantique prêt pour le SDK'}
-            </p>
-            <p className="mt-1 text-xs opacity-90">
-              {indexStatus.activeCount} entrée(s) publiée(s)
-              {indexStatus.lastIndexedAt
-                ? ` · dernier index : ${new Date(indexStatus.lastIndexedAt).toLocaleString('fr-FR')}`
-                : ' · aucun fichier d’embeddings détecté'}
-            </p>
-          </div>
-        ) : null}
-
-        {lastImportSummary ? (
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-300">
-            {lastImportSummary}
-          </div>
-        ) : null}
-
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/50">
-          <div className="mb-3">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Tester la recherche SDK</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Simule la recherche sémantique utilisée par la sidebar d’aide.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              value={previewQuery}
-              onChange={(event) => handlePreviewQueryChange(event.target.value)}
-              placeholder="Ex. Comment changer mon nom ?"
-              className={PHOENIX_FIELD_CLASS}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void handlePreviewSearch();
-              }}
-            />
-            <Button
-              type="button"
-              className={PHOENIX_PRIMARY_BUTTON_CLASS}
-              disabled={previewLoading || previewQuery.trim().length === 0}
-              onClick={() => void handlePreviewSearch()}
-            >
-              {previewLoading ? <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Tester
-            </Button>
-          </div>
-          {previewResults.length > 0 ? (
-            <div className="mt-4 space-y-2">
-              {previewResults.map((result) => (
-                <article
-                  key={result.id}
-                  className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 dark:border-white/10 dark:bg-slate-900/40"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-300">
-                      {result.category}
-                    </span>
-                    <span className="text-[11px] text-slate-500">{Math.round(result.score * 100)} %</span>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{result.question}</p>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{result.answer}</p>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-950/50">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[240px] flex-1">
-              <Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Rechercher une question, une réponse ou une catégorie…"
-                className="rounded-xl pl-9"
-              />
-            </div>
-            {canManage && items.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              label: 'Projets FAQ',
+              value: projectKeys.length,
+              icon: Icons.faq,
+              tone: 'from-orange-100 to-white dark:from-orange-500/20 dark:to-slate-900/70',
+            },
+            {
+              label: 'Questions totales',
+              value: totalQuestions,
+              icon: Icons.list,
+              tone: 'from-purple-100 to-white dark:from-purple-600/20 dark:to-slate-900/70',
+            },
+            {
+              label: 'Paquets SDK',
+              value: sdkPackCount,
+              icon: Icons.code,
+              tone: 'from-cyan-100 to-white dark:from-cyan-500/20 dark:to-slate-900/70',
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
                 className={cn(
-                  PHOENIX_CARD_BTN_BASE,
-                  'border-rose-300/70 bg-white/90 text-rose-700 hover:border-rose-400/70 hover:bg-rose-50/95 dark:border-rose-400/35 dark:bg-slate-900/45 dark:text-rose-200 dark:hover:bg-rose-500/10',
+                  'min-h-[96px] rounded-2xl border border-slate-200 bg-gradient-to-br p-4 shadow-[0_10px_24px_rgba(2,6,23,0.12)] backdrop-blur-sm dark:border-white/10 dark:shadow-[0_10px_30px_rgba(2,6,23,0.35)]',
+                  item.tone,
                 )}
-                disabled={clearAllLoading || loading}
-                onClick={() => setClearAllConfirmOpen(true)}
               >
-                {clearAllLoading ? (
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Icons.trash className="mr-2 h-4 w-4" />
-                )}
-                Vider toutes les questions
-              </Button>
-            ) : null}
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <Icons.spinner className="h-6 w-6 animate-spin text-orange-500" />
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-white/15">
-              <Icons.faq className="mx-auto h-8 w-8 text-orange-400" />
-              <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">Aucune entrée FAQ</p>
-              <p className="mt-1 text-sm text-slate-500">
-                {canManage
-                  ? 'Créez votre première question/réponse pour activer la FAQ multi-tenant.'
-                  : 'Aucune entrée disponible pour le moment.'}
-              </p>
-              {canManage ? (
-                <Button type="button" className={cn('mt-4', PHOENIX_PRIMARY_BUTTON_CLASS)} onClick={openCreate}>
-                  Créer une entrée
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                {paginatedItems.map((item) => {
-                  const listActionsBlocked = isFaqListActionBlocked(item.editLock);
-                  const lockedByOther = isFaqLockedByOther(item.editLock);
-                  return (
-                  <article
-                    key={item.id}
-                    className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-slate-900/40"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
-                            item.isActive
-                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-slate-500/15 text-slate-600 dark:text-slate-300'
-                          }`}
-                        >
-                          {item.isActive ? 'Publiée' : 'Brouillon'}
-                        </span>
-                        {item.category ? (
-                          <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-[11px] font-semibold text-orange-600 dark:text-orange-300">
-                            {item.category}
-                          </span>
-                        ) : null}
-                      </div>
-                      {canManage ? (
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className={cn(
-                              PHOENIX_CARD_BTN_BASE,
-                              'border-slate-300/70 bg-white/90 text-slate-700 hover:border-orange-400/50 hover:bg-white dark:border-white/15 dark:text-slate-200',
-                            )}
-                            onClick={() => openEdit(item)}
-                          >
-                            <Icons.edit className="mr-1 h-3.5 w-3.5" />
-                            Modifier
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className={cn(
-                              PHOENIX_CARD_BTN_BASE,
-                              item.isActive
-                                ? 'border-amber-300/55 bg-white/90 text-amber-900 hover:border-amber-400/65 hover:bg-amber-50/95 dark:border-amber-400/35 dark:text-amber-200'
-                                : 'border-emerald-300/55 bg-white/90 text-emerald-800 hover:border-emerald-400/65 hover:bg-emerald-50/95 dark:border-emerald-400/35 dark:text-emerald-200',
-                            )}
-                            disabled={listActionsBlocked}
-                            title={
-                              listActionsBlocked
-                                ? lockedByOther
-                                  ? 'Publication indisponible pendant une session d’édition'
-                                  : 'Fermez l’éditeur avant de publier depuis la liste'
-                                : undefined
-                            }
-                            onClick={() => void handleTogglePublish(item)}
-                          >
-                            {item.isActive ? 'Dépublier' : 'Publier'}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className={cn(PHOENIX_DESTRUCTIVE_BUTTON_CLASS, 'h-9 px-3 text-xs')}
-                            disabled={listActionsBlocked}
-                            title={
-                              listActionsBlocked
-                                ? lockedByOther
-                                  ? 'Suppression indisponible pendant une session d’édition'
-                                  : 'Fermez l’éditeur avant de supprimer'
-                                : undefined
-                            }
-                            onClick={() => handleDelete(item)}
-                          >
-                            <Icons.trash className="mr-1 h-3.5 w-3.5" />
-                            Supprimer
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="min-w-0">
-                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{item.question}</h2>
-                      <p className="mt-2 line-clamp-3 text-sm text-slate-600 dark:text-slate-300">{item.answer}</p>
-                      {item.tags.length > 0 ? (
-                        <p className="mt-2 text-xs text-slate-500">Tags : {item.tags.join(', ')}</p>
-                      ) : null}
-                      <p className="mt-2 text-xs text-slate-500">
-                        Usage : {item.viewCount} vue{item.viewCount > 1 ? 's' : ''} · {item.helpfulCount} utile
-                        {item.helpfulCount > 1 ? 's' : ''} · {item.notHelpfulCount} non utile
-                        {item.notHelpfulCount > 1 ? 's' : ''}
-                      </p>
-                    </div>
-
-                    {canManage && hasActiveFaqEditLock(item.editLock) ? (
-                      <p className="rounded-lg border border-rose-200/80 bg-rose-50/90 px-2.5 py-1.5 text-xs text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-100">
-                        {lockedByOther
-                          ? `En édition par ${item.editLock?.heldByDisplayName?.trim() || 'un autre administrateur'} — publication et suppression désactivées`
-                          : 'Session d’édition en cours — publication et suppression désactivées depuis la liste'}
-                      </p>
-                    ) : null}
-                  </article>
-                  );
-                })}
-              </div>
-
-              {filteredItems.length > FAQ_PAGE_SIZE ? (
-                <div className="mt-4 flex flex-col gap-3 border-t border-slate-200/80 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {paginatedRangeLabel} entrée{filteredItems.length > 1 ? 's' : ''} — {FAQ_PAGE_SIZE} par page
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={safeCurrentPage <= 1}
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                      className={cn(PHOENIX_MODAL_CANCEL_BUTTON_CLASS, 'gap-1')}
-                    >
-                      <Icons.chevronLeft className="h-4 w-4" />
-                      Précédent
-                    </Button>
-                    <span className="min-w-[7rem] text-center text-sm font-medium text-slate-800 dark:text-slate-200">
-                      Page {safeCurrentPage} / {totalPages}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={safeCurrentPage >= totalPages}
-                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                      className={cn(PHOENIX_MODAL_CANCEL_BUTTON_CLASS, 'gap-1')}
-                    >
-                      Suivant
-                      <Icons.chevronRight className="h-4 w-4" />
-                    </Button>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                      {loading ? '…' : item.value}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white/80 p-2.5 text-orange-500 dark:border-white/10 dark:bg-slate-950/65 dark:text-orange-300">
+                    <Icon className="h-4 w-4" />
                   </div>
                 </div>
-              ) : (
-                <p className="mt-4 border-t border-slate-200/80 pt-4 text-sm text-slate-600 dark:border-white/10 dark:text-slate-400">
-                  {filteredItems.length} entrée{filteredItems.length > 1 ? 's' : ''} au total
-                </p>
-              )}
-            </>
-          )}
+              </div>
+            );
+          })}
         </div>
-      </div>
 
-      {modalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className={PHOENIX_MODAL_OVERLAY_CLASS} onClick={closeModal} aria-hidden />
-          <div className={cn(PHOENIX_MODAL_PANEL_CLASS, 'mx-4 max-w-2xl animate-scale-in')}>
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                  {editing ? 'Modifier une entrée FAQ' : 'Nouvelle entrée FAQ'}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Les entrées publiées sont indexées pour la recherche sémantique du SDK.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                aria-label="Fermer"
-                className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-white/10 dark:hover:text-slate-200"
-              >
-                <Icons.close className="h-5 w-5" />
-              </button>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <PhoenixCollapsibleCard
+            title="Conseils"
+            description="Comment structurer vos corpus d’aide par projet."
+            open={tipsOpen}
+            onOpenChange={setTipsOpen}
+          >
+            <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+              <p>
+                • Le corpus <strong className="font-medium text-slate-900 dark:text-white">FAQ générique</strong>{' '}
+                couvre l’aide sans <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>flowVersion</code> spécifique.
+              </p>
+              <p>
+                • Créez un paquet par application SDK en utilisant le même identifiant que le{' '}
+                <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>flowVersion</code> .
+              </p>
+              <p>
+                • Publiez les questions et régénérez l&apos;index sémantique pour qu&apos;elles soient visibles dans
+                l&apos;aide SDK.
+              </p>
+              {!canManage ? (
+                <p>• En tant que développeur, vous pouvez consulter les projets sans les modifier.</p>
+              ) : null}
             </div>
+          </PhoenixCollapsibleCard>
 
-            {editing && isAcquiringEditLock ? (
-              <div className="flex justify-center py-10">
-                <Icons.spinner className="h-6 w-6 animate-spin text-orange-500" />
+          <PhoenixCollapsibleCard
+            title="Intégration SDK"
+            description="Comment le SDK résout le bon corpus FAQ."
+            open={sdkInfoOpen}
+            onOpenChange={setSdkInfoOpen}
+          >
+            <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+              <p>
+                Le SDK dérive le <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>projectKey</code> depuis le{' '}
+                <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>flowVersion</code> du parcours actif dans{' '}
+                <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>contextualSuggestions</code>.
+              </p>
+              <p>
+                Sans paquet dédié, la recherche FAQ utilise le corpus{' '}
+                <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>default</code>.
+              </p>
+            </div>
+          </PhoenixCollapsibleCard>
+        </div>
+
+        {canManage ? (
+          <Card className={cn(PHOENIX_PANEL_CLASS, 'overflow-hidden')}>
+            <CardContent className="p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Créer un projet FAQ</h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    Créez un paquet lié à une application ou un identifiant{' '}
+                    <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>flowVersion</code> SDK.
+                  </p>
+                </div>
               </div>
-            ) : editing && editLockBlocked ? (
-              <div className="rounded-xl border border-rose-200/80 bg-rose-50/90 p-5 text-center dark:border-rose-900/40 dark:bg-rose-950/30">
-                <Icons.admin className="mx-auto h-8 w-8 text-rose-500 dark:text-rose-300" />
-                <h3 className="mt-3 text-base font-semibold text-slate-900 dark:text-white">Édition verrouillée</h3>
-                <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
-                  {editLockMessage ?? getFaqEditLockBlockedMessage(editing.editLock)}
-                </p>
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <Button type="button" variant="outline" className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS} onClick={closeModal}>
-                    Fermer
-                  </Button>
+              <div className={cn(PHOENIX_INSET_PANEL_CLASS, 'mt-4')}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="min-w-[220px] flex-1">
+                    <Label htmlFor="faq-new-project" className={PHOENIX_LABEL_CLASS}>
+                      Identifiant projet
+                    </Label>
+                    <Input
+                      id="faq-new-project"
+                      value={newProjectKey}
+                      onChange={(event) => setNewProjectKey(event.target.value)}
+                      placeholder="ex. test-11-v1"
+                      className={cn('mt-1.5', PHOENIX_FIELD_CLASS)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') createProject();
+                      }}
+                    />
+                  </div>
                   <Button
                     type="button"
                     className={PHOENIX_PRIMARY_BUTTON_CLASS}
-                    disabled={isAcquiringEditLock}
-                    onClick={() => void retryEditLockAcquire()}
+                    disabled={!newProjectKey.trim() || creatingProject}
+                    onClick={() => void createProject()}
                   >
-                    {isAcquiringEditLock ? (
+                    {creatingProject ? (
                       <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Icons.refresh className="mr-2 h-4 w-4" />
+                      <Icons.plus className="mr-2 h-4 w-4" />
                     )}
-                    Réessayer
+                    Créer le projet
                   </Button>
                 </div>
               </div>
-            ) : (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="faq-question" className={PHOENIX_LABEL_CLASS}>
-                  Question
-                </Label>
-                <Input
-                  id="faq-question"
-                  value={form.question}
-                  onChange={(event) => setForm((prev) => ({ ...prev, question: event.target.value }))}
-                  className={cn('mt-1.5', PHOENIX_FIELD_CLASS)}
-                  placeholder="Comment réinitialiser mon mot de passe ?"
-                />
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Projets FAQ</h2>
+            <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
+              {loading
+                ? 'Chargement…'
+                : `${projectKeys.length} projet${projectKeys.length !== 1 ? 's' : ''} · ${totalQuestions} question${totalQuestions !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-slate-900/40 py-16 backdrop-blur-xl">
+              <Icons.spinner className="h-6 w-6 animate-spin text-orange-400" />
+              <span className="ml-3 text-sm text-slate-400">Chargement des projets FAQ…</span>
+            </div>
+          ) : null}
+
+          {!loading && projectKeys.length === 0 ? (
+            <div className="relative overflow-hidden rounded-2xl border border-dashed border-orange-400/25 bg-gradient-to-br from-orange-500/[0.06] via-slate-900/50 to-pink-500/[0.05] px-6 py-14 text-center backdrop-blur-xl">
+              <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-40 -translate-x-1/2 rounded-full bg-orange-500/15 blur-3xl" />
+              <div className="relative">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-400/30 bg-orange-500/10 shadow-[0_0_30px_rgba(249,115,22,0.2)]">
+                  <Icons.faq className="h-7 w-7 text-orange-300" />
+                </div>
+                <p className="text-lg font-semibold text-slate-900 dark:text-white">Aucun projet FAQ</p>
+                <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
+                  Commencez par le corpus générique ou créez un paquet lié à votre intégration SDK.
+                </p>
+                {canManage ? (
+                  <Button
+                    type="button"
+                    className={cn('mt-6', PHOENIX_PRIMARY_BUTTON_CLASS)}
+                    onClick={() => router.push(faqProjectHref(DEFAULT_FAQ_PROJECT_KEY))}
+                  >
+                    Ouvrir {formatFaqProjectTitle(DEFAULT_FAQ_PROJECT_KEY)}
+                  </Button>
+                ) : null}
               </div>
-              <div>
-                <Label htmlFor="faq-answer" className={PHOENIX_LABEL_CLASS}>
-                  Réponse
-                </Label>
-                <textarea
-                  id="faq-answer"
-                  value={form.answer}
-                  onChange={(event) => setForm((prev) => ({ ...prev, answer: event.target.value }))}
-                  className={cn('mt-1.5 min-h-[120px] w-full px-3 py-2 text-sm', PHOENIX_FIELD_CLASS)}
-                  placeholder="Depuis l'écran de connexion…"
-                />
+            </div>
+          ) : null}
+
+          {!loading && projectKeys.length > 0 ? (
+            <div
+              className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
+              aria-label="Catalogue des projets FAQ"
+            >
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Corpus d&apos;aide
+                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {projectKeys.length} projet{projectKeys.length !== 1 ? 's' : ''}
+                </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="faq-category" className={PHOENIX_LABEL_CLASS}>
-                    Catégorie
-                  </Label>
-                  <Input
-                    id="faq-category"
-                    value={form.category}
-                    onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
-                    className={cn('mt-1.5', PHOENIX_FIELD_CLASS)}
-                    placeholder="auth, billing, support…"
+                {projectKeys.map((key) => (
+                  <FaqProjectCard
+                    key={key}
+                    projectKey={key}
+                    questionCount={projectKeyCounts[key] ?? 0}
+                    tourCount={projectKeyTourCounts[key] ?? 0}
+                    canManage={canManage}
+                    onShowQuestions={() => setQuestionsProjectKey(key)}
+                    onDelete={
+                      key !== DEFAULT_FAQ_PROJECT_KEY
+                        ? () => setDeleteProjectKey(key)
+                        : undefined
+                    }
                   />
-                </div>
-                <div>
-                  <Label htmlFor="faq-tags" className={PHOENIX_LABEL_CLASS}>
-                    Tags (séparés par des virgules)
-                  </Label>
-                  <Input
-                    id="faq-tags"
-                    value={form.tags}
-                    onChange={(event) => setForm((prev) => ({ ...prev, tags: event.target.value }))}
-                    className={cn('mt-1.5', PHOENIX_FIELD_CLASS)}
-                    placeholder="password, login"
-                  />
-                </div>
+                ))}
               </div>
-              <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700 dark:text-slate-200">
-                <Checkbox
-                  checked={form.isActive}
-                  onCheckedChange={(checked) =>
-                    setForm((prev) => ({ ...prev, isActive: checked === true }))
-                  }
-                  className={PHOENIX_CHECKBOX_CLASS}
-                />
-                Publier immédiatement (visible dans la recherche SDK)
-              </label>
             </div>
-            )}
+          ) : null}
+        </section>
+      </div>
 
-            {!editing || editLockBlocked || isAcquiringEditLock ? null : (
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
-                onClick={closeModal}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="button"
-                className={PHOENIX_PRIMARY_BUTTON_CLASS}
-                disabled={saving}
-                onClick={() => void handleSave()}
-              >
-                {saving ? <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {editing ? 'Enregistrer' : 'Créer'}
-              </Button>
-            </div>
-            )}
-          </div>
-        </div>
+      {questionsProjectKey ? (
+        <FaqProjectQuestionsModal
+          projectKey={questionsProjectKey}
+          items={questionsModalItems}
+          canManage={canManage}
+          onClose={() => setQuestionsProjectKey(null)}
+        />
       ) : null}
 
       <PhoenixConfirmModal
-        open={deleteTarget != null}
+        open={deleteProjectKey != null}
         variant="danger"
-        title="Supprimer l'entrée FAQ"
+        title={
+          deleteProjectKey
+            ? `Supprimer le corpus FAQ — ${formatFaqProjectTitle(deleteProjectKey)}`
+            : 'Supprimer le corpus FAQ'
+        }
         description={
-          deleteTarget ? (
+          deleteProjectKey ? (
             <>
-              Êtes-vous sûr de vouloir supprimer{' '}
-              <strong className="font-semibold text-slate-900 dark:text-white">{deleteTarget.question}</strong>{' '}
-              ? Cette action est irréversible.
+              <p>
+                Supprimer le paquet FAQ{' '}
+                <strong className="font-semibold text-slate-900 dark:text-white">
+                  {formatFaqProjectTitle(deleteProjectKey)}
+                </strong>{' '}
+                et ses{' '}
+                <strong className="font-semibold text-slate-900 dark:text-white">
+                  {projectKeyCounts[deleteProjectKey] ?? 0}
+                </strong>{' '}
+                question{(projectKeyCounts[deleteProjectKey] ?? 0) > 1 ? 's' : ''} ?
+              </p>
+              <p className="mt-3 text-slate-600 dark:text-slate-400">
+                Cette action ne supprime pas les parcours ni les blueprints du projet. Pour une
+                suppression complète du scope SDK, utilisez le hub projet.
+              </p>
+              <p className="mt-2 text-slate-600 dark:text-slate-400">
+                Action irréversible. L&apos;index sémantique associé sera régénéré.
+              </p>
             </>
           ) : null
         }
-        confirmLabel="Supprimer"
-        loading={deleteLoading}
+        confirmLabel="Supprimer le corpus FAQ"
+        loading={deleteProjectLoading}
         loadingLabel="Suppression…"
         onClose={() => {
-          if (!deleteLoading) setDeleteTarget(null);
+          if (!deleteProjectLoading) setDeleteProjectKey(null);
         }}
-        onConfirm={confirmDelete}
-      />
-
-      <PhoenixConfirmModal
-        open={clearAllConfirmOpen}
-        variant="danger"
-        title="Vider toutes les questions FAQ"
-        description={
-          <>
-            <p>
-              Supprimer les <strong className="font-semibold text-slate-900 dark:text-white">{items.length}</strong>{' '}
-              entrée{items.length > 1 ? 's' : ''} de votre organisation ?
-            </p>
-            <p className="mt-3 text-slate-600 dark:text-slate-400">
-              Cette action est irréversible. L&apos;index sémantique sera régénéré en arrière-plan.
-            </p>
-          </>
-        }
-        confirmLabel="Tout supprimer"
-        loading={clearAllLoading}
-        loadingLabel="Suppression…"
-        onClose={() => {
-          if (!clearAllLoading) setClearAllConfirmOpen(false);
-        }}
-        onConfirm={() => void confirmClearAll()}
-      />
-
-      <PhoenixConfirmModal
-        open={importConfirmOpen}
-        variant="default"
-        title="Importer FAQ TrustDev"
-        maxWidthClassName="max-w-md"
-        description={
-          <>
-            <p>Importer la base FAQ generique TrustDev (45 questions pour utilisateurs finaux) ?</p>
-            <ul className="mt-3 list-inside list-disc space-y-1 text-slate-600 dark:text-slate-400">
-              <li>Modele adaptable a votre produit — personnalisez les reponses apres import</li>
-              <li>Les questions deja presentes seront ignorees</li>
-              <li>Les entrees importees seront publiees</li>
-              <li>L&apos;index semantique sera regenere en arriere-plan</li>
-            </ul>
-          </>
-        }
-        confirmLabel="Importer"
-        loading={importing}
-        loadingLabel="Import…"
-        onClose={() => {
-          if (!importing) setImportConfirmOpen(false);
-        }}
-        onConfirm={confirmImportGlobal}
+        onConfirm={() => void confirmDeleteProject()}
       />
     </RoleRouteGuard>
   );

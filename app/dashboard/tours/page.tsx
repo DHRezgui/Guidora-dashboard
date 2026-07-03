@@ -25,6 +25,9 @@ import {
 	type ConcatDraftFields,
 } from '@/lib/tour-concat';
 import { getDashboardRole, canCreateTours, canManageTours } from '@/lib/dashboard-roles';
+import { faqProjectHref, formatFaqProjectTitle, DEFAULT_FAQ_PROJECT_KEY } from '@/lib/faq-project';
+import { isGenericProjectFlowVersion, collectTourProjectScopeKeys, hasMixedTourProjectScopes, readTourFlowVersion } from '@/lib/tour-project-scope';
+import { projectHubHref, tourCreateHref } from '@/lib/project';
 import { canManageTour, isSdkLabTemplateTour } from '@/lib/tour-lab';
 import {
 	buildTourListIndex,
@@ -262,6 +265,14 @@ function ConcatDropContainer({
 export default function ToursPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const flowVersionFilter = useMemo(
+		() => searchParams.get('flowVersion')?.trim() || '',
+		[searchParams],
+	);
+	const tourCreateLink = useMemo(
+		() => (flowVersionFilter ? tourCreateHref(flowVersionFilter) : '/dashboard/tours/create'),
+		[flowVersionFilter],
+	);
 	const [sessionUser, setSessionUser] = useState<User | null>(null);
 	const [creatorRoleByUserId, setCreatorRoleByUserId] = useState<
 		Map<string, 'ADMIN' | 'DEVELOPER' | 'USER'>
@@ -612,7 +623,10 @@ export default function ToursPage() {
 	const loadTours = async (attempt = 0) => {
 		const currentSeq = ++loadSeqRef.current;
 		try {
-			const response = await tourService.getAll(undefined, { includeSteps: false });
+			const response = await tourService.getAll(undefined, {
+				includeSteps: false,
+				...(flowVersionFilter ? { flowVersion: flowVersionFilter } : {}),
+			});
 			const fetchedTours = response.tours || [];
 			if (currentSeq !== loadSeqRef.current) {
 				return;
@@ -831,6 +845,16 @@ export default function ToursPage() {
 				return;
 			}
 
+			if (hasMixedTourProjectScopes(detailedTours)) {
+				const scopeKeys = collectTourProjectScopeKeys(detailedTours).map((key) =>
+					key === DEFAULT_FAQ_PROJECT_KEY ? 'générique (sans flowVersion)' : key,
+				);
+				toast.warning('Projets SDK différents dans la file', {
+					description: `Sources : ${scopeKeys.join(', ')}. Le flowVersion du premier parcours sera conservé.`,
+					duration: 8000,
+				});
+			}
+
 			const concatenatedTour = concatenateToursFifo(detailedTours, {
 				existingNames: tours.map((tour) => tour.name || ''),
 				fallbackTargetUrl: concatDraft.targetUrl || '/',
@@ -874,8 +898,9 @@ export default function ToursPage() {
 	};
 
 	useEffect(() => {
-		loadTours();
-	}, []);
+		setIsLoading(true);
+		void loadTours();
+	}, [flowVersionFilter]);
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -1349,7 +1374,7 @@ export default function ToursPage() {
 					{canCreateNewTour ? (
 					<div ref={actionsMenuRef} className="relative w-full md:w-auto">
 						<div className="flex w-full md:w-auto">
-							<Link href="/dashboard/tours/create" prefetch={false} className="flex-1 md:flex-none">
+							<Link href={tourCreateLink} prefetch={false} className="flex-1 md:flex-none">
 								<Button className="w-full rounded-r-none shadow-sm hover:scale-105 transition-transform">
 									<Icons.plus className="mr-2 h-4 w-4" />
 									Nouveau parcours
@@ -1384,6 +1409,53 @@ export default function ToursPage() {
 					</div>
 					) : null}
 				</div>
+
+				{flowVersionFilter ? (
+					<div className="rounded-2xl border border-sky-300/55 bg-gradient-to-r from-sky-50/90 to-white/90 px-4 py-3 shadow-sm dark:border-sky-400/25 dark:from-sky-500/10 dark:to-slate-900/60">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<div className="flex min-w-0 items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+								<Icons.tours className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-300" />
+								<span>
+									{isGenericProjectFlowVersion(flowVersionFilter) ? (
+										<>
+											Parcours <strong className="font-semibold">sans flowVersion SDK</strong> (corpus
+											générique)
+										</>
+									) : (
+										<>
+											Parcours contextuels liés au projet{' '}
+											<strong className="font-semibold text-slate-900 dark:text-white">
+												{formatFaqProjectTitle(flowVersionFilter)}
+											</strong>
+											<span className="ml-1 font-mono text-xs text-sky-700/90 dark:text-sky-200/80">
+												({flowVersionFilter})
+											</span>
+										</>
+									)}
+								</span>
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								{!isGenericProjectFlowVersion(flowVersionFilter) ? (
+									<Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
+										<Link href={projectHubHref(flowVersionFilter)}>Hub projet</Link>
+									</Button>
+								) : null}
+								<Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
+									<Link href={faqProjectHref(flowVersionFilter)}>Voir le pack FAQ</Link>
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="h-8 rounded-lg"
+									onClick={() => router.push('/dashboard/tours')}
+								>
+									Effacer le filtre
+								</Button>
+							</div>
+						</div>
+					</div>
+				) : null}
 
 				{isDeveloper ? (
 					<SandboxHintCollapsible title="Workflow sandbox" tone="orange" storageKey="tours-workflow-sandbox">
@@ -1755,7 +1827,7 @@ export default function ToursPage() {
 						}
 						action={
 							canCreateNewTour ? (
-								<Link href="/dashboard/tours/create" prefetch={false}>
+								<Link href={tourCreateLink} prefetch={false}>
 									<Button className="gap-2">
 										<Icons.plus className="h-4 w-4" />
 										Creer mon premier parcours
@@ -1849,6 +1921,12 @@ export default function ToursPage() {
 							const productionActive = meta.productionActive;
 							const deploymentActive = meta.isSandbox ? sandboxTestActive : productionActive;
 							const tourDisplayName = resolveTourCardDisplayName(tour, meta.isAutogen);
+							const tourFlowVersion = readTourFlowVersion(tour.triggerConditions);
+							const tourProjectScopeLabel = !flowVersionFilter
+								? tourFlowVersion
+									? formatFaqProjectTitle(tourFlowVersion)
+									: 'Générique'
+								: null;
 							const productionManagerFullLabel =
 								meta.productionManagerUserId
 									? resolveTourActorLabel(
@@ -1929,6 +2007,18 @@ export default function ToursPage() {
 													>
 														{(tour.id || '').slice(0, 8)}
 													</span>
+													{tourProjectScopeLabel ? (
+														<span
+															className={cn(
+																'rounded border px-1.5 py-0.5 text-[10px] font-semibold',
+																tourFlowVersion
+																	? 'border-sky-300/55 bg-sky-50 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200'
+																	: 'border-cyan-300/55 bg-cyan-50 text-cyan-800 dark:border-cyan-400/35 dark:bg-cyan-500/10 dark:text-cyan-200',
+															)}
+														>
+															{tourProjectScopeLabel}
+														</span>
+													) : null}
 													{(!showViewOnlyActions || meta.isOwner) && (
 														<span>Créé le {formatCreatedAt(tour.createdAt)}</span>
 													)}

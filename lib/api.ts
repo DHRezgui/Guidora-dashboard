@@ -267,7 +267,7 @@ export const organizationService = {
 export const tourService = {
   async getAll(
     isActive?: boolean,
-    options?: { includeSteps?: boolean },
+    options?: { includeSteps?: boolean; flowVersion?: string },
   ): Promise<GuidedTourResponse> {
     const params = new URLSearchParams();
     if (typeof isActive === 'boolean') {
@@ -275,6 +275,10 @@ export const tourService = {
     }
     if (options?.includeSteps === false) {
       params.set('includeSteps', 'false');
+    }
+    const flowVersion = options?.flowVersion?.trim();
+    if (flowVersion) {
+      params.set('flowVersion', flowVersion);
     }
     const query = params.toString();
     const response = await apiClient.get(`/tours${query ? `?${query}` : ''}`);
@@ -462,6 +466,7 @@ export interface OrganizationJourneyBlueprintRow {
   organizationId: string;
   blueprintId: string;
   vertical: string;
+  projectKey?: string;
   isPublished: boolean;
   payload: Record<string, unknown>;
   createdBy?: string | null;
@@ -503,12 +508,14 @@ export const journeyBlueprintService = {
     return response.data;
   },
 
-  async listManage(): Promise<{
+  async listManage(projectKey?: string): Promise<{
     success: boolean;
     count: number;
     blueprints: OrganizationJourneyBlueprintRow[];
   }> {
-    const response = await apiClient.get('/tours/contextual/blueprints/manage');
+    const response = await apiClient.get('/tours/contextual/blueprints/manage', {
+      params: projectKey ? { projectKey } : undefined,
+    });
     return response.data;
   },
 
@@ -535,6 +542,7 @@ export const journeyBlueprintService = {
   async create(payload: {
     blueprint: Record<string, unknown>;
     isPublished?: boolean;
+    projectKey?: string;
   }): Promise<{ success: boolean; blueprint: OrganizationJourneyBlueprintRow }> {
     const response = await apiClient.post('/tours/contextual/blueprints', payload);
     return response.data;
@@ -542,7 +550,7 @@ export const journeyBlueprintService = {
 
   async update(
     rowId: string,
-    payload: { blueprint: Record<string, unknown>; isPublished?: boolean },
+    payload: { blueprint: Record<string, unknown>; isPublished?: boolean; projectKey?: string },
   ): Promise<{ success: boolean; blueprint: OrganizationJourneyBlueprintRow }> {
     const response = await apiClient.put(`/tours/contextual/blueprints/${rowId}`, payload);
     return response.data;
@@ -683,6 +691,7 @@ export const sdkTokenService = {
 export interface FaqEntryRow {
   id: string;
   organizationId: string;
+  projectKey: string;
   question: string;
   answer: string;
   category: string | null;
@@ -704,8 +713,17 @@ export interface FaqEntryRow {
 }
 
 export const faqService = {
-  async listManage(): Promise<{ success: boolean; count: number; items: FaqEntryRow[] }> {
-    const response = await apiClient.get('/faq/manage');
+  async listManage(projectKey?: string): Promise<{
+    success: boolean;
+    count: number;
+    items: FaqEntryRow[];
+    projectKeys?: string[];
+    projectKeyCounts?: Record<string, number>;
+    projectKeyTourCounts?: Record<string, number>;
+  }> {
+    const response = await apiClient.get('/faq/manage', {
+      params: projectKey ? { projectKey } : undefined,
+    });
     return response.data;
   },
 
@@ -715,6 +733,7 @@ export const faqService = {
     category?: string;
     tags?: string[];
     isActive?: boolean;
+    projectKey?: string;
   }): Promise<{ success: boolean; item: FaqEntryRow }> {
     const response = await apiClient.post('/faq/entries', payload);
     return response.data;
@@ -728,6 +747,7 @@ export const faqService = {
       category?: string;
       tags?: string[];
       isActive?: boolean;
+      projectKey?: string;
     },
   ): Promise<{ success: boolean; item: FaqEntryRow }> {
     const response = await apiClient.put(`/faq/entries/${id}`, payload);
@@ -744,8 +764,24 @@ export const faqService = {
     return response.data;
   },
 
-  async removeAll(): Promise<{ success: boolean; message: string; deleted: number }> {
-    const response = await apiClient.delete('/faq/manage/all');
+  async removeAll(projectKey?: string): Promise<{ success: boolean; message: string; deleted: number }> {
+    const response = await apiClient.delete('/faq/manage/all', {
+      params: projectKey ? { projectKey } : undefined,
+    });
+    return response.data;
+  },
+
+  async registerProject(
+    projectKey: string,
+  ): Promise<{ success: boolean; projectKey: string; created: boolean }> {
+    const response = await apiClient.post('/faq/projects', { projectKey });
+    return response.data;
+  },
+
+  async deleteProject(
+    projectKey: string,
+  ): Promise<{ success: boolean; message: string; deleted: number }> {
+    const response = await apiClient.delete(`/faq/projects/${encodeURIComponent(projectKey)}`);
     return response.data;
   },
 
@@ -772,19 +808,23 @@ export const faqService = {
     return response.data;
   },
 
-  async reindex(): Promise<{
+  async reindex(projectKey?: string): Promise<{
     success: boolean;
     message: string;
     embeddedCount?: number;
     embeddingsPath?: string;
   }> {
-    const response = await apiClient.post('/faq/reindex');
+    const response = await apiClient.post('/faq/reindex', {}, {
+      params: projectKey ? { projectKey } : undefined,
+      timeout: 600_000,
+    });
     return response.data;
   },
 
   async importGlobal(payload?: {
     skipDuplicates?: boolean;
     replaceExisting?: boolean;
+    projectKey?: string;
   }): Promise<{
     success: boolean;
     message: string;
@@ -796,20 +836,24 @@ export const faqService = {
     return response.data;
   },
 
-  async getIndexStatus(): Promise<{
+  async getIndexStatus(projectKey?: string): Promise<{
     success: boolean;
     activeCount: number;
     embeddingsReady: boolean;
     needsReindex: boolean;
     lastIndexedAt: string | null;
+    projectKey?: string;
   }> {
-    const response = await apiClient.get('/faq/index-status');
+    const response = await apiClient.get('/faq/index-status', {
+      params: projectKey ? { projectKey } : undefined,
+    });
     return response.data;
   },
 
   async semanticSearch(
     question: string,
     topK = 3,
+    projectKey?: string,
   ): Promise<{
     success: boolean;
     query: string;
@@ -822,7 +866,119 @@ export const faqService = {
       score: number;
     }>;
   }> {
-    const response = await apiClient.post('/faq/semantic-search', { question, topK });
+    const response = await apiClient.post('/faq/semantic-search', {
+      question,
+      topK,
+      ...(projectKey ? { projectKey } : {}),
+    });
+    return response.data;
+  },
+};
+
+export interface ProjectListItem {
+  projectKey: string;
+  faqCount: number;
+  tourCount: number;
+  blueprintCount: number;
+}
+
+export interface ProjectOverview {
+  success: boolean;
+  projectKey: string;
+  faqCount: number;
+  tourCount: number;
+  blueprintCount: number;
+  recentFaqItems: FaqEntryRow[];
+  recentTours: Array<{
+    id: string;
+    name: string;
+    targetUrl: string;
+    isActive: boolean;
+    isSandboxTestActive?: boolean;
+    environment?: 'sandbox' | 'production' | string;
+    sandboxStatus?: 'pending' | 'approved' | 'rejected' | 'returned' | null;
+    stepCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+    createdBy?: string;
+    assignedAdminIds?: string[];
+    inCollaboration?: boolean;
+    accessGrants?: Array<{ userId: string; accessMode: 'view' | 'collaborate' }>;
+    triggerConditions?: Record<string, unknown>;
+    developerPrivate?: boolean;
+    sandboxRejectionReason?: string | null;
+    sharingHasView?: boolean;
+    sharingHasCollaborate?: boolean;
+    sandboxRejectedBy?: string | null;
+  }>;
+  recentBlueprints: Array<{
+    id: string;
+    blueprintId: string;
+    vertical: string;
+    isPublished: boolean;
+    name: string;
+    updatedAt?: string;
+  }>;
+  indexStatus?: {
+    activeCount: number;
+    embeddingsReady: boolean;
+    needsReindex: boolean;
+    lastIndexedAt?: string | null;
+  } | null;
+}
+
+export type ProjectDeleteScopePreview = {
+  success: boolean;
+  projectKey: string;
+  faqCount: number;
+  tourCount: number;
+  blueprintCount: number;
+  labTourSkippedCount: number;
+  productionTours: Array<{ id: string; name: string }>;
+  lockedBlueprints: Array<{ id: string; blueprintId: string; heldByDisplayName?: string }>;
+  canDelete: boolean;
+  blockReason?: string;
+  isEmpty: boolean;
+};
+
+export type DeleteProjectScopeResult = {
+  success: boolean;
+  projectKey: string;
+  faqDeleted: number;
+  toursDeleted: number;
+  blueprintsDeleted: number;
+  labToursSkipped: number;
+  message: string;
+};
+
+export const projectService = {
+  async list(): Promise<{ success: boolean; projects: ProjectListItem[] }> {
+    const response = await apiClient.get('/projects');
+    return response.data;
+  },
+
+  async getOverview(projectKey: string): Promise<ProjectOverview> {
+    const response = await apiClient.get(
+      `/projects/${encodeURIComponent(projectKey)}/overview`,
+    );
+    return response.data;
+  },
+
+  async getDeleteScopePreview(projectKey: string): Promise<ProjectDeleteScopePreview> {
+    const response = await apiClient.get(
+      `/projects/${encodeURIComponent(projectKey)}/delete-scope-preview`,
+    );
+    return response.data;
+  },
+
+  async deleteScope(
+    projectKey: string,
+    confirmProjectKey: string,
+  ): Promise<DeleteProjectScopeResult> {
+    const response = await apiClient.delete(
+      `/projects/${encodeURIComponent(projectKey)}/scope`,
+      { data: { confirmProjectKey } },
+    );
     return response.data;
   },
 };

@@ -21,6 +21,8 @@ interface EditorLayoutProps {
   developerSandboxMode?: boolean;
   developerSandboxTestMode?: boolean;
   viewOnlyMode?: boolean;
+  projectScopeKey?: string;
+  projectScopeInherited?: boolean;
 }
 
 const TEXT_EDIT_GROUP_WINDOW_MS = 900;
@@ -108,6 +110,8 @@ export default function EditorLayout({
   developerSandboxMode = false,
   developerSandboxTestMode = false,
   viewOnlyMode = false,
+  projectScopeKey,
+  projectScopeInherited = false,
 }: EditorLayoutProps) {
   const [steps, setSteps] = useState<Step[]>(tour?.steps ?? []);
   const initialTourMeta: Partial<GuidedTour> = {
@@ -197,6 +201,21 @@ export default function EditorLayout({
     });
   }, []);
 
+  // Parent peut injecter flowVersion / triggerConditions après le montage (création ?flowVersion=).
+  useEffect(() => {
+    if (tour?.id || !tour?.triggerConditions) {
+      return;
+    }
+    setTourMeta((prev) => {
+      if (prev.triggerConditions === tour.triggerConditions) {
+        return prev;
+      }
+      const nextTourMeta = { ...prev, triggerConditions: tour.triggerConditions };
+      commitToHistory({ steps, tourMeta: nextTourMeta });
+      return nextTourMeta;
+    });
+  }, [tour?.id, tour?.triggerConditions, steps, commitToHistory]);
+
   const handleUndo = useCallback(() => {
     const selectedStepId = selectedStep?.id;
     setHistory(prev => {
@@ -264,16 +283,31 @@ export default function EditorLayout({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  const composedTour = useMemo<GuidedTour>(
-    () => ({
+  const composedTour = useMemo<GuidedTour>(() => {
+    const merged: GuidedTour = {
       name: tour?.name || 'Nouveau parcours',
       targetUrl: tour?.targetUrl || '/dashboard',
       ...tour,
       ...tourMeta,
       steps,
-    }),
-    [tour, tourMeta, steps]
-  );
+    };
+
+    // tourMeta initialise triggerConditions à undefined : ne pas écraser le scope parent.
+    if (tourMeta.triggerConditions === undefined && tour?.triggerConditions !== undefined) {
+      merged.triggerConditions = tour.triggerConditions;
+    }
+    if (tourMeta.environment === undefined && tour?.environment !== undefined) {
+      merged.environment = tour.environment;
+    }
+    if (tourMeta.sandboxStatus === undefined && tour?.sandboxStatus !== undefined) {
+      merged.sandboxStatus = tour.sandboxStatus;
+    }
+    if (tourMeta.simulationContext === undefined && tour?.simulationContext !== undefined) {
+      merged.simulationContext = tour.simulationContext;
+    }
+
+    return merged;
+  }, [tour, tourMeta, steps]);
 
   const developerLabEditMode = useMemo(() => {
     const role = getDashboardRole(authService.getUser());
@@ -435,6 +469,8 @@ export default function EditorLayout({
         showEnvironmentSelector={showEnvironmentSelector}
         developerSandboxMode={developerSandboxMode}
         developerSandboxTestMode={developerSandboxTestMode}
+        projectScopeKey={projectScopeKey}
+        projectScopeInherited={projectScopeInherited}
       />
 
       {/* Main content */}

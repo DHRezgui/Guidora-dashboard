@@ -1102,3 +1102,115 @@ export function matchesTourEnvironmentFilter(
 			return true;
 	}
 }
+
+export type ProjectHubTourAccessFields = TourSandboxFields &
+	Pick<
+		GuidedTour,
+		| 'accessGrants'
+		| 'createdBy'
+		| 'inCollaboration'
+		| 'assignedAdminIds'
+		| 'targetUrl'
+		| 'triggerConditions'
+		| 'productionManagedByAdminId'
+		| 'developerPrivate'
+		| 'sandboxRejectionReason'
+	> & {
+		id?: string;
+	};
+
+/** Aligné sur le bouton « Éditer » de la liste Parcours (hub projet). */
+export function canOpenProjectHubTourEditor(
+	tour: ProjectHubTourAccessFields,
+	role: DashboardRole | null,
+	userId?: string,
+): boolean {
+	if (!tour.id || !userId || !role) {
+		return false;
+	}
+	if (isTourProductionDeployment(tour)) {
+		return false;
+	}
+	if (isPreviousOwnerOfTransferredTour(tour, userId)) {
+		return false;
+	}
+	if (isTourCardViewOnly(tour, role, userId)) {
+		return false;
+	}
+	if (isDeveloperOwnedAwaitingAdminDecision(tour, userId)) {
+		return false;
+	}
+	if (isTourCollaborationPeerCard(tour, role, userId)) {
+		return canEditTourWithGrants(tour, role, userId);
+	}
+	if (role === 'DEVELOPER') {
+		return isDeveloperOwnedSandboxTour(tour, userId) && isDeveloperSandboxEditable(tour, userId);
+	}
+	if (role === 'ADMIN') {
+		if (
+			isDeveloperModerationRevokedFromAdmin(tour) &&
+			!isTourAssignedToAdmin(tour, userId)
+		) {
+			return false;
+		}
+		if (
+			Boolean(tour.developerPrivate) &&
+			tour.sandboxStatus === 'approved' &&
+			normalizeAssignedAdminIds(tour.assignedAdminIds).length > 0 &&
+			!isTourAssignedToAdmin(tour, userId)
+		) {
+			return false;
+		}
+		return canEditTourWithGrants(tour, role, userId);
+	}
+	return false;
+}
+
+export function getProjectHubTourEditorBlockReason(
+	tour: ProjectHubTourAccessFields,
+	role: DashboardRole | null,
+	userId?: string,
+): string | null {
+	if (canOpenProjectHubTourEditor(tour, role, userId)) {
+		return null;
+	}
+	if (isTourProductionDeployment(tour)) {
+		return 'Parcours en production — gérez-le depuis la liste Parcours';
+	}
+	if (isPreviousOwnerOfTransferredTour(tour, userId)) {
+		return 'Transféré — accès lecture seule sur ce parcours';
+	}
+	if (isDeveloperOwnedAwaitingAdminDecision(tour, userId)) {
+		return 'En attente de décision administrateur';
+	}
+	if (
+		role === 'DEVELOPER' &&
+		tour.createdBy === userId &&
+		tour.sandboxStatus === 'approved'
+	) {
+		return 'Approuvé — édition réservée à l’administrateur';
+	}
+	if (
+		role === 'ADMIN' &&
+		isDeveloperModerationRevokedFromAdmin(tour) &&
+		!isTourAssignedToAdmin(tour, userId)
+	) {
+		return 'Renvoyé au développeur — modération suspendue pour vous';
+	}
+	if (
+		role === 'ADMIN' &&
+		Boolean(tour.developerPrivate) &&
+		tour.sandboxStatus === 'approved' &&
+		normalizeAssignedAdminIds(tour.assignedAdminIds).length > 0 &&
+		!isTourAssignedToAdmin(tour, userId)
+	) {
+		return 'Réassigné à un autre administrateur — édition indisponible';
+	}
+	if (isTourCardViewOnly(tour, role, userId)) {
+		return 'Accès lecture seule — édition indisponible';
+	}
+	if (isTourCollaborationPeerCard(tour, role, userId)) {
+		return 'Collaboration — édition indisponible (parcours approuvé ou hors sandbox)';
+	}
+	return 'Édition indisponible pour ce parcours';
+}

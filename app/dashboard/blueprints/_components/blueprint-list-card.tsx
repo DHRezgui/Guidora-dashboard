@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/ui/icons';
 import type { OrganizationJourneyBlueprintRow } from '@/lib/api';
 import { BlueprintAccessGrantsMenu } from '@/components/blueprints/BlueprintAccessGrantsMenu';
+import { DEFAULT_FAQ_PROJECT_KEY } from '@/lib/faq-project';
+import { formatProjectTitle } from '@/lib/project';
 import { cn } from '@/lib/utils';
 import { blueprintDisplayMeta } from '../blueprint-shared';
 
@@ -30,6 +32,7 @@ type BlueprintListCardProps = {
 	onDelete: (row: OrganizationJourneyBlueprintRow) => void;
 	onShowSteps: (row: OrganizationJourneyBlueprintRow) => void;
 	onGrantsUpdated: () => void | Promise<void>;
+	showProjectKey?: boolean;
 };
 
 export function BlueprintListCard({
@@ -43,8 +46,10 @@ export function BlueprintListCard({
 	onDelete,
 	onShowSteps,
 	onGrantsUpdated,
+	showProjectKey = false,
 }: BlueprintListCardProps) {
 	const meta = blueprintDisplayMeta(row);
+	const projectKeyLabel = row.projectKey?.trim() || DEFAULT_FAQ_PROJECT_KEY;
 	const hasActiveEditLock =
 		Boolean(row.editLock?.required) && Boolean(row.editLock?.heldByUserId);
 	const isLockedByOther = hasActiveEditLock && !row.editLock?.isHeldByMe;
@@ -94,6 +99,16 @@ export function BlueprintListCard({
 							>
 								{row.blueprintId}
 							</p>
+							{showProjectKey ? (
+								<p className="text-[10px] font-semibold text-violet-700 dark:text-violet-200/90">
+									Projet : {formatProjectTitle(projectKeyLabel)}
+									{projectKeyLabel !== DEFAULT_FAQ_PROJECT_KEY ? (
+										<span className="ml-1 font-mono font-normal text-violet-600/80 dark:text-violet-300/70">
+											({projectKeyLabel})
+										</span>
+									) : null}
+								</p>
+							) : null}
 						</div>
 					</div>
 					<Badge

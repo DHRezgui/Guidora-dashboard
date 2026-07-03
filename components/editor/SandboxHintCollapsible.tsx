@@ -168,6 +168,17 @@ const TONE_STYLES = {
 		popover:
 			'border-cyan-300/80 bg-white text-slate-800 shadow-[0_16px_40px_rgba(2,6,23,0.22)] ring-1 ring-cyan-200/80 backdrop-blur-sm dark:border-cyan-500/55 dark:bg-slate-950 dark:text-cyan-50 dark:shadow-[0_18px_48px_rgba(0,0,0,0.65)] dark:ring-cyan-500/25',
 	},
+	sky: {
+		shell: 'border-sky-300/40 bg-sky-50/80 dark:border-sky-400/25 dark:bg-sky-500/10',
+		headerHover: 'hover:bg-sky-100/30 dark:hover:bg-white/[0.04]',
+		headerBorder: 'border-sky-300/35 dark:border-sky-400/20',
+		title: 'text-sky-950 dark:text-sky-100',
+		chevron: 'text-sky-800/80 dark:text-sky-200/80',
+		body: 'text-sky-900/85 dark:text-sky-100/85',
+		pill: 'border-sky-400/55 bg-sky-100 text-sky-950 hover:bg-sky-200/90 dark:border-sky-500/50 dark:bg-sky-950 dark:text-sky-100 dark:hover:bg-sky-900',
+		popover:
+			'border-sky-300/80 bg-white text-slate-800 shadow-[0_16px_40px_rgba(2,6,23,0.22)] ring-1 ring-sky-200/80 backdrop-blur-sm dark:border-sky-500/55 dark:bg-slate-950 dark:text-sky-50 dark:shadow-[0_18px_48px_rgba(0,0,0,0.65)] dark:ring-sky-500/25',
+	},
 } as const;
 
 type SandboxHintProps = {

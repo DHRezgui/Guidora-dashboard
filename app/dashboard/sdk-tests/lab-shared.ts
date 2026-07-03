@@ -79,7 +79,7 @@ export async function waitForLabSubjectReady(maxWaitMs = 5000): Promise<boolean>
 }
 
 /**
- * Integration PAT for lab SDK API calls (publish, semantic-hints, blueprints).
+ * Integration PAT for lab SDK API calls (publish, semantic-hints).
  * Local/dev: `NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN` (synced by refresh-sdk-token.ps1).
  */
 export function getLabSdkToken(): string | null {
@@ -260,8 +260,6 @@ export function labContextualDefaults(
 		semanticBackendUrl: resolveSemanticBackendUrl(),
 		semanticBackendTimeoutMs: LAB_SEMANTIC_BACKEND_TIMEOUT_MS,
 		semanticBackendAccessToken: getLabSdkToken,
-		journeyBlueprintsRemoteEnabled: true,
-		journeyBlueprintsAccessToken: getLabSdkToken,
 		semanticRoleWeights: { role: 0.6, order: 0.4, copy: 0.5 },
 		/** Fix: aligné sur debounce MutationObserver (300 ms). */
 		semanticSnapshotMinDomAgeMs: LAB_SEMANTIC_DOM_SETTLE_MS,

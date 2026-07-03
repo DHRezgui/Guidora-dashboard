@@ -26,11 +26,16 @@ import { canManageBlueprints, getDashboardRole } from '@/lib/dashboard-roles';
 import { canModifyBlueprint, canPublishBlueprint } from '@/lib/blueprint-permissions';
 import { useBlueprintEditLock } from '@/lib/use-blueprint-edit-lock';
 import { TourEditLockScreen } from '@/components/tours/TourEditLockScreen';
+import { DEFAULT_FAQ_PROJECT_KEY } from '@/lib/faq-project';
+import { PHOENIX_FIELD_CLASS, PHOENIX_INSET_PANEL_CLASS, PHOENIX_LABEL_CLASS } from '../blueprint-shared';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function CreateBlueprintPage() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const rowId = searchParams.get('id');
+	const createProjectKey = searchParams.get('projectKey')?.trim() || '';
 	const stepQuery = searchParams.get('step');
 	const scrollToStepIndex = useMemo(() => {
 		if (stepQuery == null || stepQuery === '') return null;
@@ -52,6 +57,9 @@ export default function CreateBlueprintPage() {
 	const [tipsOpen, setTipsOpen] = useState(false);
 	const [sdkInfoOpen, setSdkInfoOpen] = useState(false);
 	const [form, setForm] = useState<BlueprintFormState>(createEmptyBlueprintForm);
+	const [projectKeyValue, setProjectKeyValue] = useState(
+		createProjectKey || DEFAULT_FAQ_PROJECT_KEY,
+	);
 
 	const canModifyLoaded = loadedRow ? canModifyBlueprint(loadedRow, user) : canManage;
 
@@ -100,6 +108,7 @@ export default function CreateBlueprintPage() {
 				}
 				setPublishOnSave(row.isPublished);
 				setForm(blueprintFormFromRow(row));
+				setProjectKeyValue(row.projectKey?.trim() || DEFAULT_FAQ_PROJECT_KEY);
 			}
 		} catch (err) {
 			toast.error(getErrorMessage(err, 'Impossible de charger le blueprint'));
@@ -138,21 +147,30 @@ export default function CreateBlueprintPage() {
 		}
 		setSaving(true);
 		const blueprint = buildPayloadFromForm(form);
+		const normalizedProjectKey = projectKeyValue.trim() || DEFAULT_FAQ_PROJECT_KEY;
 		try {
 			if (isEditMode && rowId) {
 				await journeyBlueprintService.update(rowId, {
 					blueprint,
 					isPublished: publishOnSave,
+					projectKey: normalizedProjectKey,
 				});
 				toast.success('Blueprint mis à jour');
 			} else {
 				await journeyBlueprintService.create({
 					blueprint,
 					isPublished: publishOnSave,
+					projectKey: normalizedProjectKey,
 				});
 				toast.success('Blueprint créé');
 			}
-			router.push('/dashboard/blueprints');
+			const redirectKey =
+				normalizedProjectKey !== DEFAULT_FAQ_PROJECT_KEY ? normalizedProjectKey : createProjectKey;
+			router.push(
+				redirectKey
+					? `/dashboard/blueprints?projectKey=${encodeURIComponent(redirectKey)}`
+					: '/dashboard/blueprints',
+			);
 		} catch (err) {
 			toast.error(getErrorMessage(err, 'Enregistrement échoué'));
 		} finally {
@@ -243,6 +261,28 @@ export default function CreateBlueprintPage() {
 						</p>
 					</div>
 				</PhoenixCollapsibleCard>
+			</div>
+
+			<div className={PHOENIX_INSET_PANEL_CLASS}>
+				<div className="space-y-2">
+					<Label htmlFor="bp-project-key" className={PHOENIX_LABEL_CLASS}>
+						Projet SDK (flowVersion)
+					</Label>
+					<Input
+						id="bp-project-key"
+						value={projectKeyValue}
+						disabled={!canModifyLoaded}
+						onChange={(e) => setProjectKeyValue(e.target.value)}
+						placeholder="test-11-v1"
+						className={PHOENIX_FIELD_CLASS}
+					/>
+					<p className="text-xs text-slate-500 dark:text-slate-400">
+						Utilisez <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>default</code> pour le corpus
+						générique, ou la même clé que{' '}
+						<code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>contextualSuggestions.flowVersion</code> dans le
+						SDK.
+					</p>
+				</div>
 			</div>
 
 			<BlueprintForm

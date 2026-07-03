@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import { authService } from '@/lib/api';
 import { getDashboardHomeHref, getDashboardRole } from '@/lib/dashboard-roles';
+import { formatFaqProjectTitle } from '@/lib/faq-project';
 import { Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -28,6 +29,7 @@ export default function Header() {
     'sdk-tests': 'SDK Tests',
     blueprints: 'Blueprints',
     faq: 'FAQ',
+    projects: 'Projets',
     platform: 'Console plateforme',
     admins: 'Administrateurs clients',
     analytics: 'Analytics',
@@ -57,6 +59,9 @@ export default function Header() {
     const prettyLabel =
       isEditModeCreateRoute ? 'Modifier' :
       segmentLabels[segment] ||
+      (parentSegment === 'faq' || parentSegment === 'projects'
+        ? formatFaqProjectTitle(segment)
+        : null) ||
       (/^[0-9a-fA-F-]{8,}$/.test(segment) ? 'Detail' : segment.replace(/-/g, ' '));
 
     return { href, label: prettyLabel, isLast };

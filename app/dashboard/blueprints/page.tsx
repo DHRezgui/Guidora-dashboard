@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const BLUEPRINTS_PAGE_SIZE = 4;
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
 import {
@@ -21,6 +22,11 @@ import { PhoenixCollapsibleCard } from './_components/phoenix-collapsible';
 import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
 import { canManageBlueprints, getDashboardRole } from '@/lib/dashboard-roles';
 import {
+  blueprintProjectHref,
+  formatProjectTitle,
+  projectHubHref,
+} from '@/lib/project';
+import {
 	canDeleteBlueprint,
 	canManageBlueprintSharing,
 	canModifyBlueprint,
@@ -28,6 +34,12 @@ import {
 } from '@/lib/blueprint-permissions';
 
 export default function BlueprintsPage() {
+	const searchParams = useSearchParams();
+	const router = useRouter();
+	const projectKeyFilter = useMemo(
+		() => searchParams.get('projectKey')?.trim() || '',
+		[searchParams],
+	);
 	const user = authService.getUser();
 	const role = getDashboardRole(user);
 	const canManage = canManageBlueprints(role);
@@ -45,7 +57,7 @@ export default function BlueprintsPage() {
 		try {
 			const [catalogRes, listRes] = await Promise.all([
 				journeyBlueprintService.getCatalog(),
-				journeyBlueprintService.listManage(),
+				journeyBlueprintService.listManage(projectKeyFilter || undefined),
 			]);
 			setCatalog(catalogRes.catalog);
 			setRows(listRes.blueprints);
@@ -54,11 +66,11 @@ export default function BlueprintsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [projectKeyFilter]);
 
 	useEffect(() => {
 		void load();
-	}, [load]);
+	}, [load, projectKeyFilter]);
 
 	const handleTogglePublish = async (row: OrganizationJourneyBlueprintRow) => {
 		if (!canPublishBlueprint(row, user)) return;
@@ -124,13 +136,50 @@ export default function BlueprintsPage() {
 				</div>
 				{canManage && (
 					<Button className="rounded-xl shadow-soft transition-transform hover:scale-105" asChild>
-						<Link href="/dashboard/blueprints/create">
+						<Link
+							href={
+								projectKeyFilter
+									? `/dashboard/blueprints/create?projectKey=${encodeURIComponent(projectKeyFilter)}`
+									: '/dashboard/blueprints/create'
+							}
+						>
 							<Icons.plus className="mr-2 h-4 w-4" />
 							Nouveau blueprint
 						</Link>
 					</Button>
 				)}
 			</div>
+
+			{projectKeyFilter ? (
+				<div className="rounded-2xl border border-violet-300/55 bg-gradient-to-r from-violet-50/90 to-white/90 px-4 py-3 shadow-sm dark:border-violet-400/25 dark:from-violet-500/10 dark:to-slate-900/60">
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<div className="flex min-w-0 items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+							<Icons.blueprints className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />
+							<span>
+								Blueprints du projet{' '}
+								<strong className="font-semibold">{formatProjectTitle(projectKeyFilter)}</strong>
+								<span className="ml-1 font-mono text-xs text-violet-700/90 dark:text-violet-200/80">
+									({projectKeyFilter})
+								</span>
+							</span>
+						</div>
+						<div className="flex flex-wrap items-center gap-2">
+							<Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
+								<Link href={projectHubHref(projectKeyFilter)}>Hub projet</Link>
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-8 rounded-lg"
+								onClick={() => router.push('/dashboard/blueprints')}
+							>
+								Effacer le filtre
+							</Button>
+						</div>
+					</div>
+				</div>
+			) : null}
 
 			<div className="grid gap-3 sm:grid-cols-3">
 				{[
@@ -257,7 +306,13 @@ export default function BlueprintsPage() {
 									className="mt-6 rounded-xl bg-gradient-to-r from-orange-500 to-pink-600 shadow-[0_0_24px_rgba(249,115,22,0.35)] transition-transform hover:scale-105"
 									asChild
 								>
-									<Link href="/dashboard/blueprints/create">
+									<Link
+										href={
+											projectKeyFilter
+												? `/dashboard/blueprints/create?projectKey=${encodeURIComponent(projectKeyFilter)}`
+												: '/dashboard/blueprints/create'
+										}
+									>
 										<Icons.plus className="mr-2 h-4 w-4" />
 										Créer un blueprint
 									</Link>
@@ -283,6 +338,7 @@ export default function BlueprintsPage() {
 								<BlueprintListCard
 									key={row.id}
 									row={row}
+									showProjectKey={!projectKeyFilter}
 									canModify={canModifyBlueprint(row, user)}
 									canPublish={canPublishBlueprint(row, user)}
 									canManageSharing={canManageBlueprintSharing(row, user)}
