@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
 import {
 	getErrorMessage,
 	journeyBlueprintService,
@@ -21,8 +22,8 @@ import { BlueprintStepsModal } from './_components/blueprint-steps-modal';
 import { PhoenixCollapsibleCard } from './_components/phoenix-collapsible';
 import { RoleRouteGuard } from '@/components/dashboard/RoleRouteGuard';
 import { canManageBlueprints, getDashboardRole } from '@/lib/dashboard-roles';
+import { DEFAULT_FAQ_PROJECT_KEY } from '@/lib/faq-project';
 import {
-  blueprintProjectHref,
   formatProjectTitle,
   projectHubHref,
 } from '@/lib/project';
@@ -32,6 +33,47 @@ import {
 	canModifyBlueprint,
 	canPublishBlueprint,
 } from '@/lib/blueprint-permissions';
+import { blueprintDisplayMeta, PHOENIX_FIELD_CLASS, PHOENIX_INSET_PANEL_CLASS } from './blueprint-shared';
+import { cn } from '@/lib/utils';
+import { CatalogListPagination } from '@/components/dashboard/catalog-list-pagination';
+
+type BlueprintStatusFilter = 'all' | 'published' | 'draft';
+
+const BLUEPRINT_STATUS_FILTER_OPTIONS: Array<{ value: BlueprintStatusFilter; label: string }> = [
+	{ value: 'all', label: 'Tous' },
+	{ value: 'published', label: 'Publiés' },
+	{ value: 'draft', label: 'Brouillons' },
+];
+
+function matchesBlueprintListFilter(
+	row: OrganizationJourneyBlueprintRow,
+	query: string,
+	statusFilter: BlueprintStatusFilter,
+): boolean {
+	if (statusFilter === 'published' && !row.isPublished) {
+		return false;
+	}
+	if (statusFilter === 'draft' && row.isPublished) {
+		return false;
+	}
+	if (!query) {
+		return true;
+	}
+	const meta = blueprintDisplayMeta(row);
+	const projectKey = row.projectKey?.trim() || DEFAULT_FAQ_PROJECT_KEY;
+	const haystack = [
+		row.blueprintId,
+		row.vertical,
+		meta.name,
+		meta.description,
+		meta.intent,
+		projectKey,
+		formatProjectTitle(projectKey),
+	]
+		.join(' ')
+		.toLowerCase();
+	return haystack.includes(query);
+}
 
 export default function BlueprintsPage() {
 	const searchParams = useSearchParams();
@@ -51,6 +93,8 @@ export default function BlueprintsPage() {
 	const [sdkInfoOpen, setSdkInfoOpen] = useState(false);
 	const [stepsBlueprint, setStepsBlueprint] = useState<OrganizationJourneyBlueprintRow | null>(null);
 	const [listPage, setListPage] = useState(1);
+	const [filterQuery, setFilterQuery] = useState('');
+	const [statusFilter, setStatusFilter] = useState<BlueprintStatusFilter>('all');
 
 	const load = useCallback(async () => {
 		setLoading(true);
@@ -98,24 +142,31 @@ export default function BlueprintsPage() {
 	const verticals = catalog?.verticals ?? [];
 	const intents = catalog?.intents ?? [];
 
+	const filteredRows = useMemo(() => {
+		const query = filterQuery.trim().toLowerCase();
+		return rows.filter((row) => matchesBlueprintListFilter(row, query, statusFilter));
+	}, [rows, filterQuery, statusFilter]);
+
+	const hasActiveFilters = Boolean(filterQuery.trim()) || statusFilter !== 'all';
+
 	useEffect(() => {
 		setListPage(1);
-	}, [rows.length]);
+	}, [filterQuery, statusFilter, rows.length, projectKeyFilter]);
 
-	const blueprintsTotalPages = Math.max(1, Math.ceil(rows.length / BLUEPRINTS_PAGE_SIZE));
+	const blueprintsTotalPages = Math.max(1, Math.ceil(filteredRows.length / BLUEPRINTS_PAGE_SIZE));
 	const safeListPage = Math.min(listPage, blueprintsTotalPages);
 
 	const paginatedRows = useMemo(() => {
 		const start = (safeListPage - 1) * BLUEPRINTS_PAGE_SIZE;
-		return rows.slice(start, start + BLUEPRINTS_PAGE_SIZE);
-	}, [rows, safeListPage]);
+		return filteredRows.slice(start, start + BLUEPRINTS_PAGE_SIZE);
+	}, [filteredRows, safeListPage]);
 
 	const paginatedRangeLabel = useMemo(() => {
-		if (rows.length === 0) return '';
+		if (filteredRows.length === 0) return '';
 		const start = (safeListPage - 1) * BLUEPRINTS_PAGE_SIZE + 1;
-		const end = Math.min(safeListPage * BLUEPRINTS_PAGE_SIZE, rows.length);
-		return `${start}–${end} sur ${rows.length}`;
-	}, [rows.length, safeListPage]);
+		const end = Math.min(safeListPage * BLUEPRINTS_PAGE_SIZE, filteredRows.length);
+		return `${start}–${end} sur ${filteredRows.length}`;
+	}, [filteredRows.length, safeListPage]);
 
 	return (
 		<RoleRouteGuard access="blueprints">
@@ -323,67 +374,106 @@ export default function BlueprintsPage() {
 				)}
 
 				{!loading && rows.length > 0 && (
-					<div
-						className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
-						aria-label="Catalogue des blueprints de l'organisation"
-					>
-						<div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
-							<p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-								Zone page {safeListPage}
-							</p>
-							<p className="text-sm text-slate-600 dark:text-slate-300">{paginatedRangeLabel} blueprint(s)</p>
-						</div>
-						<div className="grid gap-4 sm:grid-cols-2">
-							{paginatedRows.map((row) => (
-								<BlueprintListCard
-									key={row.id}
-									row={row}
-									showProjectKey={!projectKeyFilter}
-									canModify={canModifyBlueprint(row, user)}
-									canPublish={canPublishBlueprint(row, user)}
-									canManageSharing={canManageBlueprintSharing(row, user)}
-									canDelete={canDeleteBlueprint(row, user)}
-									ownerUserId={user?.id}
-									onTogglePublish={(r) => void handleTogglePublish(r)}
-									onDelete={(r) => void handleDelete(r)}
-									onShowSteps={setStepsBlueprint}
-									onGrantsUpdated={load}
-								/>
-							))}
-						</div>
-						{rows.length > BLUEPRINTS_PAGE_SIZE ? (
-							<div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-slate-900/40">
-								<p className="text-sm text-slate-600 dark:text-slate-400">
-									{rows.length} blueprint{rows.length !== 1 ? 's' : ''} au total — {BLUEPRINTS_PAGE_SIZE} par page
-								</p>
-								<div className="flex flex-wrap items-center gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={safeListPage <= 1}
-										onClick={() => setListPage((prev) => Math.max(1, prev - 1))}
-										className="gap-1 rounded-lg"
-									>
-										<Icons.chevronLeft className="h-4 w-4" />
-										Précédent
-									</Button>
-									<span className="min-w-[7rem] text-center text-sm font-medium text-slate-800 dark:text-slate-200">
-										Page {safeListPage} / {blueprintsTotalPages}
-									</span>
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={safeListPage >= blueprintsTotalPages}
-										onClick={() => setListPage((prev) => Math.min(blueprintsTotalPages, prev + 1))}
-										className="gap-1 rounded-lg"
-									>
-										Suivant
-										<Icons.chevronRight className="h-4 w-4" />
-									</Button>
+					<>
+						<div className={cn(PHOENIX_INSET_PANEL_CLASS, 'p-4')}>
+							<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+								<div className="relative min-w-0 flex-1">
+									<Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+									<Input
+										placeholder="Rechercher par nom, identifiant, vertical, intent ou projet…"
+										value={filterQuery}
+										onChange={(e) => setFilterQuery(e.target.value)}
+										className={cn('pl-9', PHOENIX_FIELD_CLASS, filterQuery ? 'pr-9' : undefined)}
+									/>
+									{filterQuery ? (
+										<button
+											type="button"
+											onClick={() => setFilterQuery('')}
+											className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
+											aria-label="Effacer la recherche"
+										>
+											<Icons.close className="h-3.5 w-3.5" />
+										</button>
+									) : null}
+								</div>
+								<div className="flex gap-1 rounded-xl border border-slate-200/80 bg-white/60 p-1 dark:border-white/10 dark:bg-slate-900/50">
+									{BLUEPRINT_STATUS_FILTER_OPTIONS.map((option) => (
+										<button
+											key={option.value}
+											type="button"
+											onClick={() => setStatusFilter(option.value)}
+											className={cn(
+												'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+												statusFilter === option.value
+													? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white'
+													: 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200',
+											)}
+										>
+											{option.label}
+										</button>
+									))}
 								</div>
 							</div>
-						) : null}
-					</div>
+						</div>
+
+						{filteredRows.length === 0 ? (
+							<div className="relative overflow-hidden rounded-2xl border border-dashed border-slate-300/70 bg-slate-50/40 px-6 py-12 text-center dark:border-white/20 dark:bg-slate-900/25">
+								<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white/80 dark:border-white/10 dark:bg-slate-900/60">
+									<Icons.filter className="h-6 w-6 text-slate-400" />
+								</div>
+								<p className="text-base font-semibold text-slate-900 dark:text-white">
+									Aucun blueprint ne correspond aux filtres
+								</p>
+								<p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+									Effacez la recherche ou sélectionnez un autre statut.
+								</p>
+							</div>
+						) : (
+							<div className="space-y-4">
+								<div
+									className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
+									aria-label="Catalogue des blueprints de l'organisation"
+								>
+									<div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
+										<p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+											Blueprints — page {safeListPage}
+										</p>
+										<p className="text-sm text-slate-600 dark:text-slate-300">
+											{paginatedRangeLabel} blueprint{filteredRows.length !== 1 ? 's' : ''}
+											{hasActiveFilters ? ` (filtré sur ${rows.length})` : ''}
+										</p>
+									</div>
+									<div className="grid gap-4 sm:grid-cols-2">
+										{paginatedRows.map((row) => (
+											<BlueprintListCard
+												key={row.id}
+												row={row}
+												showProjectKey={!projectKeyFilter}
+												canModify={canModifyBlueprint(row, user)}
+												canPublish={canPublishBlueprint(row, user)}
+												canManageSharing={canManageBlueprintSharing(row, user)}
+												canDelete={canDeleteBlueprint(row, user)}
+												ownerUserId={user?.id}
+												onTogglePublish={(r) => void handleTogglePublish(r)}
+												onDelete={(r) => void handleDelete(r)}
+												onShowSteps={setStepsBlueprint}
+												onGrantsUpdated={load}
+											/>
+										))}
+									</div>
+								</div>
+								<CatalogListPagination
+									totalItems={filteredRows.length}
+									pageSize={BLUEPRINTS_PAGE_SIZE}
+									currentPage={safeListPage}
+									totalPages={blueprintsTotalPages}
+									onPrevious={() => setListPage((prev) => Math.max(1, prev - 1))}
+									onNext={() => setListPage((prev) => Math.min(blueprintsTotalPages, prev + 1))}
+									itemLabel="blueprint"
+								/>
+							</div>
+						)}
+					</>
 				)}
 			</section>
 

@@ -12,7 +12,7 @@ export function SdkIntegrationGuidanceCollapsible() {
 	return (
 		<PhoenixCollapsibleCard
 			title="Conseils d'intégration"
-			description="Expiration obligatoire, PAT serveur et déploiement production (BFF)."
+			description="PAT serveur, sessions courtes et bonnes pratiques pour la production."
 			open={open}
 			onOpenChange={setOpen}
 		>
@@ -23,16 +23,18 @@ export function SdkIntegrationGuidanceCollapsible() {
 					qu&apos;une seule fois à la création.
 				</p>
 				<p>
-					<strong>Production —</strong> ne exposez pas le PAT au navigateur. Stockez-le côté serveur
-					dans <code className={INLINE_CODE_CLASS}>TRUSTDEV_SDK_TOKEN</code>, puis exposez une session
-					courte via la route BFF{' '}
-					<code className={INLINE_CODE_CLASS}>/api/trustdev/sdk-session</code> et{' '}
-					<code className={INLINE_CODE_CLASS}>getSdkToken</code> dans la configuration du SDK.
+					<strong>Production —</strong> ne exposez jamais le PAT au navigateur. Conservez-le uniquement
+					sur le serveur de votre application (variable d&apos;environnement ou coffre de secrets), puis
+					exposez une <strong>session courte</strong> (<code className={INLINE_CODE_CLASS}>td_sess_...</code>
+					, ~15 min) via une <strong>route BFF interne</strong> à votre backend. Configurez ensuite{' '}
+					<code className={INLINE_CODE_CLASS}>getSdkToken</code> dans le SDK pour récupérer cette session
+					côté client.
 				</p>
 				<p>
-					<strong>Développement / lab / soutenance —</strong> vous pouvez continuer à utiliser{' '}
-					<code className={INLINE_CODE_CLASS}>NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN</code> (PAT direct) sans
-					passer par le BFF.
+					<strong>Développement et tests —</strong> vous pouvez passer le PAT directement dans{' '}
+					<code className={INLINE_CODE_CLASS}>sdkToken</code> (variable d&apos;environnement ou
+					configuration locale), sans passer par le BFF. Réservez ce mode aux environnements non
+					productifs.
 				</p>
 			</div>
 		</PhoenixCollapsibleCard>

@@ -60,6 +60,7 @@ const SCOPE_LABELS: Record<string, string> = {
   'feedback:write': 'Envoyer feedback',
   'semantic:invoke': 'Inférence sémantique',
   'faq:search': 'Recherche FAQ sémantique',
+  'ml:predict': 'Prédiction abandon (LightGBM)',
   'tours:publish': 'Soumettre des brouillons SDK (sandbox)',
 };
 

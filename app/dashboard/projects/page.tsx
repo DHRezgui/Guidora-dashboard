@@ -20,6 +20,7 @@ import { authService, faqService, getErrorMessage, projectService } from '@/lib/
 import { canManageFaq, canManageProjectScope, getDashboardRole } from '@/lib/dashboard-roles';
 import {
   DEFAULT_FAQ_PROJECT_KEY,
+  formatProjectTitle,
   projectHubHref,
 } from '@/lib/project';
 import { PHOENIX_PRIMARY_BUTTON_CLASS } from '@/lib/phoenix-ui';
@@ -27,6 +28,9 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ProjectHubCard } from './_components/project-hub-card';
 import { ProjectScopeDeleteModal } from './_components/project-scope-delete-modal';
+import { CatalogListPagination } from '@/components/dashboard/catalog-list-pagination';
+
+const PROJECTS_PAGE_SIZE = 4;
 
 type ProjectRow = {
   projectKey: string;
@@ -34,6 +38,14 @@ type ProjectRow = {
   tourCount: number;
   blueprintCount: number;
 };
+
+type ProjectTypeFilter = 'all' | 'sdk' | 'generic';
+
+const PROJECT_TYPE_FILTER_OPTIONS: Array<{ value: ProjectTypeFilter; label: string }> = [
+  { value: 'all', label: 'Tous' },
+  { value: 'sdk', label: 'Paquets SDK' },
+  { value: 'generic', label: 'Générique' },
+];
 
 function sortProjects(projects: ProjectRow[]): ProjectRow[] {
   return [...projects].sort((a, b) => {
@@ -54,6 +66,9 @@ export default function ProjectsIndexPage() {
   const [tipsOpen, setTipsOpen] = useState(false);
   const [sdkInfoOpen, setSdkInfoOpen] = useState(false);
   const [deleteScopeKey, setDeleteScopeKey] = useState<string | null>(null);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<ProjectTypeFilter>('all');
+  const [listPage, setListPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,6 +103,47 @@ export default function ProjectsIndexPage() {
       ),
     [projects],
   );
+
+  const filteredProjects = useMemo(() => {
+    const query = filterQuery.trim().toLowerCase();
+    return projects.filter((project) => {
+      if (typeFilter === 'generic' && project.projectKey !== DEFAULT_FAQ_PROJECT_KEY) {
+        return false;
+      }
+      if (typeFilter === 'sdk' && project.projectKey === DEFAULT_FAQ_PROJECT_KEY) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      const title = formatProjectTitle(project.projectKey).toLowerCase();
+      return (
+        project.projectKey.toLowerCase().includes(query) ||
+        title.includes(query)
+      );
+    });
+  }, [projects, filterQuery, typeFilter]);
+
+  const hasActiveFilters = Boolean(filterQuery.trim()) || typeFilter !== 'all';
+
+  useEffect(() => {
+    setListPage(1);
+  }, [filterQuery, typeFilter, projects.length]);
+
+  const projectsTotalPages = Math.max(1, Math.ceil(filteredProjects.length / PROJECTS_PAGE_SIZE));
+  const safeListPage = Math.min(listPage, projectsTotalPages);
+
+  const paginatedProjects = useMemo(() => {
+    const start = (safeListPage - 1) * PROJECTS_PAGE_SIZE;
+    return filteredProjects.slice(start, start + PROJECTS_PAGE_SIZE);
+  }, [filteredProjects, safeListPage]);
+
+  const paginatedRangeLabel = useMemo(() => {
+    if (filteredProjects.length === 0) return '';
+    const start = (safeListPage - 1) * PROJECTS_PAGE_SIZE + 1;
+    const end = Math.min(safeListPage * PROJECTS_PAGE_SIZE, filteredProjects.length);
+    return `${start}–${end} sur ${filteredProjects.length}`;
+  }, [filteredProjects.length, safeListPage]);
 
   const createProject = async () => {
     const key = newProjectKey.trim();
@@ -302,33 +358,101 @@ export default function ProjectsIndexPage() {
           ) : null}
 
           {!loading && projects.length > 0 ? (
-            <div
-              className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
-              aria-label="Catalogue des projets SDK"
-            >
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
-                <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Hubs projet
-                </p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  {sdkProjects.length} paquet{sdkProjects.length !== 1 ? 's' : ''} SDK
-                  {projects.some((p) => p.projectKey === DEFAULT_FAQ_PROJECT_KEY) ? ' + corpus générique' : ''}
-                </p>
+            <>
+              <div className={cn(PHOENIX_INSET_PANEL_CLASS, 'p-4')}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <div className="relative min-w-0 flex-1">
+                    <Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      placeholder="Rechercher par identifiant ou nom de projet…"
+                      value={filterQuery}
+                      onChange={(e) => setFilterQuery(e.target.value)}
+                      className={cn('pl-9', PHOENIX_FIELD_CLASS, filterQuery ? 'pr-9' : undefined)}
+                    />
+                    {filterQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => setFilterQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                        aria-label="Effacer la recherche"
+                      >
+                        <Icons.close className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="flex gap-1 rounded-xl border border-slate-200/80 bg-white/60 p-1 dark:border-white/10 dark:bg-slate-900/50">
+                    {PROJECT_TYPE_FILTER_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setTypeFilter(option.value)}
+                        className={cn(
+                          'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                          typeFilter === option.value
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white'
+                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200',
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {projects.map((project) => (
-                  <ProjectHubCard
-                    key={project.projectKey}
-                    projectKey={project.projectKey}
-                    faqCount={project.faqCount}
-                    tourCount={project.tourCount}
-                    blueprintCount={project.blueprintCount}
-                    canDeleteScope={canDeleteScope}
-                    onDeleteScope={() => setDeleteScopeKey(project.projectKey)}
+
+              {filteredProjects.length === 0 ? (
+                <div className="relative overflow-hidden rounded-2xl border border-dashed border-slate-300/70 bg-slate-50/40 px-6 py-12 text-center dark:border-white/20 dark:bg-slate-900/25">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white/80 dark:border-white/10 dark:bg-slate-900/60">
+                    <Icons.filter className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white">
+                    Aucun projet ne correspond aux filtres
+                  </p>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                    Effacez la recherche ou sélectionnez un autre type de projet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div
+                    className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
+                    aria-label="Catalogue des projets SDK"
+                  >
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Hubs projet — page {safeListPage}
+                      </p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
+                        {paginatedRangeLabel} projet{filteredProjects.length !== 1 ? 's' : ''}
+                        {hasActiveFilters ? ` (filtré sur ${projects.length})` : ''}
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {paginatedProjects.map((project) => (
+                        <ProjectHubCard
+                          key={project.projectKey}
+                          projectKey={project.projectKey}
+                          faqCount={project.faqCount}
+                          tourCount={project.tourCount}
+                          blueprintCount={project.blueprintCount}
+                          canDeleteScope={canDeleteScope}
+                          onDeleteScope={() => setDeleteScopeKey(project.projectKey)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <CatalogListPagination
+                    totalItems={filteredProjects.length}
+                    pageSize={PROJECTS_PAGE_SIZE}
+                    currentPage={safeListPage}
+                    totalPages={projectsTotalPages}
+                    onPrevious={() => setListPage((prev) => Math.max(1, prev - 1))}
+                    onNext={() => setListPage((prev) => Math.min(projectsTotalPages, prev + 1))}
+                    itemLabel="projet"
                   />
-                ))}
-              </div>
-            </div>
+                </div>
+              )}
+            </>
           ) : null}
         </section>
 

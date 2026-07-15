@@ -54,25 +54,29 @@ export function useSdkLabPage(
 	}, [meta.labKey]);
 
 	const syncTourCatalog = useCallback(async () => {
-		const response = await tourService.getAll();
-		const tours = response.tours ?? [];
-		reconcileAutoPublishedSessionWithTours(tours, ownerUserId);
-		reconcileAllSdkLabRunSnapshots(tours, ownerUserId);
+		try {
+			const response = await tourService.getAll();
+			const tours = response.tours ?? [];
+			reconcileAutoPublishedSessionWithTours(tours, ownerUserId);
+			reconcileAllSdkLabRunSnapshots(tours, ownerUserId);
 
-		const snapshot = readSdkLabRunSnapshot(meta.labKey);
-		if (snapshot && shouldKeepSdkLabRunSnapshot(tours, snapshot, ownerUserId)) {
-			setRestoredSnapshot(snapshot);
-			setLastRunAt(snapshot.lastRunAt);
-			if (snapshot.debugReport) {
-				restoreLastContextualGenerationDebugReport(snapshot.debugReport);
+			const snapshot = readSdkLabRunSnapshot(meta.labKey);
+			if (snapshot && shouldKeepSdkLabRunSnapshot(tours, snapshot, ownerUserId)) {
+				setRestoredSnapshot(snapshot);
+				setLastRunAt(snapshot.lastRunAt);
+				if (snapshot.debugReport) {
+					restoreLastContextualGenerationDebugReport(snapshot.debugReport);
+				}
+			} else {
+				if (snapshot) clearSdkLabRunSnapshot(meta.labKey);
+				setRestoredSnapshot(null);
+				setLastRunAt(null);
+				clearLastContextualGenerationDebugReport();
 			}
-		} else {
-			if (snapshot) clearSdkLabRunSnapshot(meta.labKey);
-			setRestoredSnapshot(null);
-			setLastRunAt(null);
-			clearLastContextualGenerationDebugReport();
+			return tours;
+		} catch {
+			return [];
 		}
-		return tours;
 	}, [meta.labKey, ownerUserId]);
 
 	useEffect(() => {
@@ -93,7 +97,7 @@ export function useSdkLabPage(
 		if (typeof window === 'undefined') return;
 
 		const refreshCatalog = () => {
-			void syncTourCatalog();
+			void syncTourCatalog().catch(() => undefined);
 		};
 
 		const intervalId = window.setInterval(refreshCatalog, 15000);

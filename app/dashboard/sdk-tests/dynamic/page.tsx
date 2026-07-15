@@ -18,6 +18,7 @@ import {
 	SdkLabSdkConsole,
 	SdkLabSessionControls,
 } from '../lab-ui';
+import { SdkLabAbandonmentMonitor } from '../SdkLabAbandonmentMonitor';
 import { useSdkLabPage } from '../use-sdk-lab-page';
 import { usePhase1RunHistory } from '../use-phase1-run-history';
 
@@ -237,6 +238,7 @@ export default function DynamicTestPage() {
         sdk={
           <SdkLabSdkConsole
             run={runBindings}
+            monitor={<SdkLabAbandonmentMonitor />}
             sessionControls={
               <SdkLabSessionControls
                 idPrefix="dynamic"

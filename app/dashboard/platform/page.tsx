@@ -31,6 +31,7 @@ export default function PlatformConsolePage() {
 			<div className="space-y-6">
 				<DashboardWelcomeHero
 					firstName={user?.firstName}
+					eyebrow="Console plateforme"
 					subtitle="Bienvenue sur la console plateforme Guidora Onboarding."
 				/>
 
@@ -50,7 +51,7 @@ export default function PlatformConsolePage() {
 								href={tile.href}
 								className={cn(
 									PHOENIX_PANEL_CLASS,
-									'block p-6 transition-all hover:scale-[1.01] hover:border-orange-400/40',
+									'block rounded-2xl border p-6 transition-all hover:scale-[1.01] hover:border-orange-400/40',
 								)}
 							>
 								<div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-pink-600 text-white shadow-soft">

@@ -1289,14 +1289,17 @@ export function SdkLabSdkConsole({
 	sessionControls,
 	toolbar,
 	extraMetrics,
+	monitor,
 }: {
 	run: SdkLabRunBindings;
 	sessionControls?: ReactNode | null;
 	toolbar: ReactNode;
 	extraMetrics?: SdkLabExtraMetric[];
+	monitor?: ReactNode;
 }) {
 	return (
 		<SdkLabSdkZone>
+			{monitor ? <div className="mb-4">{monitor}</div> : null}
 			<Card className="border-orange-400/20 bg-card/80 shadow-card">
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base">Analyse & publication</CardTitle>

@@ -29,6 +29,25 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { FaqProjectCard } from './_components/faq-project-card';
 import { FaqProjectQuestionsModal } from './_components/faq-project-questions-modal';
+import { CatalogListPagination } from '@/components/dashboard/catalog-list-pagination';
+
+const FAQ_PROJECTS_PAGE_SIZE = 4;
+
+type FaqProjectTypeFilter = 'all' | 'sdk' | 'generic';
+
+const FAQ_PROJECT_TYPE_FILTER_OPTIONS: Array<{ value: FaqProjectTypeFilter; label: string }> = [
+  { value: 'all', label: 'Tous' },
+  { value: 'sdk', label: 'Paquets SDK' },
+  { value: 'generic', label: 'Générique' },
+];
+
+function sortProjectKeys(keys: string[]): string[] {
+  return [...keys].sort((a, b) => {
+    if (a === DEFAULT_FAQ_PROJECT_KEY) return -1;
+    if (b === DEFAULT_FAQ_PROJECT_KEY) return 1;
+    return a.localeCompare(b);
+  });
+}
 
 function groupItemsByProject(items: FaqEntryRow[]): Record<string, FaqEntryRow[]> {
   const grouped: Record<string, FaqEntryRow[]> = {};
@@ -55,13 +74,16 @@ export default function FaqProjectsPage() {
   const [questionsProjectKey, setQuestionsProjectKey] = useState<string | null>(null);
   const [deleteProjectKey, setDeleteProjectKey] = useState<string | null>(null);
   const [deleteProjectLoading, setDeleteProjectLoading] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<FaqProjectTypeFilter>('all');
+  const [listPage, setListPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await faqService.listManage();
       const keys = response.projectKeys?.length ? response.projectKeys : [DEFAULT_FAQ_PROJECT_KEY];
-      setProjectKeys(keys);
+      setProjectKeys(sortProjectKeys(keys));
       setProjectKeyCounts(response.projectKeyCounts ?? {});
       setProjectKeyTourCounts(response.projectKeyTourCounts ?? {});
       setItemsByProject(groupItemsByProject(response.items ?? []));
@@ -85,6 +107,44 @@ export default function FaqProjectsPage() {
     () => projectKeys.filter((key) => key !== DEFAULT_FAQ_PROJECT_KEY).length,
     [projectKeys],
   );
+
+  const filteredProjectKeys = useMemo(() => {
+    const query = filterQuery.trim().toLowerCase();
+    return projectKeys.filter((key) => {
+      if (typeFilter === 'generic' && key !== DEFAULT_FAQ_PROJECT_KEY) {
+        return false;
+      }
+      if (typeFilter === 'sdk' && key === DEFAULT_FAQ_PROJECT_KEY) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      const title = formatFaqProjectTitle(key).toLowerCase();
+      return key.toLowerCase().includes(query) || title.includes(query);
+    });
+  }, [projectKeys, filterQuery, typeFilter]);
+
+  const hasActiveFilters = Boolean(filterQuery.trim()) || typeFilter !== 'all';
+
+  useEffect(() => {
+    setListPage(1);
+  }, [filterQuery, typeFilter, projectKeys.length]);
+
+  const faqProjectsTotalPages = Math.max(1, Math.ceil(filteredProjectKeys.length / FAQ_PROJECTS_PAGE_SIZE));
+  const safeListPage = Math.min(listPage, faqProjectsTotalPages);
+
+  const paginatedProjectKeys = useMemo(() => {
+    const start = (safeListPage - 1) * FAQ_PROJECTS_PAGE_SIZE;
+    return filteredProjectKeys.slice(start, start + FAQ_PROJECTS_PAGE_SIZE);
+  }, [filteredProjectKeys, safeListPage]);
+
+  const paginatedRangeLabel = useMemo(() => {
+    if (filteredProjectKeys.length === 0) return '';
+    const start = (safeListPage - 1) * FAQ_PROJECTS_PAGE_SIZE + 1;
+    const end = Math.min(safeListPage * FAQ_PROJECTS_PAGE_SIZE, filteredProjectKeys.length);
+    return `${start}–${end} sur ${filteredProjectKeys.length}`;
+  }, [filteredProjectKeys.length, safeListPage]);
 
   const createProject = async () => {
     const key = newProjectKey.trim();
@@ -330,36 +390,105 @@ export default function FaqProjectsPage() {
           ) : null}
 
           {!loading && projectKeys.length > 0 ? (
-            <div
-              className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
-              aria-label="Catalogue des projets FAQ"
-            >
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
-                <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Corpus d&apos;aide
-                </p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  {projectKeys.length} projet{projectKeys.length !== 1 ? 's' : ''}
-                </p>
+            <>
+              <div className={cn(PHOENIX_INSET_PANEL_CLASS, 'p-4')}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <div className="relative min-w-0 flex-1">
+                    <Icons.search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      placeholder="Rechercher par identifiant ou nom de projet…"
+                      value={filterQuery}
+                      onChange={(e) => setFilterQuery(e.target.value)}
+                      className={cn('pl-9', PHOENIX_FIELD_CLASS, filterQuery ? 'pr-9' : undefined)}
+                    />
+                    {filterQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => setFilterQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                        aria-label="Effacer la recherche"
+                      >
+                        <Icons.close className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="flex gap-1 rounded-xl border border-slate-200/80 bg-white/60 p-1 dark:border-white/10 dark:bg-slate-900/50">
+                    {FAQ_PROJECT_TYPE_FILTER_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setTypeFilter(option.value)}
+                        className={cn(
+                          'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                          typeFilter === option.value
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white'
+                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200',
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {projectKeys.map((key) => (
-                  <FaqProjectCard
-                    key={key}
-                    projectKey={key}
-                    questionCount={projectKeyCounts[key] ?? 0}
-                    tourCount={projectKeyTourCounts[key] ?? 0}
-                    canManage={canManage}
-                    onShowQuestions={() => setQuestionsProjectKey(key)}
-                    onDelete={
-                      key !== DEFAULT_FAQ_PROJECT_KEY
-                        ? () => setDeleteProjectKey(key)
-                        : undefined
-                    }
+
+              {filteredProjectKeys.length === 0 ? (
+                <div className="relative overflow-hidden rounded-2xl border border-dashed border-slate-300/70 bg-slate-50/40 px-6 py-12 text-center dark:border-white/20 dark:bg-slate-900/25">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white/80 dark:border-white/10 dark:bg-slate-900/60">
+                    <Icons.filter className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white">
+                    Aucun projet ne correspond aux filtres
+                  </p>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                    Effacez la recherche ou sélectionnez un autre type de projet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div
+                    className="rounded-2xl border-2 border-dashed border-slate-300/70 bg-slate-50/40 p-5 dark:border-white/20 dark:bg-slate-900/25"
+                    aria-label="Catalogue des projets FAQ"
+                  >
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-slate-300/50 pb-3 dark:border-white/15">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Corpus d&apos;aide — page {safeListPage}
+                      </p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
+                        {paginatedRangeLabel} projet{filteredProjectKeys.length !== 1 ? 's' : ''}
+                        {hasActiveFilters ? ` (filtré sur ${projectKeys.length})` : ''}
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {paginatedProjectKeys.map((key) => (
+                        <FaqProjectCard
+                          key={key}
+                          projectKey={key}
+                          questionCount={projectKeyCounts[key] ?? 0}
+                          tourCount={projectKeyTourCounts[key] ?? 0}
+                          canManage={canManage}
+                          onShowQuestions={() => setQuestionsProjectKey(key)}
+                          onDelete={
+                            key !== DEFAULT_FAQ_PROJECT_KEY
+                              ? () => setDeleteProjectKey(key)
+                              : undefined
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <CatalogListPagination
+                    totalItems={filteredProjectKeys.length}
+                    pageSize={FAQ_PROJECTS_PAGE_SIZE}
+                    currentPage={safeListPage}
+                    totalPages={faqProjectsTotalPages}
+                    onPrevious={() => setListPage((prev) => Math.max(1, prev - 1))}
+                    onNext={() => setListPage((prev) => Math.min(faqProjectsTotalPages, prev + 1))}
+                    itemLabel="projet"
                   />
-                ))}
-              </div>
-            </div>
+                </div>
+              )}
+            </>
           ) : null}
         </section>
       </div>

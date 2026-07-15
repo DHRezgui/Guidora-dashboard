@@ -462,20 +462,20 @@ export default function FaqProjectDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               {formatFaqProjectTitle(projectKey)}
             </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               {formatFaqProjectSubtitle(projectKey)}. Les entrées publiées alimentent la recherche sémantique du SDK (scope{' '}
               <code className={LAB_INLINE_CODE_HIGHLIGHT_CLASS}>faq:search</code>).
-            </p>
-          </div>
-          {canManage ? (
+          </p>
+        </div>
+            {canManage ? (
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
+                <Button
+                  type="button"
+                  variant="outline"
                 className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
                 disabled={importing || reindexing}
                 onClick={() => void handleImportGlobal()}
@@ -486,12 +486,12 @@ export default function FaqProjectDetailPage() {
                   <Icons.download className="mr-2 h-4 w-4" />
                 )}
                 Importer FAQ TrustDev
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
-                disabled={reindexing}
+                </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
+                        disabled={reindexing}
                 onClick={() => void handleReindex()}
               >
                 {reindexing ? (
@@ -500,20 +500,20 @@ export default function FaqProjectDetailPage() {
                   <Icons.refresh className="mr-2 h-4 w-4" />
                 )}
                 Régénérer l&apos;index
-              </Button>
+                      </Button>
               <Button type="button" className={PHOENIX_PRIMARY_BUTTON_CLASS} onClick={openCreate}>
                 <Icons.plus className="mr-2 h-4 w-4" />
                 Nouvelle entrée
               </Button>
-            </div>
-          ) : null}
-        </div>
+                  </div>
+                ) : null}
+              </div>
 
         <DashboardStatGrid stats={statCards} />
 
         {indexStatus ? (
           <div
-            className={cn(
+                  className={cn(
               'rounded-xl border px-4 py-3 text-sm',
               indexStatus.needsReindex
                 ? 'border-amber-300/70 bg-amber-50/90 text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-amber-100'
@@ -532,7 +532,7 @@ export default function FaqProjectDetailPage() {
                 : ' · aucun fichier d’embeddings détecté'}
             </p>
           </div>
-        ) : null}
+                  ) : null}
 
         {lastImportSummary ? (
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/40 dark:text-slate-300">
@@ -571,7 +571,7 @@ export default function FaqProjectDetailPage() {
                 >
                   <Icons.close className="h-3.5 w-3.5" />
                 </button>
-              ) : null}
+                  ) : null}
             </div>
             <Button
               type="button"
@@ -601,20 +601,20 @@ export default function FaqProjectDetailPage() {
                 </article>
               ))}
             </div>
-          ) : null}
-        </div>
+                  ) : null}
+              </div>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-950/50">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div className="relative min-w-[240px] flex-1">
-              <Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                        <Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
                 placeholder="Rechercher une question, une réponse ou une catégorie…"
-                className="rounded-xl pl-9"
-              />
-            </div>
+                          className="rounded-xl pl-9"
+                        />
+                      </div>
             {canManage && items.length > 0 ? (
               <Button
                 type="button"
@@ -634,30 +634,30 @@ export default function FaqProjectDetailPage() {
                 Vider toutes les questions
               </Button>
             ) : null}
-          </div>
+                    </div>
 
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <Icons.spinner className="h-6 w-6 animate-spin text-orange-500" />
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-white/15">
-              <Icons.faq className="mx-auto h-8 w-8 text-orange-400" />
+                    {loading ? (
+                      <div className="flex justify-center py-16">
+                        <Icons.spinner className="h-6 w-6 animate-spin text-orange-500" />
+                      </div>
+                    ) : filteredItems.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-white/15">
+                        <Icons.faq className="mx-auto h-8 w-8 text-orange-400" />
               <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">Aucune entrée FAQ</p>
-              <p className="mt-1 text-sm text-slate-500">
-                {canManage
+                        <p className="mt-1 text-sm text-slate-500">
+                          {canManage
                   ? 'Créez votre première question/réponse pour activer la FAQ multi-tenant.'
-                  : 'Aucune entrée disponible pour le moment.'}
-              </p>
-              {canManage ? (
-                <Button type="button" className={cn('mt-4', PHOENIX_PRIMARY_BUTTON_CLASS)} onClick={openCreate}>
+                            : 'Aucune entrée disponible pour le moment.'}
+                        </p>
+                        {canManage ? (
+                          <Button type="button" className={cn('mt-4', PHOENIX_PRIMARY_BUTTON_CLASS)} onClick={openCreate}>
                   Créer une entrée
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
                 {paginatedItems.map((item) => {
                   const listActionsBlocked = isFaqListActionBlocked(item.editLock);
                   const lockedByOther = isFaqLockedByOther(item.editLock);
@@ -805,9 +805,9 @@ export default function FaqProjectDetailPage() {
                   {filteredItems.length} entrée{filteredItems.length > 1 ? 's' : ''} au total
                 </p>
               )}
-            </>
-          )}
-        </div>
+                      </>
+                    )}
+                      </div>
       </div>
 
       {modalOpen ? (
