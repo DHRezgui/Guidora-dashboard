@@ -18,6 +18,8 @@ export type DashboardAccessPolicy =
 
 	| 'faq'
 
+	| 'support'
+
 	| 'projects'
 
 	| 'tours'
@@ -126,6 +128,15 @@ export function canAccessFaq(role: DashboardRole | null): boolean {
 
 	return role === 'ADMIN' || role === 'DEVELOPER';
 
+}
+
+export function canAccessSupportTickets(role: DashboardRole | null): boolean {
+	return role === 'ADMIN' || role === 'DEVELOPER';
+}
+
+/** Suppression définitive (soft delete) d’un ticket — admin d’organisation uniquement. */
+export function canDeleteSupportTickets(role: DashboardRole | null): boolean {
+	return role === 'ADMIN';
 }
 
 
@@ -277,6 +288,10 @@ export function hasDashboardAccess(
 		case 'faq':
 
 			return canAccessFaq(role);
+
+		case 'support':
+
+			return canAccessSupportTickets(role);
 
 		case 'projects':
 

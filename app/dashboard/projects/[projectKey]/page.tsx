@@ -25,6 +25,7 @@ import {
   formatProjectTitle,
   parseProjectParam,
   projectsIndexHref,
+  supportProjectHref,
   tourCreateHref,
 } from '@/lib/project';
 import { PHOENIX_PRIMARY_BUTTON_CLASS } from '@/lib/phoenix-ui';
@@ -209,6 +210,12 @@ export default function ProjectHubPage() {
                   <Link href={blueprintProjectHref(projectKey)}>
                     <Icons.blueprints className="h-3.5 w-3.5" />
                     {canManageBp ? 'Blueprints' : 'Consulter les blueprints'}
+                  </Link>
+                </Button>
+                <Button variant="outline" className={PHOENIX_HUB_BTN} asChild>
+                  <Link href={supportProjectHref(projectKey)}>
+                    <Icons.support className="h-3.5 w-3.5" />
+                    Support
                   </Link>
                 </Button>
                 {canDeleteScope && !isDefault ? (

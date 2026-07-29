@@ -43,6 +43,7 @@ import {
   Redo2,
   GripVertical,
   MessageSquare,
+  Headphones,
   BookOpen,
   HelpCircle,
   MousePointerClick,
@@ -69,6 +70,7 @@ import {
   Crown,
   FlaskConical,
   Sparkles,
+  History,
   type LucideProps,
 } from 'lucide-react';
 
@@ -86,6 +88,7 @@ export const Icons = {
   tours: Route,
   blueprints: Layers,
   faq: HelpCircle,
+  support: Headphones,
   sdkTests: Code,
   sdkLab: FlaskConical,
   sandbox: FlaskConical,
@@ -141,6 +144,7 @@ export const Icons = {
   info: Info,
   target: Target,
   refresh: RefreshCw,
+  history: History,
   undo: Undo2,
   redo: Redo2,
   layout: LayoutDashboard,

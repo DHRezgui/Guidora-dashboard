@@ -6,7 +6,14 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+function SelectRoot({
+  modal = false,
+  ...props
+}: SelectPrimitive.Root.Props) {
+  // Base UI defaults modal=true (locks document scroll + blocks outside pointer events).
+  // Dashboard selects are lightweight popovers — keep page scroll usable while open.
+  return <SelectPrimitive.Root modal={modal} {...props} />
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -63,12 +70,20 @@ function SelectContent({
   sideOffset = 4,
   align = "center",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  alignItemWithTrigger = false,
+  // absolute (Base UI default) portals to body and can grow document height → double scrollbar
+  // with the dashboard's main overflow-y-auto. fixed keeps the popup viewport-bound.
+  positionMethod = "fixed",
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
     SelectPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
+    | "align"
+    | "alignOffset"
+    | "side"
+    | "sideOffset"
+    | "alignItemWithTrigger"
+    | "positionMethod"
   >) {
   return (
     <SelectPrimitive.Portal>
@@ -78,6 +93,7 @@ function SelectContent({
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
+        positionMethod={positionMethod}
         className="isolate z-[220]"
       >
         <SelectPrimitive.Popup
@@ -188,7 +204,7 @@ function SelectScrollDownButton({
 }
 
 export {
-  Select,
+  SelectRoot as Select,
   SelectContent,
   SelectGroup,
   SelectItem,

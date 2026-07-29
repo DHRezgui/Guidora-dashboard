@@ -951,6 +951,202 @@ export type DeleteProjectScopeResult = {
   message: string;
 };
 
+export type SupportTicketAdminReply = {
+  body: string;
+  sentAt: string;
+  authorId: string | null;
+  authorEmail?: string | null;
+  authorName?: string | null;
+};
+
+export type SupportTicketCollaborator = {
+  userId: string;
+  access: 'read' | 'write';
+  addedAt: string;
+  addedBy: string | null;
+};
+
+export type SupportTicketCapabilities = {
+  canView: boolean;
+  canReply: boolean;
+  canResolve: boolean;
+  canArchive: boolean;
+  canUnarchive: boolean;
+  canReopen?: boolean;
+  canDelete: boolean;
+  canEditFields: boolean;
+  canEditStatus?: boolean;
+  canAssign: boolean;
+  canAssignToAnyone: boolean;
+  canUnassign: boolean;
+  canTakeOver: boolean;
+  takeOverAvailableAt?: string | null;
+  canManageCollaborators: boolean;
+  canAcquireLock: boolean;
+  canForceUnlock: boolean;
+  canForceTakeOver?: boolean;
+  mustSelfAssignToAct: boolean;
+  isInformational?: boolean;
+  assigneeInactive?: boolean;
+};
+
+export type SupportTicketEditLock = {
+  lockedBy: string | null;
+  lockedByName?: string | null;
+  lockedByEmail?: string | null;
+  lockedAt?: string | null;
+  expiresAt?: string | null;
+  heldByMe: boolean;
+};
+
+export type SupportTicketHistoryEntry = {
+  id: string;
+  at: string;
+  kind:
+    | 'created'
+    | 'status'
+    | 'assignment'
+    | 'takeover'
+    | 'unassign'
+    | 'archive'
+    | 'unarchive'
+    | 'reopen';
+  actorId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  fromStatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | null;
+  toStatus?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | null;
+  fromAssigneeId?: string | null;
+  fromAssigneeLabel?: string | null;
+  toAssigneeId?: string | null;
+  toAssigneeLabel?: string | null;
+};
+
+export type SupportTicketRow = {
+  id: string;
+  organizationId: string;
+  userId?: string | null;
+  userEmail?: string | null;
+  subject: string;
+  description: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  projectKey?: string;
+  assignedTo?: string | null;
+  assigneeEmail?: string | null;
+  assigneeName?: string | null;
+  assignedAt?: string | null;
+  collaborators?: SupportTicketCollaborator[];
+  pageUrl?: string | null;
+  contactEmail?: string | null;
+  sessionData?: Record<string, unknown>;
+  adminReplies?: SupportTicketAdminReply[];
+  resolvedAt?: string | null;
+  editLock?: SupportTicketEditLock | null;
+  capabilities?: SupportTicketCapabilities;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const supportTicketService = {
+  async list(params?: {
+    status?: SupportTicketRow['status'];
+    projectKey?: string;
+    activeOnly?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ success: boolean; count: number; items: SupportTicketRow[] }> {
+    const response = await apiClient.get('/support/tickets', { params });
+    return response.data;
+  },
+
+  async archive(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.patch(`/support/tickets/${id}/archive`);
+    return response.data;
+  },
+
+  async unarchive(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.patch(`/support/tickets/${id}/unarchive`);
+    return response.data;
+  },
+
+  async reopen(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.patch(`/support/tickets/${id}/reopen`);
+    return response.data;
+  },
+
+  async history(
+    id: string,
+    scope: 'all' | 'assignment' | 'status' = 'all',
+  ): Promise<{
+    success: boolean;
+    count: number;
+    items: SupportTicketHistoryEntry[];
+  }> {
+    const response = await apiClient.get(`/support/tickets/${id}/history`, {
+      params: { scope },
+    });
+    return response.data;
+  },
+
+  async remove(id: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/support/tickets/${id}`);
+    return response.data;
+  },
+
+  async resolve(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.patch(`/support/tickets/${id}/resolve`);
+    return response.data;
+  },
+
+  async update(
+    id: string,
+    payload: {
+      status?: SupportTicketRow['status'];
+      priority?: SupportTicketRow['priority'];
+      assignedTo?: string | null;
+      forceUnlock?: boolean;
+      keepCollaborators?: boolean;
+    },
+  ): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.patch(`/support/tickets/${id}`, payload);
+    return response.data;
+  },
+
+  async reply(
+    id: string,
+    payload: { message: string },
+  ): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.post(`/support/tickets/${id}/reply`, payload);
+    return response.data;
+  },
+
+  async setCollaborators(
+    id: string,
+    collaborators: Array<{ userId: string; access: 'read' | 'write' }>,
+  ): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.put(`/support/tickets/${id}/collaborators`, {
+      collaborators,
+    });
+    return response.data;
+  },
+
+  async acquireEditLock(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.post(`/support/tickets/${id}/edit-lock`);
+    return response.data;
+  },
+
+  async renewEditLock(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.patch(`/support/tickets/${id}/edit-lock`);
+    return response.data;
+  },
+
+  async releaseEditLock(id: string): Promise<{ success: boolean; ticket: SupportTicketRow }> {
+    const response = await apiClient.delete(`/support/tickets/${id}/edit-lock`);
+    return response.data;
+  },
+};
+
 export const projectService = {
   async list(): Promise<{ success: boolean; projects: ProjectListItem[] }> {
     const response = await apiClient.get('/projects');

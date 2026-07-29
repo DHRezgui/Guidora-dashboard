@@ -31,6 +31,14 @@ export function blueprintProjectHref(projectKey?: string): string {
   return `/dashboard/blueprints?projectKey=${encodeURIComponent(trimmed)}`;
 }
 
+export function supportProjectHref(projectKey?: string): string {
+  const trimmed = projectKey?.trim();
+  if (!trimmed) {
+    return '/dashboard/support';
+  }
+  return `/dashboard/support?projectKey=${encodeURIComponent(trimmed)}`;
+}
+
 export function parseProjectParam(raw: string): string {
   return parseFaqProjectParam(raw);
 }

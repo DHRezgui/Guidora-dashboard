@@ -22,6 +22,11 @@ type PhoenixConfirmModalProps = {
   description: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
+  /** Optional third action (e.g. keep collaborators on take-over). */
+  secondaryLabel?: string;
+  onSecondary?: () => void | Promise<void>;
+  /** Icon for the default (non-danger) variant. Default: warning. */
+  icon?: 'warning' | 'users' | 'info';
   variant?: PhoenixConfirmModalVariant;
   loading?: boolean;
   loadingLabel?: string;
@@ -36,6 +41,9 @@ export function PhoenixConfirmModal({
   description,
   confirmLabel,
   cancelLabel = 'Annuler',
+  secondaryLabel,
+  onSecondary,
+  icon = 'warning',
   variant = 'default',
   loading = false,
   loadingLabel,
@@ -49,6 +57,9 @@ export function PhoenixConfirmModal({
 
   const isDanger = variant === 'danger';
   const titleId = 'phoenix-confirm-modal-title';
+  const hasSecondary = Boolean(secondaryLabel && onSecondary);
+  const DefaultIcon =
+    icon === 'users' ? Icons.users : icon === 'info' ? Icons.info : Icons.warning;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -56,7 +67,7 @@ export function PhoenixConfirmModal({
       <div
         className={cn(
           isDanger ? PHOENIX_MODAL_PANEL_DANGER_CLASS : PHOENIX_MODAL_PANEL_CLASS,
-          'mx-4 animate-scale-in',
+          'mx-auto max-h-[min(90vh,40rem)] overflow-y-auto animate-scale-in',
           maxWidthClassName,
         )}
         role="dialog"
@@ -74,7 +85,7 @@ export function PhoenixConfirmModal({
             {isDanger ? (
               <Icons.warning className="h-5 w-5 text-rose-500 dark:text-rose-300" />
             ) : (
-              <Icons.download className="h-5 w-5 text-orange-600 dark:text-orange-300" />
+              <DefaultIcon className="h-5 w-5 text-orange-600 dark:text-orange-300" />
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -88,22 +99,45 @@ export function PhoenixConfirmModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div
+          className={cn(
+            hasSecondary
+              ? 'flex w-full min-w-0 flex-col-reverse gap-2'
+              : 'flex flex-wrap justify-end gap-2',
+          )}
+        >
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={loading}
-            className={PHOENIX_MODAL_CANCEL_BUTTON_CLASS}
+            className={cn(
+              PHOENIX_MODAL_CANCEL_BUTTON_CLASS,
+              hasSecondary && 'h-10 w-full justify-center',
+            )}
           >
             {cancelLabel}
           </Button>
+          {hasSecondary ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void onSecondary?.()}
+              disabled={loading}
+              className={cn(
+                PHOENIX_MODAL_CANCEL_BUTTON_CLASS,
+                'h-10 w-full justify-center border-orange-400/40 text-orange-800 dark:text-orange-200',
+              )}
+            >
+              {secondaryLabel}
+            </Button>
+          ) : null}
           {isDanger ? (
             <button
               type="button"
               onClick={() => void onConfirm()}
               disabled={loading}
-              className={PHOENIX_DESTRUCTIVE_BUTTON_CLASS}
+              className={cn(PHOENIX_DESTRUCTIVE_BUTTON_CLASS, hasSecondary && 'w-full')}
             >
               {loading ? (
                 <>
@@ -119,7 +153,10 @@ export function PhoenixConfirmModal({
               type="button"
               onClick={() => void onConfirm()}
               disabled={loading}
-              className={PHOENIX_PRIMARY_BUTTON_CLASS}
+              className={cn(
+                PHOENIX_PRIMARY_BUTTON_CLASS,
+                hasSecondary && 'h-10 w-full justify-center',
+              )}
             >
               {loading ? (
                 <>
