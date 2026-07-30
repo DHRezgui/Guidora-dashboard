@@ -16,10 +16,11 @@ type DashboardOverviewStats = {
   tourTotal: number;
   tourSandbox: number;
   tourActive: number;
+  openSupportTickets: number;
   orgPlan: string | null;
 };
 
-type MetricAccent = 'emerald' | 'orange' | 'sky' | 'slate' | 'cyan' | 'purple' | 'violet';
+type MetricAccent = 'emerald' | 'orange' | 'sky' | 'slate' | 'cyan' | 'purple' | 'violet' | 'rose';
 
 type OverviewMetric = {
   id: string;
@@ -85,22 +86,57 @@ const accentStyles: Record<
     hoverBorder: 'hover:border-violet-400/35',
     hoverShadow: 'hover:shadow-[0_12px_28px_rgba(139,92,246,0.12)]',
   },
+  rose: {
+    tile: 'from-rose-100 to-white dark:from-rose-500/20 dark:to-slate-900/70',
+    iconWrap: 'border-rose-200/80 bg-rose-50/90 dark:border-rose-400/25 dark:bg-rose-500/10',
+    icon: 'text-rose-600 dark:text-rose-300',
+    hoverBorder: 'hover:border-rose-400/35',
+    hoverShadow: 'hover:shadow-[0_12px_28px_rgba(244,63,94,0.12)]',
+  },
 };
+
+function buildSupportMetric(
+  stats: DashboardOverviewStats,
+  loading: boolean,
+): OverviewMetric {
+  const dash = loading ? '…' : undefined;
+  return {
+    id: 'support',
+    label: 'Support',
+    value: dash ?? stats.openSupportTickets,
+    hint:
+      stats.openSupportTickets > 0
+        ? 'Ouverts ou en cours'
+        : 'Aucun ticket actif',
+    href: '/dashboard/support',
+    icon: Icons.support,
+    accent: 'rose',
+  };
+}
 
 function buildActivityMetrics(
   stats: DashboardOverviewStats,
   loading: boolean,
-  opts: { isAdmin: boolean; showTourCreate: boolean; showOrgStats: boolean },
+  opts: {
+    isAdmin: boolean;
+    showTourCreate: boolean;
+    showOrgStats: boolean;
+    showSupport: boolean;
+  },
 ): OverviewMetric[] {
   const dash = loading ? '…' : undefined;
+  const supportMetric = opts.showSupport ? buildSupportMetric(stats, loading) : null;
 
   if (opts.isAdmin) {
-    return [
+    const metrics: OverviewMetric[] = [
       {
         id: 'production',
         label: 'Production',
         value: dash ?? stats.productionTours,
-        hint: stats.tourTotal > 0 ? `${stats.tourTotal} parcours au total` : 'Aucun parcours',
+        hint:
+          stats.tourTotal > 0
+            ? `${stats.productionTours} actifs · ${stats.tourTotal} total`
+            : 'Aucun parcours',
         href: '/dashboard/tours',
         icon: Icons.tours,
         accent: 'emerald',
@@ -119,16 +155,21 @@ function buildActivityMetrics(
         id: 'team',
         label: 'Équipe',
         value: dash ?? stats.teamMembers,
-        hint: stats.maxUsers > 0 ? `${stats.teamMembers} / ${stats.maxUsers} utilisateurs` : 'Membres',
+        hint:
+          stats.maxUsers > 0
+            ? `${stats.teamMembers} / ${stats.maxUsers} places`
+            : 'Comptes actifs org',
         href: '/dashboard/users',
         icon: Icons.users,
         accent: 'sky',
       },
     ];
+    if (supportMetric) metrics.push(supportMetric);
+    return metrics;
   }
 
   if (opts.showTourCreate) {
-    return [
+    const metrics: OverviewMetric[] = [
       {
         id: 'tours',
         label: 'Parcours',
@@ -157,6 +198,8 @@ function buildActivityMetrics(
         accent: 'emerald',
       },
     ];
+    if (supportMetric) metrics.push(supportMetric);
+    return metrics;
   }
 
   if (opts.showOrgStats) {
@@ -173,6 +216,8 @@ function buildActivityMetrics(
     ];
   }
 
+  if (supportMetric) return [supportMetric];
+
   return [];
 }
 
@@ -184,7 +229,7 @@ function buildResourceMetrics(hubStats: DashboardHubStats, loading: boolean): Ov
       id: 'projects',
       label: 'Projets SDK',
       value: dash ?? hubStats.projectCount,
-      hint: `${hubStats.sdkPackCount} paquet${hubStats.sdkPackCount !== 1 ? 's' : ''} + corpus`,
+      hint: `${hubStats.sdkPackCount} paquets + corpus`,
       href: '/dashboard/projects',
       icon: Icons.grid,
       accent: 'sky',
@@ -202,7 +247,7 @@ function buildResourceMetrics(hubStats: DashboardHubStats, loading: boolean): Ov
       id: 'blueprints',
       label: 'Blueprints',
       value: dash ?? hubStats.blueprintTotal,
-      hint: 'Modèles organisation',
+      hint: 'Modèles org.',
       href: '/dashboard/blueprints',
       icon: Icons.blueprints,
       accent: 'violet',
@@ -211,6 +256,7 @@ function buildResourceMetrics(hubStats: DashboardHubStats, loading: boolean): Ov
 }
 
 function metricGridClass(count: number) {
+  if (count >= 4) return 'sm:grid-cols-2 xl:grid-cols-4';
   if (count >= 3) return 'sm:grid-cols-3';
   if (count === 2) return 'sm:grid-cols-2';
   return 'grid-cols-1';
@@ -248,7 +294,9 @@ function OverviewMetricTile({ metric }: { metric: OverviewMetric }) {
         </div>
       </div>
       {metric.hint ? (
-        <p className="mt-2 truncate text-[11px] text-slate-600 dark:text-slate-400">{metric.hint}</p>
+        <p className="mt-2 text-[11px] leading-snug text-slate-600 dark:text-slate-400" title={metric.hint}>
+          {metric.hint}
+        </p>
       ) : null}
     </div>
   );
@@ -301,6 +349,7 @@ type DashboardOverviewPanelProps = {
   showTourCreate: boolean;
   showOrgStats: boolean;
   showHubResources: boolean;
+  showSupport?: boolean;
 };
 
 export function DashboardOverviewPanel({
@@ -311,11 +360,13 @@ export function DashboardOverviewPanel({
   showTourCreate,
   showOrgStats,
   showHubResources,
+  showSupport = false,
 }: DashboardOverviewPanelProps) {
   const activityMetrics = buildActivityMetrics(stats, loading, {
     isAdmin,
     showTourCreate,
     showOrgStats,
+    showSupport,
   });
   const resourceMetrics = showHubResources ? buildResourceMetrics(hubStats, loading) : [];
 

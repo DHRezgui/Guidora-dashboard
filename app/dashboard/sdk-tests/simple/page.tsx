@@ -122,8 +122,8 @@ export default function SimpleTestPage() {
   return (
     <SdkLabShell
       title="Interface simple"
-      description="Scénario épuré avec un CTA principal, un lien secondaire et quelques repères visuels pour valider la sélection métier."
-			badges={['simple', 'CTA', 'sélecteurs stables', 'hybrid']}
+      description="Scénario épuré avec CTA principal et actions secondaires — sélection métier, et moniteur Abandon (score + toast)."
+			badges={['simple', 'CTA', 'abandon', 'hybrid']}
 		>
 			<SdkLabTwoZoneLayout
 				subject={

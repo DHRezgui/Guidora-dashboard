@@ -122,8 +122,8 @@ export default function MediumTestPage() {
   return (
     <SdkLabShell
       title="Interface moyenne"
-      description="Scénario plus riche avec navigation, formulaire, validation et zones structurées. Parfait pour tester les séquences d’actions et le ranking contextuel."
-      badges={['navigation', 'formulaire', 'validation', 'hybrid']}
+      description="Navigation, formulaire et validation — séquences d’actions, ranking contextuel, et friction suivie par le moniteur Abandon."
+      badges={['navigation', 'formulaire', 'abandon', 'hybrid']}
     >
       <SdkLabTwoZoneLayout
         subject={

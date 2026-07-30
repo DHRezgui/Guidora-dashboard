@@ -232,8 +232,8 @@ export default function StressTestPage() {
   return (
     <SdkLabShell
       title="Stress test arbitraire"
-      description="Scénario non calibré avec bruit, faux signaux, mutations rapides et blocs contradictoires pour tester la robustesse réelle du SDK."
-      badges={['stress', 'anti-biais', 'chaos DOM', 'validation finale', 'hybrid']}
+      description="Bruit, faux signaux et mutations rapides — robustesse du SDK et stabilité du score Abandon sous chaos."
+      badges={['stress', 'anti-biais', 'chaos DOM', 'abandon', 'hybrid']}
     >
       <SdkLabTwoZoneLayout
         subject={

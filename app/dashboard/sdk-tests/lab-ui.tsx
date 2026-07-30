@@ -13,6 +13,7 @@ import type {
 	SuggestedTourDraft,
 } from '@sdk/types/sdk';
 import { Badge } from '@/components/ui/badge';
+import { SdkLabAbandonmentMonitor } from './SdkLabAbandonmentMonitor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -1295,16 +1296,20 @@ export function SdkLabSdkConsole({
 	sessionControls?: ReactNode | null;
 	toolbar: ReactNode;
 	extraMetrics?: SdkLabExtraMetric[];
-	monitor?: ReactNode;
+	/** Omit to use the shared abandon monitor; pass `null` to hide it. */
+	monitor?: ReactNode | null;
 }) {
+	const resolvedMonitor = monitor === undefined ? <SdkLabAbandonmentMonitor /> : monitor;
+
 	return (
 		<SdkLabSdkZone>
-			{monitor ? <div className="mb-4">{monitor}</div> : null}
+			{resolvedMonitor ? <div className="mb-4">{resolvedMonitor}</div> : null}
 			<Card className="border-orange-400/20 bg-card/80 shadow-card">
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base">Analyse & publication</CardTitle>
 					<CardDescription>
 						Paramètres de session simulée, lancement du moteur et métriques du dernier run.
+						Le badge Abandon (LightGBM) et le toast proactif sont actifs sur chaque scénario.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">

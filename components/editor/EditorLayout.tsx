@@ -119,6 +119,7 @@ export default function EditorLayout({
     description: tour?.description,
     targetUrl: tour?.targetUrl,
     isActive: tour?.isActive,
+    showInGuides: tour?.showInGuides,
     priority: tour?.priority,
     replayPolicy: tour?.replayPolicy,
     replayAfterDays: tour?.replayAfterDays,
@@ -150,6 +151,7 @@ export default function EditorLayout({
       description: tour?.description,
       targetUrl: tour?.targetUrl,
       isActive: tour?.isActive,
+      showInGuides: tour?.showInGuides,
       priority: tour?.priority,
       replayPolicy: tour?.replayPolicy,
       replayAfterDays: tour?.replayAfterDays,
@@ -315,6 +317,16 @@ export default function EditorLayout({
     return isDeveloperLabEditMode(composedTour, role, userId);
   }, [composedTour]);
 
+  const showGuidesSelector = useMemo(() => {
+    const role = getDashboardRole(authService.getUser());
+    return (
+      role === 'ADMIN' &&
+      composedTour.environment === 'production' &&
+      !developerSandboxMode &&
+      !developerSandboxTestMode
+    );
+  }, [composedTour.environment, developerSandboxMode, developerSandboxTestMode]);
+
   const hasUnsavedChanges = useMemo(() => {
     const currentSnapshot = JSON.stringify({ steps, tourMeta });
     return currentSnapshot !== baselineSnapshotRef.current;
@@ -343,6 +355,7 @@ export default function EditorLayout({
       const forbiddenKeys: Array<keyof GuidedTour> = [
         'targetUrl',
         'isActive',
+        'showInGuides',
         'priority',
         'triggerConditions',
         'simulationContext',
@@ -467,6 +480,7 @@ export default function EditorLayout({
         developerLabEditMode={developerLabEditMode || viewOnlyMode}
         viewOnlyMode={viewOnlyMode}
         showEnvironmentSelector={showEnvironmentSelector}
+        showGuidesSelector={showGuidesSelector}
         developerSandboxMode={developerSandboxMode}
         developerSandboxTestMode={developerSandboxTestMode}
         projectScopeKey={projectScopeKey}

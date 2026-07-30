@@ -102,8 +102,8 @@ export default function SinglePageTourLabPage() {
 	return (
 		<SdkLabShell
 			title="Single-page — chaîne 7 slots"
-			description="Mock dashboard (header CTA, search, sidebar, KPI) avec singlePageTour : un draft, jusqu’à 7 étapes, chaîne générique domain-agnostic."
-			badges={['singlePageTour', '7 slots', '1 draft', 'domain-agnostic']}
+			description="Mock dashboard SaaS avec singlePageTour (1 draft, jusqu’à 7 étapes) et moniteur Abandon en parallèle."
+			badges={['singlePageTour', '7 slots', 'abandon', 'domain-agnostic']}
 		>
 			<SdkLabTwoZoneLayout
 				subject={

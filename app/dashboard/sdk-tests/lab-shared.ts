@@ -131,7 +131,8 @@ export function getLabPublishConfig(): Partial<SDKConfig> {
     debug: true,
   };
 
-  // BFF opt-in uniquement (prod). Lab / soutenance / e2e : NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN suffit.
+  // BFF opt-in (prod pattern). Requires dashboard login cookie for /api/trustdev/sdk-session.
+  // Lab / soutenance / e2e : NEXT_PUBLIC_TRUSTDEV_SDK_TOKEN suffit (sans BFF).
   if (
     !sdkToken &&
     process.env.NEXT_PUBLIC_TRUSTDEV_USE_BFF_SDK_SESSION === 'true'

@@ -28,6 +28,8 @@ interface ToolbarProps {
   developerLabEditMode?: boolean;
   /** Sélecteur d'environnement réservé aux administrateurs (création). */
   showEnvironmentSelector?: boolean;
+  /** Afficher le sélecteur Guides (admin + parcours production uniquement). */
+  showGuidesSelector?: boolean;
   /** Création sandbox développeur. */
   developerSandboxMode?: boolean;
   /** Édition sandbox : permet d'activer le parcours pour test SDK. */
@@ -52,6 +54,7 @@ export default function Toolbar({
   onRedo,
   developerLabEditMode = false,
   showEnvironmentSelector = false,
+  showGuidesSelector = false,
   developerSandboxMode = false,
   developerSandboxTestMode = false,
   viewOnlyMode = false,
@@ -308,7 +311,11 @@ export default function Toolbar({
             <div
               className={cn(
                 'grid gap-4 sm:grid-cols-2',
-                showEnvironmentSelector ? 'lg:grid-cols-3' : 'lg:grid-cols-2',
+                showEnvironmentSelector && showGuidesSelector
+                  ? 'lg:grid-cols-4'
+                  : showEnvironmentSelector || showGuidesSelector
+                    ? 'lg:grid-cols-3'
+                    : 'lg:grid-cols-2',
               )}
             >
               {showEnvironmentSelector ? (
@@ -323,6 +330,7 @@ export default function Toolbar({
                       onTourChange?.({
                         environment,
                         isActive: false,
+                        showInGuides: false,
                         isSandboxTestActive: environment === 'production' ? false : tour?.isSandboxTestActive,
                       });
                     }}
@@ -349,6 +357,38 @@ export default function Toolbar({
                       : 'Parcours production : visible dans le filtre Production. Vous pourrez le repasser en sandbox pour test.'}
                   </p>
                 </div>
+              ) : null}
+              {showGuidesSelector ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="tour-show-in-guides" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Afficher dans Guides
+                </Label>
+                <Select
+                  value={tour?.showInGuides ? 'yes' : 'no'}
+                  onValueChange={(value) => onTourChange?.({ showInGuides: value === 'yes' })}
+                  disabled={developerLabEditMode}
+                >
+                  <SelectTrigger
+                    id="tour-show-in-guides"
+                    disabled={developerLabEditMode}
+                    className={`h-9 w-full rounded-md border-slate-300 bg-white/90 pl-3 pr-3 text-sm font-medium text-slate-700 transition-colors hover:border-orange-400/40 focus-visible:ring-orange-400/20 data-[popup-open]:border-orange-400/60 dark:border-white/15 dark:bg-slate-900/55 dark:text-slate-100 ${developerLabEditMode ? 'cursor-not-allowed opacity-60' : ''}`}
+                  >
+                    <SelectValue placeholder="Guides" />
+                  </SelectTrigger>
+                  <SelectContent
+                    alignItemWithTrigger={false}
+                    side="bottom"
+                    sideOffset={8}
+                    className="rounded-xl border border-slate-200 bg-white text-slate-800 shadow-[0_12px_25px_rgba(2,6,23,0.16)] dark:border-white/15 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_12px_35px_rgba(2,6,23,0.55)]"
+                  >
+                    <SelectItem value="yes" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Oui</SelectItem>
+                    <SelectItem value="no" className="text-slate-800 focus:bg-orange-500/20 focus:text-slate-900 dark:text-slate-100 dark:focus:text-white">Non</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Catalogue Aide on-demand (prod). N&apos;active pas l&apos;autostart.
+                </p>
+              </div>
               ) : null}
               <div className="space-y-1.5">
                 <Label htmlFor="tour-replay-days" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">

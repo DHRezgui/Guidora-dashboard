@@ -23,19 +23,19 @@ type LabScenarioKey = 'hub' | 'simple' | 'medium' | 'dynamic' | 'stress' | 'sing
 
 const LAB_TEST_TIPS: Record<LabScenarioKey, string> = {
 	hub:
-		'Parcourez les scénarios via les onglets : génération contextuelle, publication API, feedback et preview « Jouer ». Pour la chaîne générique à 7 slots (profil singlePageTour, un draft, surbrillance sur chaque étape), ouvrez Single-page. Simple à Stress couvrent le mode multi-drafts et les filtres bruit / conflits. Les contrôles session (stratégie, stage, progression) s’appliquent au prochain « Analyser ».',
+		'Parcourez les scénarios via les onglets : génération contextuelle, publication API, feedback, preview « Jouer », et le moniteur Abandon (score LightGBM + toast proactif) commun à chaque page. Pour la chaîne générique à 7 slots (profil singlePageTour, un draft, surbrillance sur chaque étape), ouvrez Single-page. Simple à Stress couvrent le mode multi-drafts et les filtres bruit / conflits. Les contrôles session (stratégie, stage, progression) s’appliquent au prochain « Analyser ».',
 	simple:
-		'Surface hôte réduite à la vue métier (CTA principal, actions secondaires, repères sélecteurs). Validez la hiérarchie des intentions : lancez l’analyse, simulez du feedback (shown / clicked), puis « Jouer » sur cette page.',
+		'Surface hôte réduite à la vue métier (CTA principal, actions secondaires, repères sélecteurs). Validez la hiérarchie des intentions : lancez l’analyse, simulez du feedback (shown / clicked), puis « Jouer ». Surveillez aussi le badge Abandon pendant l’interaction (clics, idle) pour valider le score local / LightGBM.',
 	medium:
-		'Testez navigation interne, formulaire et validation avant enregistrement. Vérifiez que le moteur propose des drafts form-flow et primary-action cohérents, puis utilisez feedback + lecture runtime pour confirmer le parcours multi-zones.',
+		'Testez navigation interne, formulaire et validation avant enregistrement. Vérifiez que le moteur propose des drafts form-flow et primary-action cohérents, puis utilisez feedback + lecture runtime. Le moniteur Abandon reste actif : friction formulaire (retry, abandon de champs) doit faire évoluer le risque.',
 	dynamic:
-		'Observez le comportement sous mutations DOM, modals et toasts : le batching et le filtrage du bruit doivent garder une action utile visible. Relancez l’analyse quand le DOM est calme pour activer la fusion sémantique, ou juste après une rafale pour comparer bypass et heuristiques.',
+		'Observez le comportement sous mutations DOM, modals et toasts : le batching et le filtrage du bruit doivent garder une action utile visible. Relancez l’analyse quand le DOM est calme pour activer la fusion sémantique, ou juste après une rafale pour comparer bypass et heuristiques. Le moniteur Abandon vérifie que le bruit DOM n’explose pas artificiellement le score.',
 	stress:
-		'Scénario volontairement bruyant : faux signaux, flux mouvant et événements transitoires. Le moteur doit résister au chaos et isoler une action métier claire — contrôlez rejets bruit et conflits dans le rapport debug. Utilisez « Lancer burst DOM » puis réanalysez pour tester bypass puis récupération.',
+		'Scénario volontairement bruyant : faux signaux, flux mouvant et événements transitoires. Le moteur doit résister au chaos et isoler une action métier claire — contrôlez rejets bruit et conflits dans le rapport debug. Utilisez « Lancer burst DOM » puis réanalysez. Vérifiez que l’Abandon reste interprétable malgré le chaos (pas de faux positifs systématiques).',
 	'single-page':
-		'Profil singlePageTour : un seul draft séquentiel (jusqu’à 7 étapes). Après « Analyser », consultez la carte « Single-page chain (7 slots) » (filled / skipped par slot), les candidate rankings, puis publiez. Vérifiez que l’ordre des étapes suit la chaîne (primary → search → secondary → nav → analytics → settings), que chaque étape a la surbrillance active, et que « Jouer » reflète le parcours sur le mock dashboard.',
+		'Profil singlePageTour : un seul draft séquentiel (jusqu’à 7 étapes). Après « Analyser », consultez la carte « Single-page chain (7 slots) » (filled / skipped par slot), les candidate rankings, puis publiez. Vérifiez que l’ordre des étapes suit la chaîne (primary → search → secondary → nav → analytics → settings), que chaque étape a la surbrillance active, et que « Jouer » reflète le parcours sur le mock dashboard. Le moniteur Abandon reste disponible en parallèle du parcours.',
 	integration:
-		'Exemple d’intégration avec un pack de blueprints (healthtechBlueprints, remplaçable en production par vos journeyBlueprints). Validez les drafts « blueprint », le feedback backend et la lecture runtime sur l’interface fictive portail patient.',
+		'Exemple d’intégration avec un pack de blueprints (healthtechBlueprints, remplaçable en production par vos journeyBlueprints). Validez les drafts « blueprint », le feedback backend et la lecture runtime sur l’interface fictive portail patient. Le moniteur Abandon confirme que la prédiction fonctionne aussi dans un contexte « app cliente ».',
 };
 
 function resolveLabScenarioKey(pathname: string): LabScenarioKey {

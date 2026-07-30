@@ -81,8 +81,8 @@ export default function IntegrationTestPage() {
 	return (
 		<SdkLabShell
 			title="Intégration réelle (blueprints)"
-			description="Exemple d’intégration avec un pack de blueprints (healthtechBlueprints, remplaçable par fintech, SaaS, etc.), feedback backend et lecture runtime des drafts."
-			badges={['blueprints (exemple)', 'feedback', 'runtime', 'hybrid']}
+			description="Pack healthtechBlueprints (remplaçable), feedback runtime, et moniteur Abandon comme sur une app cliente."
+			badges={['blueprints (exemple)', 'runtime', 'abandon', 'hybrid']}
 		>
 			<SdkLabTwoZoneLayout
 				subject={

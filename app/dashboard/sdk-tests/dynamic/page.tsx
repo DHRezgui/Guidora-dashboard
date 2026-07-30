@@ -18,7 +18,6 @@ import {
 	SdkLabSdkConsole,
 	SdkLabSessionControls,
 } from '../lab-ui';
-import { SdkLabAbandonmentMonitor } from '../SdkLabAbandonmentMonitor';
 import { useSdkLabPage } from '../use-sdk-lab-page';
 import { usePhase1RunHistory } from '../use-phase1-run-history';
 
@@ -144,8 +143,8 @@ export default function DynamicTestPage() {
   return (
     <SdkLabShell
       title="Interface dynamique"
-      description="Scénario riche avec chargements, modales, toasts et mutations rapides du DOM pour valider la robustesse du moteur."
-      badges={['loaders', 'modals', 'toasts', 'DOM rapide', 'hybrid']}
+      description="Scénario riche avec chargements, modales, toasts et mutations DOM — robustesse du moteur et moniteur Abandon sous bruit."
+      badges={['loaders', 'modals', 'DOM rapide', 'abandon', 'hybrid']}
     >
       <SdkLabTwoZoneLayout
         subject={
@@ -238,7 +237,6 @@ export default function DynamicTestPage() {
         sdk={
           <SdkLabSdkConsole
             run={runBindings}
-            monitor={<SdkLabAbandonmentMonitor />}
             sessionControls={
               <SdkLabSessionControls
                 idPrefix="dynamic"

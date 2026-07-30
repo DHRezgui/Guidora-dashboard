@@ -19,46 +19,51 @@ import { SdkLabShell } from './_components';
 const scenarios = [
   {
     title: 'Interface simple',
-    description: 'Une page courte avec quelques CTA, utile pour tester les sélections primaires et le filtrage du bruit.',
+    description:
+      'Page courte avec quelques CTA pour tester les sélections primaires, le filtrage du bruit, et le moniteur Abandon (score + toast proactif).',
     icon: Sparkles,
     href: '/dashboard/sdk-tests/simple',
-    tags: ['CTA', 'cartes', 'navigation simple'],
+    tags: ['CTA', 'cartes', 'abandon'],
   },
   {
     title: 'Interface moyenne',
-    description: 'Un écran plus riche avec navigation + formulaire + validation de champs.',
+    description:
+      'Navigation + formulaire + validation : parcours multi-zones, et friction formulaire suivie par le moniteur Abandon.',
     icon: Layers3,
     href: '/dashboard/sdk-tests/medium',
-    tags: ['navigation', 'formulaire', 'validation'],
+    tags: ['formulaire', 'validation', 'abandon'],
   },
   {
     title: 'Interface dynamique',
-    description: 'Un scénario avec loaders, modals, toasts et rafales DOM pour tester le batching et l’anti-bruit.',
+    description:
+      'Loaders, modals, toasts et rafales DOM pour le batching / anti-bruit, avec Abandon actif sous mutations.',
     icon: FlaskConical,
     href: '/dashboard/sdk-tests/dynamic',
-    tags: ['loaders', 'modal', 'toast', 'mutations rapides'],
+    tags: ['mutations', 'anti-bruit', 'abandon'],
   },
   {
     title: 'Stress sévère',
-    description: 'Page arbitraire avec signaux contradictoires, mutations fréquentes, faux CTA et flux asynchrones.',
+    description:
+      'Signaux contradictoires, chaos DOM et faux CTA : robustesse du moteur et stabilité du score Abandon.',
     icon: AlertTriangle,
     href: '/dashboard/sdk-tests/stress',
-    tags: ['arbitraire', 'anti-biais', 'chaos DOM', 'validation finale'],
+    tags: ['chaos DOM', 'anti-biais', 'abandon'],
   },
   {
     title: 'Single-page — 7 slots',
     description:
-      'Mock dashboard type SaaS avec singlePageTour : un draft, chaîne générique 7 slots (primary, search, nav, analytics…), debug slot par slot.',
+      'Mock SaaS avec singlePageTour (1 draft, chaîne 7 slots) et moniteur Abandon en parallèle du parcours.',
     icon: LayoutPanelTop,
     href: '/dashboard/sdk-tests/single-page',
-    tags: ['singlePageTour', '7 slots', 'dashboard mock', '1 draft'],
+    tags: ['singlePageTour', '7 slots', 'abandon'],
   },
   {
     title: 'Intégration réelle',
-    description: 'Exemple avec le pack healthtechBlueprints (remplaçable), feedback synchronisé et prévisualisation runtime comme sur une app cliente.',
+    description:
+      'Pack healthtechBlueprints (remplaçable), feedback runtime, et Abandon comme sur une app cliente.',
     icon: HeartPulse,
     href: '/dashboard/sdk-tests/integration',
-    tags: ['blueprints', 'feedback', 'runtime', 'healthtech'],
+    tags: ['blueprints', 'runtime', 'abandon'],
   },
 ];
 
@@ -66,8 +71,8 @@ export default function SdkTestsHubPage() {
   return (
     <SdkLabShell
       title="Lab de test du SDK"
-      description="Validez la génération contextuelle de bout en bout : moteur, publication API, boucle feedback et lecture des parcours sur le DOM réel du lab."
-      badges={["sandbox", "validation SDK", "production-style"]}
+      description="Validez la génération contextuelle de bout en bout : moteur, publication API, boucle feedback, lecture des parcours sur le DOM réel, et prédiction d’abandon (LightGBM + toast proactif) sur chaque scénario."
+      badges={['sandbox', 'validation SDK', 'abandon', 'production-style']}
     >
       <div className="grid gap-5 lg:grid-cols-3">
         {scenarios.map((scenario) => {
@@ -111,17 +116,20 @@ export default function SdkTestsHubPage() {
         <CardHeader>
           <CardTitle className="text-slate-800 dark:text-slate-100">Ce que tu peux vérifier</CardTitle>
           <CardDescription className="text-slate-600 dark:text-slate-300">
-            Chaque scénario partage le même moteur ; Single-page valide en plus la chaîne 7 slots et singlePageTour.
+            Chaque scénario partage le même moteur, le moniteur Abandon (score LightGBM + toast proactif) et la preview
+            « Jouer ». Single-page ajoute la chaîne 7 slots / singlePageTour ; Intégration valide les blueprints métier.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {[
             'Génération + publication API (parcours inactifs par défaut, activation via dashboard)',
             'Feedback shown / clicked / completed synchronisé avec le backend',
-            'Single-page : carte « 7 slots » filled/skipped + ordre des étapes = ordre des slots',
+            'Abandon sur tous les scénarios : badge risque local / LightGBM + toast proactif',
             'Multi-drafts (Simple → Stress) : conflits, bruit, rankings par intent',
+            'Single-page : carte « 7 slots » filled/skipped + ordre des étapes = ordre des slots',
             'Surbrillance activée sur chaque étape des parcours autogénérés',
             'Intégration : blueprints métier + preview runtime sur app fictive',
+            'Dynamique / Stress : batching et anti-bruit sous mutations DOM',
           ].map((item) => (
             <div key={item} className="flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />

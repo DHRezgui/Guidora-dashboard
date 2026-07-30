@@ -1086,6 +1086,40 @@ export default function ToursPage() {
 		}
 	};
 
+	const handleToggleShowInGuides = async (tour: GuidedTour) => {
+		if (!tour.id || !isAdmin || tour.environment !== 'production') return;
+		const nextShowInGuides = !Boolean(tour.showInGuides);
+		try {
+			const response = await tourService.update(tour.id, { showInGuides: nextShowInGuides });
+			const updatedTour = response.tour;
+			startTourListTransition(() => {
+				setTours((prev) =>
+					prev.map((item) => {
+						if (item.id !== tour.id) {
+							return item;
+						}
+						if (updatedTour) {
+							return { ...item, ...updatedTour };
+						}
+						return { ...item, showInGuides: nextShowInGuides };
+					}),
+				);
+			});
+			toast.success(
+				nextShowInGuides ? 'Affiché dans Guides' : 'Retiré des Guides',
+				{
+					description: nextShowInGuides
+						? 'Visible dans Aide > Guides en production (sans activer l’autostart).'
+						: 'Masqué du catalogue Guides (autostart inchangé).',
+				},
+			);
+		} catch (error) {
+			toast.error('Action impossible', {
+				description: getErrorMessage(error, 'Impossible de modifier l’affichage Guides.'),
+			});
+		}
+	};
+
 	const handleAdminEnvironmentTransfer = (tour: GuidedTour, target: TourDeploymentTarget) => {
 		if (!tour.id) return;
 		const current = tour.environment === 'production' ? 'production' : 'sandbox';
@@ -1127,8 +1161,8 @@ export default function ToursPage() {
 				{
 					description:
 						target === 'production'
-							? `${tour.name} est prêt pour les utilisateurs finaux (activation prod séparée).`
-							: `${tour.name} est de nouveau en test sandbox.`,
+							? `${tour.name} est prêt pour les utilisateurs finaux (activation prod et Guides à réactiver séparément).`
+							: `${tour.name} est de nouveau en test sandbox (activation et Guides désactivés).`,
 				},
 			);
 			await loadTours();
@@ -2129,6 +2163,14 @@ export default function ToursPage() {
 													Lab SDK
 												</Badge>
 											) : null}
+											{tour.showInGuides && isProductionTour ? (
+												<Badge
+													variant="outline"
+													className="border-violet-300/50 bg-violet-50/90 text-[10px] font-semibold uppercase tracking-wide text-violet-800 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200"
+												>
+													Guide
+												</Badge>
+											) : null}
 											{meta.isAutogen ? (
 												<Badge
 													variant="outline"
@@ -2684,6 +2726,26 @@ export default function ToursPage() {
 													) : (
 														<Icons.refresh className="h-4 w-4" />
 													)}
+												</Button>
+											) : null}
+											{isAdmin && isProductionTour ? (
+												<Button
+													variant="outline"
+													size="icon"
+													className={cardIconActionClass(
+														tour.showInGuides
+															? 'text-violet-700 hover:bg-violet-100 hover:border-violet-300/70 focus:ring-violet-500/20 dark:text-violet-300 dark:hover:bg-violet-500/15'
+															: 'text-slate-600 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300/50 focus:ring-violet-500/20 dark:text-slate-300 dark:hover:bg-violet-500/10',
+													)}
+													onClick={() => handleToggleShowInGuides(tour)}
+													disabled={deletingIds.includes(tour.id || '') || isLabTour}
+													title={
+														tour.showInGuides
+															? 'Retirer du catalogue Aide > Guides'
+															: 'Afficher dans Aide > Guides'
+													}
+												>
+													<Icons.faq className="h-4 w-4" />
 												</Button>
 											) : null}
 											{!showDeploymentActiveToggle && showSandboxTestToggle ? (

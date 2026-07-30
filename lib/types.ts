@@ -186,6 +186,8 @@ export interface GuidedTour {
   targetUrl: string;
   isActive?: boolean;
   isSandboxTestActive?: boolean;
+  /** Opt-in admin : catalogue Aide > Guides (indépendant de l’autostart). */
+  showInGuides?: boolean;
   /** Renseigné côté serveur (toggle test sandbox), jamais envoyé à l’API de sauvegarde. */
   sandboxTestStartedBy?: string | null;
   priority?: number;

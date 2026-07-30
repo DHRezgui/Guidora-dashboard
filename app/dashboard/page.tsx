@@ -7,11 +7,18 @@ import { Icons } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
 import { DashboardWelcomeHero } from '@/components/dashboard/DashboardWelcomeHero';
 import { DashboardOverviewPanel } from '@/components/dashboard/dashboard-overview-panel';
-import { authService, organizationService, projectService, tourService, userService } from '@/lib/api';
+import {
+  authService,
+  organizationService,
+  projectService,
+  supportTicketService,
+  tourService,
+} from '@/lib/api';
 import {
   canAccessOrganizations,
   canAccessProjects,
   canAccessSdkLab,
+  canAccessSupportTickets,
   canCreateTours,
   canManageTours,
   getDashboardRole,
@@ -29,6 +36,7 @@ type DashboardStats = {
   tourTotal: number;
   tourSandbox: number;
   tourActive: number;
+  openSupportTickets: number;
   orgPlan: string | null;
 };
 
@@ -40,6 +48,7 @@ const EMPTY_STATS: DashboardStats = {
   tourTotal: 0,
   tourSandbox: 0,
   tourActive: 0,
+  openSupportTickets: 0,
   orgPlan: null,
 };
 
@@ -61,6 +70,7 @@ export default function DashboardPage() {
   const showTourCreate = canCreateTours(role);
   const showOrgStats = canAccessOrganizations(role);
   const showSdkLab = canAccessSdkLab(role);
+  const showSupport = canAccessSupportTickets(role);
   const showTourStats = isAdmin || showTourCreate;
   const showHubResources = canAccessProjects(role);
 
@@ -79,19 +89,25 @@ export default function DashboardPage() {
       const next: DashboardStats = { ...EMPTY_STATS };
       let nextHub = { ...EMPTY_HUB_STATS };
 
-      const [usersResult, toursResult, orgsResult, projectsResult] = await Promise.allSettled([
-        isAdmin ? userService.getAll(1, 10000) : Promise.resolve(null),
-        showTourStats ? tourService.getAll(undefined, { includeSteps: false }) : Promise.resolve(null),
-        isAdmin || showOrgStats ? organizationService.getAll() : Promise.resolve(null),
-        showHubResources ? projectService.list() : Promise.resolve(null),
-      ]);
+      const [teamCountResult, toursResult, orgsResult, projectsResult, supportResult] =
+        await Promise.allSettled([
+          isAdmin && user?.organizationId
+            ? organizationService.getUserCount(user.organizationId)
+            : Promise.resolve(null),
+          showTourStats ? tourService.getAll(undefined, { includeSteps: false }) : Promise.resolve(null),
+          isAdmin || showOrgStats ? organizationService.getAll() : Promise.resolve(null),
+          showHubResources ? projectService.list() : Promise.resolve(null),
+          showSupport
+            ? supportTicketService.list({ activeOnly: true, limit: 200 })
+            : Promise.resolve(null),
+        ]);
 
-      const usersRes = usersResult.status === 'fulfilled' ? usersResult.value : null;
+      const teamCountRes = teamCountResult.status === 'fulfilled' ? teamCountResult.value : null;
       const toursRes = toursResult.status === 'fulfilled' ? toursResult.value : null;
       const orgsRes = orgsResult.status === 'fulfilled' ? orgsResult.value : null;
       const projectsRes = projectsResult.status === 'fulfilled' ? projectsResult.value : null;
+      const supportRes = supportResult.status === 'fulfilled' ? supportResult.value : null;
 
-      const users = usersRes?.users ?? [];
       const tours = toursRes?.tours ?? [];
       const org = orgsRes?.organizations?.[0];
 
@@ -106,13 +122,17 @@ export default function DashboardPage() {
         ).length;
       }
 
-      if (isAdmin && usersRes) {
-        next.teamMembers = users.length;
+      if (isAdmin && teamCountRes && typeof teamCountRes.count === 'number') {
+        next.teamMembers = teamCountRes.count;
       }
 
       if (org) {
         next.maxUsers = org.maxUsers;
         next.orgPlan = org.plan;
+      }
+
+      if (supportRes) {
+        next.openSupportTickets = supportRes.count ?? supportRes.items?.length ?? 0;
       }
 
       if (projectsRes?.projects) {
@@ -130,9 +150,11 @@ export default function DashboardPage() {
     showTourStats,
     showOrgStats,
     showHubResources,
+    showSupport,
     role,
     currentUserId,
     isTourManager,
+    user?.organizationId,
   ]);
 
   if (role === 'SUPER_ADMIN') {
@@ -159,6 +181,7 @@ export default function DashboardPage() {
         showTourCreate={showTourCreate}
         showOrgStats={showOrgStats}
         showHubResources={showHubResources}
+        showSupport={showSupport}
       />
 
       <section className="space-y-3">
@@ -173,7 +196,7 @@ export default function DashboardPage() {
                 <div className="space-y-1">
                   <h3 className="font-semibold text-slate-800 dark:text-slate-100">Gérer l&apos;équipe</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Invitez développeurs et utilisateurs de votre organisation.
+                    Invitez développeurs et utilisateurs (les admins sont gérés à part).
                   </p>
                 </div>
               </div>
@@ -230,6 +253,28 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
+          {showSupport ? (
+            <div className="phoenix-glass group rounded-2xl p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-400/35 hover:shadow-elevated">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-rose-500/10 p-2.5 text-rose-400 transition-colors group-hover:bg-rose-500/20">
+                  <Icons.support className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">Support</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Tickets Aide, réponses et signaux d&apos;abandon liés aux demandes.
+                  </p>
+                </div>
+              </div>
+              <Button className={cn('mt-4', PHOENIX_PRIMARY_BUTTON_CLASS)} asChild>
+                <Link href="/dashboard/support">
+                  <Icons.arrowRight className="mr-2 h-4 w-4" />
+                  Ouvrir le support
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+
           {showSdkLab ? (
             <div className="phoenix-glass group rounded-2xl p-5 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:shadow-elevated">
               <div className="flex items-start gap-3">
@@ -239,7 +284,7 @@ export default function DashboardPage() {
                 <div className="space-y-1">
                   <h3 className="font-semibold text-slate-800 dark:text-slate-100">SDK Test Lab</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Testez l&apos;intégration SDK dans des interfaces de démonstration.
+                    Génération contextuelle, preview « Jouer » et moniteur Abandon sur chaque scénario.
                   </p>
                 </div>
               </div>
