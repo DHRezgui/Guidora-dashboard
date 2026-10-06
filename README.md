@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Guidora Dashboard
 
-## Getting Started
+The Guidora dashboard is a Next.js administration application for managing
+organizations, projects, guided tours, contextual help, FAQs, SDK access, and
+analytics.
 
-First, run the development server:
+Repository: [DHRezgui/Guidora-dashboard](https://github.com/DHRezgui/Guidora-dashboard)
+
+## Requirements
+
+- Node.js 20 or newer
+- npm
+- A running Guidora backend, unless you are working on isolated UI screens
+- The local React SDK repository when using the `file:../sdks/react` dependency
+
+## Install
+
+From the dashboard repository:
+
+```bash
+npm install
+npm run ensure-sdk-link
+```
+
+The dashboard consumes the SDK from `../sdks/react`. Build the SDK first when
+working from the parent workspace:
+
+```bash
+cd ../sdks/react
+npm install
+npm run build
+cd ../../dashboard
+npm install
+```
+
+## Configuration
+
+Create the ignored environment file used by your local setup. The important
+variables are:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:3020/api/v1
+INTERNAL_API_URL=http://localhost:3020/api/v1
+```
+
+When using the root Docker Compose stack, the dashboard is configured with the
+backend URL and is available at `http://localhost:3003`. In the development
+Compose stack, it is available at `http://localhost:3021`.
+
+## Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 for a direct Next.js run. The custom development
+script prepares the local SDK link and starts the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For a clean development build:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev:clean
+```
 
-## Learn More
+## Production build
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+npm run start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tests and checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run lint
+npm test
+```
 
-## Deploy on Vercel
+## Project structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `app/`: Next.js routes and pages.
+- `components/`: reusable UI and feature components.
+- `lib/`: API clients, state, and shared utilities.
+- `scripts/`: local development and SDK integration scripts.
+- `tests/`: Vitest and Testing Library tests.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Related repositories
+
+- [Guidora](https://github.com/DHRezgui/Guidora): full-stack workspace.
+- [Guidora Backend](https://github.com/DHRezgui/Guidora-backend): API service.
+- [Guidora SDK](https://github.com/DHRezgui/Guidora-sdk): React integration package.
